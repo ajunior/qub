@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qub — Documentation</title>
+  <style>
+    :root {
+      --bg:         #ffffff;
+      --bg-alt:     #f7f8fa;
+      --border:     #e4e7ec;
+      --text:       #111827;
+      --muted:      #6b7280;
+      --faint:      #9ca3af;
+      --accent:     #2196E8;
+      --accent-sub: #e3f4fc;
+      --nav-w:      240px;
+      --code-bg:    #f3f4f6;
+      --code-text:  #1e293b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #0f1117;
+        --bg-alt:     #161b24;
+        --border:     #262d3a;
+        --text:       #e2e8f0;
+        --muted:      #94a3b8;
+        --faint:      #4b5563;
+        --accent:     #2196E8;
+        --accent-sub: #0d2a40;
+        --code-bg:    #1a2030;
+        --code-text:  #93c5fd;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar nav ─────────────────────────────────────── */
+    nav {
+      width: var(--nav-w);
+      min-width: var(--nav-w);
+      background: var(--bg-alt);
+      border-right: 1px solid var(--border);
+      padding: 32px 0 40px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    nav .logo {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    nav .logo span {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    nav .logo sub {
+      font-size: 11px;
+      color: var(--muted);
+      display: block;
+      margin-top: 2px;
+      letter-spacing: 0;
+      font-weight: 400;
+    }
+    nav ul { list-style: none; padding: 0 12px; }
+    nav ul li a {
+      display: block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s;
+    }
+    nav ul li a:hover { background: var(--border); color: var(--text); }
+    nav ul li a.active { background: var(--accent-sub); color: var(--accent); font-weight: 500; }
+    nav .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--faint);
+      text-transform: uppercase;
+      padding: 16px 24px 4px;
+    }
+
+    /* ── Main content ────────────────────────────────────── */
+    main {
+      flex: 1;
+      max-width: 760px;
+      padding: 48px 56px 80px;
+    }
+
+    section { margin-bottom: 64px; scroll-margin-top: 32px; }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    h1 .tag {
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--accent-sub);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 10px;
+      vertical-align: middle;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 20px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    p { color: var(--muted); margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .lead {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    /* ── Shortcut table ──────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--faint);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { color: var(--text); }
+
+    kbd {
+      display: inline-block;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    /* ── Callout boxes ───────────────────────────────────── */
+    .callout {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    .callout.info  { background: var(--accent-sub); border-left: 3px solid var(--accent); }
+    .callout.tip   { background: #f0fdf4; border-left: 3px solid #22c55e; }
+    .callout.note  { background: var(--bg-alt); border-left: 3px solid var(--border); }
+    @media (prefers-color-scheme: dark) {
+      .callout.tip { background: #052e16; border-left-color: #16a34a; }
+      .callout.note { background: var(--bg-alt); }
+    }
+    .callout .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout p { margin: 0; }
+
+    /* ── Step list ───────────────────────────────────────── */
+    ol.steps { padding-left: 0; list-style: none; counter-reset: step; }
+    ol.steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 14px;
+      margin-bottom: 14px;
+      align-items: flex-start;
+    }
+    ol.steps li::before {
+      content: counter(step);
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    ol.steps li p { margin: 0; }
+
+    /* ── Feature grid ────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .feature-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .feature-card .icon { font-size: 20px; margin-bottom: 8px; display: block; }
+    .feature-card strong { display: block; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+    .feature-card span { font-size: 12.5px; color: var(--muted); }
+
+    /* ── Divider ─────────────────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <span>qub</span>
+    <sub>SQL editor documentation</sub>
+  </div>
+  <div class="section-label">Getting started</div>
+  <ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+  <div class="section-label">Editor</div>
+  <ul>
+    <li><a href="#query-editor">Query editor</a></li>
+    <li><a href="#results">Results</a></li>
+    <li><a href="#history">History</a></li>
+    <li><a href="#saved-queries">Saved queries</a></li>
+  </ul>
+  <div class="section-label">Workspace</div>
+  <ul>
+    <li><a href="#sessions">Sessions</a></li>
+    <li><a href="#data-sources">Data sources</a></li>
+    <li><a href="#settings">Settings</a></li>
+  </ul>
+  <div class="section-label">Coming soon</div>
+  <ul>
+    <li><a href="#live-share">Live share</a></li>
+    <li><a href="#proxy">Proxy servers</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <!-- ── Overview ───────────────────────────────────────── -->
+  <section id="overview">
+    <h1>qub <span class="tag">v0.1.0</span></h1>
+    <p class="lead">
+      There are great open-source SQL editors out there, but none of them ever really clicked for me.
+      DataGrip was the one that gave me the feeling of productivity and control over my database workspace.
+      But once my enterprise license got canceled, instead of picking a new one I decided to build myself
+      an editor the way I always wanted it to be. So qub was built with an emphasis on SQL centricity,
+      the basics done well, and a clean interface I enjoy looking at all day.
+    </p>
+    <p class="lead">
+      During development, to keep the interface consistent and easier to build, I created a Qt/QML component
+      libraries (including fonts, icons, and theming), called <a href="https://ajunior.github.io/mahina">Mahina</a>, which I also open-sourced. If you're building desktop
+      apps with Qt, it might save you from reimplementing the same primitives from scratch.
+    </p>
+
+    <div class="callout note">
+      <span class="icon">🤖</span>
+      <p>AI assistance was used to build this application, but all the code was human-reviewed.</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <span class="icon">⬡</span>
+        <strong>Multi-connection</strong>
+        <span>Keep several database connections open in parallel, each in its own tab.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">↺</span>
+        <strong>Session restore</strong>
+        <span>Save and restore workspaces — connections and open queries — between launches.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">★</span>
+        <strong>Saved queries</strong>
+        <span>Bookmark queries you run often and reopen them instantly from the sidebar.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">⬡</span>
+        <strong>Live share</strong>
+        <span>Stream query results to any browser via a shareable local link. <em>Coming soon.</em></span>
+      </div>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Connections ────────────────────────────────────── -->
+  <section id="connections">
+    <h2>Connections</h2>
+    <p>
+      qub supports multiple simultaneous connections. Each connection lives in its own tab
+      in the editor. You can switch freely between them while queries run in the background.
+    </p>
+
+    <h3>Creating a connection</h3>
+    <ol class="steps">
+      <li><p>From the welcome screen, click <strong>New Connection</strong>.</p></li>
+      <li><p>Choose a driver from the dropdown (PostgreSQL, MySQL, SQLite, ODBC, Oracle, Firebird).</p></li>
+      <li><p>Fill in host, port, database name, username, and password.</p></li>
+      <li><p>Click <strong>Test</strong> to verify the credentials, then <strong>Connect</strong>.</p></li>
+    </ol>
+
+    <div class="callout info">
+      <span class="icon">ℹ</span>
+      <p><strong>PostgreSQL:</strong> requires <code>libpq</code> to be installed on your system.
+      On Fedora: <code>sudo dnf install libpq</code>. On Ubuntu: <code>sudo apt install libpq5</code>.</p>
+    </div>
+
+    <h3>Supported drivers</h3>
+    <table>
+      <tr><th>Driver</th><th>Database</th><th>System dependency</th></tr>
+      <tr><td>QPSQL</td><td>PostgreSQL</td><td>libpq</td></tr>
+      <tr><td>QMYSQL</td><td>MySQL / MariaDB</td><td>libmysqlclient or libmariadb</td></tr>
+      <tr><td>QSQLITE</td><td>SQLite</td><td>none (built-in)</td></tr>
+      <tr><td>QODBC</td><td>Any ODBC source</td><td>unixODBC</td></tr>
+      <tr><td>QOCI</td><td>Oracle</td><td>Oracle Instant Client</td></tr>
+      <tr><td>QIBASE</td><td>Firebird</td><td>Firebird client</td></tr>
+    </table>
+
+    <h3>Switching connections</h3>
+    <p>
+      Once in the editor, the tab bar at the top shows all open connections.
+      Click any tab to switch. The <strong>+</strong> button on the right opens the
+      connection dialog without leaving the current workspace.
+    </p>
+
+    <h3>Leaving the workspace</h3>
+    <p>
+      Click the <strong>←</strong> arrow in the top-left to return to the welcome screen.
+      qub will ask whether to close the active connections or keep them open.
+      Check <em>"Always close the connection when leaving"</em> to skip the dialog in future.
+      This preference can be changed at any time in Settings.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Query editor ───────────────────────────────────── -->
+  <section id="query-editor">
+    <h2>Query editor</h2>
+    <p>
+      The editor occupies the upper half of the workspace. Write SQL directly — the editor
+      uses a monospaced font and preserves your indentation.
+    </p>
+
+    <h3>Running queries</h3>
+    <p>
+      Click <strong>▶ Run</strong> in the toolbar, or use the keyboard shortcut below.
+      Only the selected text is executed if you have a selection; otherwise the full buffer runs.
+    </p>
+
+    <table>
+      <tr><th>Action</th><th>Shortcut</th></tr>
+      <tr><td>Run query</td><td><kbd>Ctrl</kbd> + <kbd>Enter</kbd></td></tr>
+      <tr><td>Stop running query</td><td>Click <strong>■ Stop</strong> in the toolbar</td></tr>
+    </table>
+
+    <div class="callout tip">
+      <span class="icon">✦</span>
+      <p>Queries run asynchronously — the UI stays responsive while results load.
+      Large result sets are paginated automatically.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Results ────────────────────────────────────────── -->
+  <section id="results">
+    <h2>Results</h2>
+    <p>
+      Query results appear in the lower half of the workspace in a scrollable table.
+      Column headers are fixed while you scroll horizontally.
+    </p>
+
+    <h3>Exporting</h3>
+    <p>
+      Click <strong>↓ CSV</strong> in the toolbar to export the current result set
+      as a comma-separated file. A save dialog will appear to choose the destination.
+    </p>
+
+    <h3>Status bar</h3>
+    <p>
+      The bar at the very bottom of the editor shows the active connection name,
+      the number of rows returned, and the query execution time in milliseconds.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── History ────────────────────────────────────────── -->
+  <section id="history">
+    <h2>History</h2>
+    <p>
+      Every query you run is automatically saved to the history. The <strong>HISTORY</strong>
+      section in the left sidebar lists the most recent 50 entries.
+    </p>
+    <p>
+      Each entry shows a truncated version of the SQL, the connection name, and the
+      execution time. Entries that resulted in an error are shown in red.
+      Click any entry to load that SQL into the editor.
+    </p>
+
+    <div class="callout note">
+      <span class="icon">◎</span>
+      <p>History is stored locally per session. It is not synced across machines.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Saved queries ──────────────────────────────────── -->
+  <section id="saved-queries">
+    <h2>Saved queries</h2>
+    <p>
+      Bookmark frequently-used queries so you can reopen them instantly without
+      searching through history.
+    </p>
+
+    <h3>Saving a query</h3>
+    <ol class="steps">
+      <li><p>Write the query in the editor.</p></li>
+      <li><p>Click <strong>★ Save</strong> in the toolbar.</p></li>
+      <li><p>Give it a name and optionally a folder to keep things organised.</p></li>
+    </ol>
+
+    <h3>Reopening a saved query</h3>
+    <p>
+      The <strong>SAVED</strong> section in the left sidebar lists all saved queries.
+      Click any entry to load it into the editor. The folder name (or connection name)
+      is shown as the subtitle.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Sessions ───────────────────────────────────────── -->
+  <section id="sessions">
+    <h2>Sessions</h2>
+    <p>
+      A session captures the full state of a workspace — which connections are open
+      and what queries are loaded in the editor — so you can restore it later.
+    </p>
+
+    <h3>Restoring a session</h3>
+    <p>
+      From the welcome screen, open the <strong>Last Sessions</strong> panel.
+      Each entry shows the date and the number of tabs that were open.
+      Click an entry to restore that workspace.
+    </p>
+
+    <div class="callout info">
+      <span class="icon">ℹ</span>
+      <p>Sessions are saved automatically when you leave the workspace.
+      The ten most recent sessions are kept.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Data sources ───────────────────────────────────── -->
+  <section id="data-sources">
+    <h2>Data sources</h2>
+    <p>
+      The <strong>Data Sources</strong> panel on the welcome screen lists all
+      connections you have ever configured. From here you can open a connection directly
+      or delete one you no longer need.
+    </p>
+    <p>
+      When you open qub and you already have saved connections, the Data Sources panel
+      opens automatically. If this is your first time, the New Connection form opens instead.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Settings ───────────────────────────────────────── -->
+  <section id="settings">
+    <h2>Settings</h2>
+    <p>Access settings from the <strong>Settings</strong> tab on the welcome screen.</p>
+
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr>
+        <td>Dark theme</td>
+        <td>Switch between light and dark mode. Also togglable from the welcome screen header.</td>
+      </tr>
+      <tr>
+        <td>Auto-close connection on leave</td>
+        <td>
+          When enabled, leaving the workspace always closes the active database connections
+          without asking. When disabled, qub prompts you each time.
+          You can also set this from the leave-workspace dialog by checking
+          <em>"Always close the connection when leaving"</em>.
+        </td>
+      </tr>
+    </table>
+  </section>
+
+  <hr />
+
+  <!-- ── Live share ─────────────────────────────────────── -->
+  <section id="live-share">
+    <h2>Live share <span class="tag">Coming soon</span></h2>
+    <p>
+      Live share lets you stream query results to any browser on your local network
+      using a one-click shareable link. No installation required on the viewer's side —
+      just open the URL.
+    </p>
+    <p>
+      Click <strong>⬡ Share</strong> in the toolbar to generate a link.
+      The results table updates in real time as you run new queries.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Proxy ──────────────────────────────────────────── -->
+  <section id="proxy">
+    <h2>Proxy servers <span class="tag">Coming soon</span></h2>
+    <p>
+      Proxy server support will allow you to route database connections through SSH
+      tunnels or SOCKS proxies — useful for reaching databases inside private networks
+      without exposing them directly.
+    </p>
+    <p>
+      Configuration will be available in the <strong>Proxy Servers</strong> panel
+      on the Connections tab of the welcome screen.
+    </p>
+  </section>
+
+</main>
+
+<script>
+  // Highlight the active nav link based on scroll position
+  const sections = document.querySelectorAll('section[id]');
+  const links    = document.querySelectorAll('nav a');
+
+  function setActive() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    links.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+</script>
+</body>
+</html>
