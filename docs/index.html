@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qub · SQL editor</title>
+  <meta name="description" content="The SQL editor I built because I needed it. Shared because you might too." />
+  <meta property="og:title" content="qub · SQL editor" />
+  <meta property="og:description" content="The SQL editor I built because I needed it. Shared because you might too." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Variables ─────────────────────────────────────────────────────── */
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #161616;
+      --surface2:  #1e1e1e;
+      --border:    #252525;
+      --border2:   #2e2e2e;
+      --text:      #f0f0f0;
+      --text-sec:  #8a8a8a;
+      --text-dis:  #444;
+      --primary:   #2196E8;
+      --primary-h: #1a7cc7;
+      --primary-s: rgba(33,150,232,0.10);
+      --success:   #22c55e;
+      --mono:      'JetBrains Mono', 'Fira Code', monospace;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:        #f8f8f8;
+        --surface:   #ffffff;
+        --surface2:  #f1f1f1;
+        --border:    #e4e4e4;
+        --border2:   #d4d4d4;
+        --text:      #111111;
+        --text-sec:  #555555;
+        --text-dis:  #aaaaaa;
+        --primary-s: rgba(33,150,232,0.08);
+      }
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* ── Nav ───────────────────────────────────────────────────────────── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 58px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+    .nav-logo svg { width: 22px; height: 25px; flex-shrink: 0; }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+      list-style: none;
+    }
+    .nav-links a {
+      color: var(--text-sec);
+      font-size: 14px;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-cta {
+      color: var(--primary) !important;
+      border: 1px solid var(--primary);
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 13px !important;
+      transition: background 0.15s !important;
+    }
+    .nav-cta:hover { background: var(--primary-s) !important; }
+    @media (max-width: 640px) {
+      nav { padding: 0 20px; }
+      .nav-links li:not(:last-child) { display: none; }
+    }
+
+    /* ── Hero ──────────────────────────────────────────────────────────── */
+    .hero {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 80px 48px 100px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+    @media (max-width: 860px) {
+      .hero { grid-template-columns: 1fr; gap: 48px; padding: 56px 24px 72px; }
+      .app-mockup { display: none; }
+    }
+    .hero-left { display: flex; flex-direction: column; gap: 0; }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-s);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      padding: 5px 12px;
+      border-radius: 100px;
+      width: fit-content;
+      margin-bottom: 24px;
+    }
+    .hero-badge::before {
+      content: '';
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    .hero-name {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .hero-name svg { width: 48px; height: 56px; }
+    .hero-name h1 {
+      font-size: 68px;
+      font-weight: 700;
+      letter-spacing: -3px;
+      line-height: 1;
+    }
+    .hero-tagline {
+      font-size: 18px;
+      color: var(--text-sec);
+      line-height: 1.65;
+      margin-bottom: 36px;
+      max-width: 420px;
+    }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 11px 22px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-h); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-sec);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--text-sec); }
+
+    /* ── App mockup ────────────────────────────────────────────────────── */
+    .app-mockup {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.45);
+      font-family: var(--mono);
+      font-size: 12px;
+      max-width: 480px;
+      width: 100%;
+    }
+    @media (prefers-color-scheme: light) {
+      .app-mockup { box-shadow: 0 32px 80px rgba(0,0,0,0.12); }
+    }
+    .mock-tabbar {
+      display: flex;
+      align-items: center;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 38px;
+      padding: 0 6px 0 4px;
+      gap: 0;
+    }
+    .mock-back {
+      width: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-sec);
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .mock-sep { width: 1px; height: 16px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+    .mock-tab {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 14px;
+      height: 38px;
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      color: var(--text-sec);
+      position: relative;
+    }
+    .mock-tab.active {
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .mock-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0; right: 0;
+      height: 2px;
+      background: var(--primary);
+    }
+    .mock-tab-dot { font-size: 8px; }
+    .mock-tab-dot.on { color: var(--success); }
+    .mock-body {
+      display: flex;
+      height: 280px;
+    }
+    .mock-sidebar {
+      width: 150px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mock-sidebar-section {
+      padding: 10px 12px 4px;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--text-dis);
+    }
+    .mock-sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      font-size: 11.5px;
+      color: var(--text-sec);
+      cursor: default;
+    }
+    .mock-sidebar-item .icon { color: var(--text-dis); font-size: 10px; }
+    .mock-right {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .mock-editor {
+      flex: 1;
+      padding: 14px 16px;
+      overflow: hidden;
+      line-height: 1.75;
+    }
+    .mock-editor .ln { color: var(--text-dis); user-select: none; margin-right: 14px; display: inline-block; width: 14px; text-align: right; }
+    .kw  { color: #569cd6; }
+    .kw2 { color: #c586c0; }
+    .fn  { color: #dcdcaa; }
+    .str { color: #ce9178; }
+    .num { color: #b5cea8; }
+    .cm  { color: var(--text-dis); font-style: italic; }
+    .mock-toolbar {
+      border-top: 1px solid var(--border);
+      height: 36px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 8px;
+      background: var(--surface);
+    }
+    .mock-run {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      cursor: default;
+    }
+    .mock-tool-btn {
+      font-size: 11px;
+      font-family: 'Inter', sans-serif;
+      color: var(--text-sec);
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: default;
+    }
+    .mock-results-header {
+      border-top: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 60px 120px 1fr 80px;
+      background: var(--surface2);
+    }
+    .mock-th, .mock-td {
+      padding: 5px 10px;
+      font-size: 11px;
+      border-right: 1px solid var(--border);
+      overflow: hidden;
+      white-space: nowrap;
+    }
+    .mock-th {
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      color: var(--text-sec);
+      border-bottom: 1px solid var(--border);
+    }
+    .mock-td { color: var(--text-sec); font-size: 11px; }
+    .mock-td.primary-col { color: var(--text); }
+    .mock-row { display: grid; grid-template-columns: 60px 120px 1fr 80px; }
+    .mock-row:last-child .mock-td { opacity: 0.4; }
+    .mock-statusbar {
+      border-top: 1px solid var(--border);
+      height: 26px;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 16px;
+      background: var(--surface2);
+    }
+    .mock-status-item {
+      font-family: 'Inter', sans-serif;
+      font-size: 10.5px;
+      color: var(--text-dis);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .mock-status-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+    /* ── Sections ──────────────────────────────────────────────────────── */
+    .section-wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 72px 48px;
+    }
+    @media (max-width: 640px) { .section-wrap { padding: 56px 24px; } }
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .section-eyebrow {
+      font-size: 11.5px;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      color: var(--text-dis);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      line-height: 1.15;
+      margin-bottom: 14px;
+    }
+    .section-sub {
+      font-size: 16px;
+      color: var(--text-sec);
+      line-height: 1.7;
+      max-width: 560px;
+    }
+
+    /* ── Features ──────────────────────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 44px;
+    }
+    @media (max-width: 760px) { .features-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 480px) { .features-grid { grid-template-columns: 1fr; } }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 22px 24px;
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--border2); }
+    .feature-cat {
+      font-size: 10.5px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--primary);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .feature-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 7px;
+      letter-spacing: -0.2px;
+    }
+    .feature-desc {
+      font-size: 13.5px;
+      color: var(--text-sec);
+      line-height: 1.65;
+    }
+
+    /* ── Drivers ───────────────────────────────────────────────────────── */
+    .drivers {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 44px;
+    }
+    .driver-tag {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-sec);
+      font-family: var(--mono);
+    }
+
+    /* ── Story ─────────────────────────────────────────────────────────── */
+    .story-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: start;
+      margin-top: 44px;
+    }
+    @media (max-width: 720px) { .story-body { grid-template-columns: 1fr; gap: 32px; } }
+    .story-text {
+      font-size: 16px;
+      color: var(--text-sec);
+      line-height: 1.85;
+    }
+    .story-text + .story-text { margin-top: 18px; }
+    .story-text a { color: var(--primary); }
+    .story-text a:hover { text-decoration: underline; }
+    .story-info { display: flex; flex-direction: column; gap: 24px; }
+    .info-block .label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--text-dis);
+      text-transform: uppercase;
+      margin-bottom: 5px;
+    }
+    .info-block .value {
+      font-size: 14.5px;
+      color: var(--text-sec);
+    }
+    .info-block .value a { color: var(--primary); }
+    .info-block .value a:hover { text-decoration: underline; }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1080px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    @media (max-width: 640px) { footer { padding: 24px 24px; } }
+    .footer-left { font-size: 13px; color: var(--text-dis); }
+    .footer-right { display: flex; gap: 24px; }
+    .footer-right a { font-size: 13px; color: var(--text-dis); transition: color 0.15s; }
+    .footer-right a:hover { color: var(--text-sec); }
+  </style>
+</head>
+<body>
+
+<!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+<nav>
+  <a class="nav-logo" href="#">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="20 16 60 68">
+      <defs>
+        <linearGradient id="gTop" x1="22" y1="34" x2="78" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#D4ECFF"/><stop offset="100%" stop-color="#88C6F8"/>
+        </linearGradient>
+        <linearGradient id="gRight" x1="64" y1="34" x2="64" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#2BAEF8"/><stop offset="100%" stop-color="#126ACC"/>
+        </linearGradient>
+        <linearGradient id="gLeft" x1="36" y1="34" x2="36" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#1274DC"/><stop offset="100%" stop-color="#083E96"/>
+        </linearGradient>
+      </defs>
+      <polygon points="50,18 78,34 50,50 22,34" fill="url(#gTop)"/>
+      <polygon points="78,34 78,66 50,82 50,50" fill="url(#gRight)"/>
+      <polygon points="22,34 50,50 50,82 22,66" fill="url(#gLeft)"/>
+      <polygon points="50,18 78,34 50,50 22,34" fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="0.6" stroke-linejoin="round"/>
+    </svg>
+    qub
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#databases">Databases</a></li>
+    <li><a href="#story">Story</a></li>
+    <li><a href="help.html">Docs</a></li>
+    <li><a class="nav-cta" href="https://codeberg.org/ajunior/qub">Source ↗</a></li>
+  </ul>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-left">
+    <div class="hero-badge">Open Source &nbsp;·&nbsp; GPL v3 &nbsp;·&nbsp; v0.1.0</div>
+    <div class="hero-name">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="20 16 60 68">
+        <defs>
+          <linearGradient id="gTop2" x1="22" y1="34" x2="78" y2="50" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#D4ECFF"/><stop offset="100%" stop-color="#88C6F8"/>
+          </linearGradient>
+          <linearGradient id="gRight2" x1="64" y1="34" x2="64" y2="82" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#2BAEF8"/><stop offset="100%" stop-color="#126ACC"/>
+          </linearGradient>
+          <linearGradient id="gLeft2" x1="36" y1="34" x2="36" y2="82" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1274DC"/><stop offset="100%" stop-color="#083E96"/>
+          </linearGradient>
+        </defs>
+        <polygon points="50,18 78,34 50,50 22,34" fill="url(#gTop2)"/>
+        <polygon points="78,34 78,66 50,82 50,50" fill="url(#gRight2)"/>
+        <polygon points="22,34 50,50 50,82 22,66" fill="url(#gLeft2)"/>
+        <polygon points="50,18 78,34 50,50 22,34" fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="0.6" stroke-linejoin="round"/>
+      </svg>
+      <h1>qub</h1>
+    </div>
+    <p class="hero-tagline">The SQL editor I built because I needed it.<br>Shared because you might too.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="https://codeberg.org/ajunior/qub/releases">Download</a>
+      <a class="btn btn-ghost" href="https://codeberg.org/ajunior/qub">View Source</a>
+      <a class="btn btn-ghost" href="help.html">Docs</a>
+    </div>
+  </div>
+
+  <!-- CSS app mockup -->
+  <div class="app-mockup">
+    <div class="mock-tabbar">
+      <div class="mock-back">←</div>
+      <div class="mock-sep"></div>
+      <div class="mock-tab active">
+        <span class="mock-tab-dot on">●</span> prod-postgres
+      </div>
+      <div class="mock-tab">
+        <span class="mock-tab-dot">○</span> staging-mysql
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-sidebar">
+        <div class="mock-sidebar-section">TABLES</div>
+        <div class="mock-sidebar-item"><span class="icon">▸</span> users</div>
+        <div class="mock-sidebar-item"><span class="icon">▸</span> orders</div>
+        <div class="mock-sidebar-item"><span class="icon">▸</span> products</div>
+        <div class="mock-sidebar-item"><span class="icon">▸</span> sessions</div>
+        <div class="mock-sidebar-section" style="margin-top:8px">HISTORY</div>
+        <div class="mock-sidebar-item" style="opacity:.6;font-size:10.5px">SELECT * FROM users</div>
+        <div class="mock-sidebar-item" style="opacity:.6;font-size:10.5px">UPDATE orders SET …</div>
+      </div>
+      <div class="mock-right">
+        <div class="mock-editor">
+          <div><span class="ln">1</span><span class="kw">SELECT</span> u.id, u.name, u.email,</div>
+          <div><span class="ln">2</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; o.total <span class="kw">AS</span> last_order</div>
+          <div><span class="ln">3</span><span class="kw">FROM</span> users u</div>
+          <div><span class="ln">4</span><span class="kw">JOIN</span> orders o <span class="kw">ON</span> o.user_id = u.id</div>
+          <div><span class="ln">5</span><span class="kw">WHERE</span> u.active = <span class="num">true</span></div>
+          <div><span class="ln">6</span>&nbsp;&nbsp;<span class="kw">AND</span> o.created_at > <span class="str">'2026-01-01'</span></div>
+          <div><span class="ln">7</span><span class="kw">ORDER BY</span> o.total <span class="kw">DESC</span></div>
+          <div><span class="ln">8</span><span class="kw">LIMIT</span> <span class="num">100</span>;</div>
+        </div>
+        <div class="mock-toolbar">
+          <div class="mock-run">▶  Run</div>
+          <div class="mock-tool-btn">↓ CSV</div>
+          <div class="mock-tool-btn">★ Save</div>
+        </div>
+        <div class="mock-results-header">
+          <div class="mock-th">id</div>
+          <div class="mock-th">name</div>
+          <div class="mock-th">email</div>
+          <div class="mock-th">last_order</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-td primary-col">1</div>
+          <div class="mock-td primary-col">Alice</div>
+          <div class="mock-td">alice@acme.io</div>
+          <div class="mock-td">4 820.00</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-td primary-col">2</div>
+          <div class="mock-td primary-col">Bob</div>
+          <div class="mock-td">bob@acme.io</div>
+          <div class="mock-td">3 100.00</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-td primary-col">3</div>
+          <div class="mock-td primary-col">Carol</div>
+          <div class="mock-td">carol@acme.io</div>
+          <div class="mock-td">1 540.00</div>
+        </div>
+        <div class="mock-statusbar">
+          <div class="mock-status-item"><div class="dot"></div> prod-postgres</div>
+          <div class="mock-status-item">3 rows · 12 ms</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Features ──────────────────────────────────────────────────────────── -->
+<hr class="divider" id="features" />
+<div class="section-wrap">
+  <div class="section-eyebrow">Features</div>
+  <h2 class="section-title">The basics, done well</h2>
+  <p class="section-sub">No clutter, no plugins, no subscriptions. Just a focused SQL editing environment that stays out of your way.</p>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-cat">Editor</div>
+      <div class="feature-title">SQL-centric workspace</div>
+      <p class="feature-desc">The editor is the center of the experience. Write SQL without hunting through menus or fighting modal dialogs.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-cat">Connections</div>
+      <div class="feature-title">Multiple simultaneous tabs</div>
+      <p class="feature-desc">Open several database connections at once and switch between them with tabs. Credentials are stored securely in your OS keychain.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-cat">History</div>
+      <div class="feature-title">Automatic query history</div>
+      <p class="feature-desc">Every query you run is saved automatically. Browse or search your history and rerun any past query in one click.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-cat">Library</div>
+      <div class="feature-title">Saved queries</div>
+      <p class="feature-desc">Save frequently used SQL into named folders. Build up a personal query library that grows with your workflow.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-cat">Sessions</div>
+      <div class="feature-title">Workspace restore</div>
+      <p class="feature-desc">Save your current workspace and restore it later, exactly as you left it — connections, SQL, and all.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-cat">Results</div>
+      <div class="feature-title">CSV export</div>
+      <p class="feature-desc">Export query results to CSV with one click. Share data with your team without copy-pasting from a grid.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Databases ─────────────────────────────────────────────────────────── -->
+<hr class="divider" id="databases" />
+<div class="section-wrap">
+  <div class="section-eyebrow">Databases</div>
+  <h2 class="section-title">Connects to what you already use</h2>
+  <p class="section-sub">Built on Qt's SQL module, qub supports any database that Qt can talk to out of the box.</p>
+  <div class="drivers">
+    <div class="driver-tag">PostgreSQL</div>
+    <div class="driver-tag">MySQL</div>
+    <div class="driver-tag">SQLite</div>
+    <div class="driver-tag">ODBC</div>
+    <div class="driver-tag">Oracle (OCI)</div>
+    <div class="driver-tag">Firebird</div>
+  </div>
+</div>
+
+<!-- ── Story ─────────────────────────────────────────────────────────────── -->
+<hr class="divider" id="story" />
+<div class="section-wrap">
+  <div class="section-eyebrow">Story</div>
+  <h2 class="section-title">Why qub exists</h2>
+
+  <div class="story-body">
+    <div>
+      <p class="story-text">
+        There are great open-source SQL editors out there, but none of them ever really clicked for me.
+        DataGrip was the one that gave me the feeling of productivity and control over my database workspace.
+        But once my enterprise license got canceled, instead of picking a new one I decided to build myself
+        an editor the way I always wanted it to be.
+      </p>
+      <p class="story-text">
+        So qub was built with an emphasis on SQL centricity, the basics done well, and a clean interface
+        I enjoy looking at all day.
+      </p>
+      <p class="story-text">
+        During development, to keep the interface consistent and easier to build, I created a Qt/QML component
+        library (including fonts, icons, and theming) called
+        <a href="https://ajunior.github.io/mahina" target="_blank" rel="noopener">Mahina</a>,
+        which I also open-sourced. If you're building desktop apps with Qt, it might save you from
+        reimplementing the same primitives from scratch.
+      </p>
+    </div>
+
+    <div class="story-info">
+      <div class="info-block">
+        <div class="label">Author</div>
+        <div class="value">Adjamilton Junior</div>
+      </div>
+      <div class="info-block">
+        <div class="label">Source</div>
+        <div class="value"><a href="https://codeberg.org/ajunior/qub" target="_blank" rel="noopener">codeberg.org/ajunior/qub</a></div>
+      </div>
+      <div class="info-block">
+        <div class="label">License</div>
+        <div class="value"><a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GNU GPL v3.0</a></div>
+      </div>
+      <div class="info-block">
+        <div class="label">Built with</div>
+        <div class="value">Qt 6 · C++ · QML · <a href="https://ajunior.github.io/mahina" target="_blank" rel="noopener">Mahina</a></div>
+      </div>
+      <div class="info-block">
+        <div class="label">Platform</div>
+        <div class="value">Linux (more soon)</div>
+      </div>
+      <div class="info-block">
+        <div class="label">Documentation</div>
+        <div class="value"><a href="help.html">help.html</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Footer ────────────────────────────────────────────────────────────── -->
+<hr class="divider" />
+<footer>
+  <div class="footer-left">© 2026 Adjamilton Junior &nbsp;·&nbsp; Distributed under the GPL v3 License</div>
+  <div class="footer-right">
+    <a href="https://codeberg.org/ajunior/qub" target="_blank" rel="noopener">Source</a>
+    <a href="help.html">Docs</a>
+    <a href="https://ajunior.github.io/mahina" target="_blank" rel="noopener">Mahina</a>
+    <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">License</a>
+  </div>
+</footer>
+
+</body>
+</html>
