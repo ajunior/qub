@@ -21,6 +21,7 @@ jobs:
 # which AppImages need to self-mount.
   build-linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +71,7 @@ jobs:
 # ── Windows — Inno Setup installer ────────────────────────────────────────────
   build-windows:
     runs-on: windows-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -124,6 +126,7 @@ jobs:
 # ── macOS — DMG ───────────────────────────────────────────────────────────────
   build-macos:
     runs-on: macos-latest
+    timeout-minutes: 60
 
     steps:
       - uses: actions/checkout@v4
@@ -138,8 +141,14 @@ jobs:
           modules: 'qtwebsockets qthttpserver'
           cache: true
 
+      # Ninja on purpose. The default generator here is Unix Makefiles, and
+      # `--parallel` with no job count hands make a bare `-j`, which means
+      # unlimited: every translation unit at once on a three-core runner, which
+      # thrashes instead of building. Ninja picks a sane job count itself, and it
+      # is what the Linux job already uses (8 minutes there against over an hour
+      # here). It ships on the macOS runner image.
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
 
       - name: Build
         run: cmake --build build --parallel
