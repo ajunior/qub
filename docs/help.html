@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>qub — Documentation</title>
+  <style>
+    :root {
+      --bg:         #ffffff;
+      --bg-alt:     #f7f8fa;
+      --border:     #e4e7ec;
+      --text:       #111827;
+      --muted:      #6b7280;
+      --faint:      #9ca3af;
+      --accent:     #2196E8;
+      --accent-sub: #e3f4fc;
+      --nav-w:      240px;
+      --code-bg:    #f3f4f6;
+      --code-text:  #1e293b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:         #0f1117;
+        --bg-alt:     #161b24;
+        --border:     #262d3a;
+        --text:       #e2e8f0;
+        --muted:      #94a3b8;
+        --faint:      #4b5563;
+        --accent:     #2196E8;
+        --accent-sub: #0d2a40;
+        --code-bg:    #1a2030;
+        --code-text:  #93c5fd;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      color: var(--text);
+      background: var(--bg);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar nav ─────────────────────────────────────── */
+    nav {
+      width: var(--nav-w);
+      min-width: var(--nav-w);
+      background: var(--bg-alt);
+      border-right: 1px solid var(--border);
+      padding: 32px 0 40px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+    nav .logo {
+      padding: 0 24px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    nav .logo span {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.5px;
+    }
+    nav .logo sub {
+      font-size: 11px;
+      color: var(--muted);
+      display: block;
+      margin-top: 2px;
+      letter-spacing: 0;
+      font-weight: 400;
+    }
+    nav ul { list-style: none; padding: 0 12px; }
+    nav ul li a {
+      display: block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: background 0.15s, color 0.15s;
+    }
+    nav ul li a:hover { background: var(--border); color: var(--text); }
+    nav ul li a.active { background: var(--accent-sub); color: var(--accent); font-weight: 500; }
+    nav .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      color: var(--faint);
+      text-transform: uppercase;
+      padding: 16px 24px 4px;
+    }
+    nav .search-wrap {
+      padding: 0 12px 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    nav .search-wrap input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    nav .search-wrap input:focus { border-color: var(--accent); }
+    nav .search-wrap input::placeholder { color: var(--faint); }
+    nav li.hidden { display: none; }
+    nav .section-label.hidden { display: none; }
+    .search-highlight { background: #fff3a3; border-radius: 2px; }
+    @media (prefers-color-scheme: dark) {
+      .search-highlight { background: #5a4a00; }
+    }
+
+    /* ── Main content ────────────────────────────────────── */
+    main {
+      flex: 1;
+      max-width: 760px;
+      padding: 48px 56px 80px;
+    }
+
+    section { margin-bottom: 64px; scroll-margin-top: 32px; }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    h1 .tag {
+      font-size: 12px;
+      font-weight: 500;
+      background: var(--accent-sub);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-left: 10px;
+      vertical-align: middle;
+      letter-spacing: 0;
+    }
+    h2 {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      margin: 20px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    p { color: var(--muted); margin-bottom: 12px; }
+    p:last-child { margin-bottom: 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong.added   { color: #2ea043; }
+    strong.removed { color: #e5534b; }
+    strong.changed { color: #d29922; }
+    code {
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 13px;
+      background: var(--code-bg);
+      color: var(--code-text);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .lead {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    /* ── Shortcut table ──────────────────────────────────── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--faint);
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    td:first-child { color: var(--text); }
+
+    kbd {
+      display: inline-block;
+      background: var(--code-bg);
+      color: var(--code-text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 7px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    /* ── Callout boxes ───────────────────────────────────── */
+    .callout {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 13.5px;
+    }
+    .callout.info  { background: var(--accent-sub); border-left: 3px solid var(--accent); }
+    .callout.tip   { background: #f0fdf4; border-left: 3px solid #22c55e; }
+    .callout.note  { background: var(--bg-alt); border-left: 3px solid var(--border); }
+    .callout.warn  { background: #fffbeb; border-left: 3px solid #f59e0b; }
+    .callout.pink  { background: #fceaf4; border-left: 3px solid #cb1169; }
+    @media (prefers-color-scheme: dark) {
+      .callout.tip  { background: #052e16; border-left-color: #16a34a; }
+      .callout.note { background: var(--bg-alt); }
+      .callout.warn { background: #2e2308; border-left-color: #d97706; }
+      .callout.pink { background: #2e0f20; border-left-color: #cb1169; }
+    }
+    .callout .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .callout p { margin: 0; }
+
+    /* ── Step list ───────────────────────────────────────── */
+    ol.steps { padding-left: 0; list-style: none; counter-reset: step; }
+    ol.steps li {
+      counter-increment: step;
+      display: flex;
+      gap: 14px;
+      margin-bottom: 14px;
+      align-items: flex-start;
+    }
+    ol.steps li::before {
+      content: counter(step);
+      flex-shrink: 0;
+      width: 24px; height: 24px;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+    ol.steps li p { margin: 0; }
+
+    /* ── Feature grid ────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    .feature-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .feature-card .icon { font-size: 20px; margin-bottom: 8px; display: block; }
+    .feature-card strong { display: block; font-size: 13px; color: var(--text); margin-bottom: 4px; }
+    .feature-card span { font-size: 12.5px; color: var(--muted); }
+
+    /* ── Theme swatches ──────────────────────────────────── */
+    .theme-list { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
+    .theme-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .theme-swatch {
+      width: 36px; height: 36px; border-radius: 50%;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    .theme-card strong { display: block; font-size: 13px; color: var(--text); margin-bottom: 3px; }
+    .theme-card p { font-size: 13px; margin: 0; }
+
+    /* ── Rule list ───────────────────────────────────────── */
+    ul.rules { padding-left: 0; list-style: none; margin: 10px 0; }
+    ul.rules li {
+      display: flex; gap: 10px; padding: 7px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
+      color: var(--muted);
+    }
+    ul.rules li:last-child { border-bottom: none; }
+    ul.rules li strong { color: var(--text); min-width: 200px; flex-shrink: 0; }
+
+    /* ── Divider ─────────────────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* ── Code block ──────────────────────────────────────── */
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 12px 0;
+      overflow-x: auto;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+      font-size: 13px;
+      color: var(--code-text);
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <span>qub</span>
+    <sub>SQL editor documentation</sub>
+  </div>
+  <div class="search-wrap">
+    <input id="search" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false" />
+  </div>
+  <div class="section-label">Getting started</div>
+  <ul>
+    <li><a href="#overview">Overview</a></li>
+    <li><a href="#connections">Connections</a></li>
+  </ul>
+  <div class="section-label">Editor</div>
+  <ul>
+    <li><a href="#query-editor">Query editor</a></li>
+    <li><a href="#query-parameters">Query parameters</a></li>
+    <li><a href="#results">Results &amp; export</a></li>
+    <li><a href="#schema-browser">Schema browser</a></li>
+    <li><a href="#sidebar">Sidebar</a></li>
+    <li><a href="#snippets">Snippets</a></li>
+  </ul>
+  <div class="section-label">AI</div>
+  <ul>
+    <li><a href="#ai-assistant">AI assistant</a></li>
+  </ul>
+  <div class="section-label">Workspace</div>
+  <ul>
+    <li><a href="#workspaces">Workspaces</a></li>
+    <li><a href="#activity-log">Activity log</a></li>
+    <li><a href="#live-share">Live share</a></li>
+    <li><a href="#profiles">Profiles</a></li>
+    <li><a href="#themes">Themes</a></li>
+    <li><a href="#settings">Settings</a></li>
+  </ul>
+  <div class="section-label">Reference</div>
+  <ul>
+    <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+  </ul>
+</nav>
+
+<main>
+
+  <!-- ── Overview ───────────────────────────────────────── -->
+  <section id="overview">
+    <h1>qub <span class="tag">v0.1.0</span></h1>
+    <p class="lead">
+      There are great open-source SQL editors out there, but none of them ever really clicked for me.
+      DataGrip was the one that gave me the feeling of productivity and control over my database workspace.
+      But once my enterprise license got canceled, instead of picking a new one I decided to build myself
+      an editor the way I always wanted it to be. So qub was built with an emphasis on SQL centricity,
+      the basics done well, and a clean interface I enjoy looking at all day.
+    </p>
+    <p class="lead">
+      During development, to keep the interface consistent and easier to build, I created a Qt/QML component
+      library (including fonts, icons, and theming) called <a href="https://ajunior.github.io/mahina">Mahina</a>,
+      which I also open-sourced. If you're building desktop apps with Qt, it might save you from
+      reimplementing the same primitives from scratch.
+    </p>
+
+    <div class="callout note">
+      <span class="icon">🤖</span>
+      <p>AI assistance was used to build this application, but all the code was human-reviewed.</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-card">
+        <span class="icon">⬡</span>
+        <strong>Multi-connection</strong>
+        <span>PostgreSQL, MySQL, MariaDB, SQLite, Oracle, Firebird, and ODBC — all open in parallel tabs.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">✦</span>
+        <strong>AI assistant</strong>
+        <span>Generate SQL from natural language via command palette or inline <code>/* @ai */</code> blocks. Supports Anthropic, OpenAI, and Ollama.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">▤</span>
+        <strong>Analyze without leaving</strong>
+        <span>Every result set also opens as a chart, a per-column profile, a pivot table, a
+        query plan, a set of data-quality checks, or a diff against an earlier run.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">◈</span>
+        <strong>Schema browser</strong>
+        <span>Explore tables, columns, FK relationships, table statistics, DDL, and a visual schema graph.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">★</span>
+        <strong>Snippets</strong>
+        <span>Save SQL you reuse, organize it in folders, insert it at the cursor, and share it as JSON.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">↺</span>
+        <strong>Workspaces</strong>
+        <span>Named work environments, each with restored tabs and its own allowed connections.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">⬡</span>
+        <strong>Live share</strong>
+        <span>Stream query results to any browser on your network via a one-click shareable link.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">◉</span>
+        <strong>Profiles</strong>
+        <span>Named safety rule sets — read-only mode, destructive query guards — assignable per connection.</span>
+      </div>
+      <div class="feature-card">
+        <span class="icon">◐</span>
+        <strong>Themes</strong>
+        <span>Full palette customization. Ships with 4 built-in themes and supports custom JSON themes.</span>
+      </div>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Connections ────────────────────────────────────── -->
+  <section id="connections">
+    <h2>Connections</h2>
+    <p>
+      qub supports multiple simultaneous connections. Each connection lives in its own tab
+      in the editor. You can switch freely between them while queries run in the background.
+    </p>
+
+    <h3>Creating a connection</h3>
+    <ol class="steps">
+      <li><p>From the welcome screen, click the <strong>+</strong> icon in the <strong>Data Sources</strong> list.</p></li>
+      <li><p>Choose a driver from the dropdown (PostgreSQL, MySQL, MariaDB, SQLite, ODBC, Oracle, Firebird).</p></li>
+      <li><p>Fill in host, port, database name, username, and password. For SQLite, pick a
+        <strong>Source</strong> instead — open an existing file, create a new database, or
+        <em>Import CSV</em> to build one from a delimited-text file.</p></li>
+      <li><p>Running the database in Docker? Click <strong>Discover Docker container</strong>
+        and pick one from the list instead of typing any of that — see below.</p></li>
+      <li><p>Optionally assign a <a href="#profiles">profile</a> to enforce safety rules on this connection.</p></li>
+      <li><p>Click <strong>Test</strong> to verify the credentials, then <strong>Save</strong> to
+        return to the list (its status dot shows whether the connection came up), or
+        <strong>Save &amp; Connect</strong> to jump into the workspace once the connection
+        actually opens — if it fails, you stay on the form with the error and can fix and retry.</p></li>
+    </ol>
+
+    <h3>Discover a Docker container</h3>
+    <p>
+      When the <code>docker</code> CLI is on your PATH, a <strong>Discover Docker
+      container</strong> button appears on the form for a new server connection. It lists the
+      running containers that look like a database and have a published port, showing each
+      one's name, image, and port; picking one fills in the driver, host, port, database name,
+      username, and password from the container's own environment, and names the connection
+      after it if you left the name blank.
+    </p>
+    <p>
+      The port it fills in is the one <em>mapped on the host</em>, not the one inside the
+      container, so the connection works from outside Docker. A container whose image sets no
+      password in its environment prefills without one and says so — type it in yourself. The
+      button is hidden for SQLite and when editing an existing connection, and qub only ever
+      reads containers: it never starts, stops, or creates one.
+    </p>
+
+    <h3>Connecting and disconnecting</h3>
+    <p>
+      Each row in the <strong>Data Sources</strong> list has a plug button that toggles the
+      connection: it connects when the connection is down and disconnects when it is up,
+      without leaving the welcome screen. Clicking the row itself also connects, but
+      additionally takes you into the workspace. Inside a workspace, a
+      <strong>Disconnect</strong> button appears in the top bar while the active connection
+      is up, and a <strong>Reconnect</strong> button while it is down.
+    </p>
+    <p>
+      Disconnecting closes the database session and tears down its SSH tunnel, if any.
+      Reconnecting reads the password from the system keychain and re-establishes the
+      tunnel automatically. With <strong>Auto-reconnect</strong> enabled in Settings, qub
+      also reconnects on its own when a connection drops mid-query.
+    </p>
+
+    <h3>Supported drivers</h3>
+    <table>
+      <tr><th>Driver</th><th>Database</th><th>System dependency</th></tr>
+      <tr><td>QPSQL</td><td>PostgreSQL</td><td>libpq</td></tr>
+      <tr><td>QMYSQL</td><td>MySQL</td><td>libmysqlclient</td></tr>
+      <tr><td>QMARIADB</td><td>MariaDB</td><td>libmariadb</td></tr>
+      <tr><td>QSQLITE</td><td>SQLite</td><td>none (built-in)</td></tr>
+      <tr><td>QODBC</td><td>Any ODBC source</td><td>unixODBC</td></tr>
+      <tr><td>QOCI</td><td>Oracle</td><td>Oracle Instant Client</td></tr>
+      <tr><td>QIBASE</td><td>Firebird</td><td>libfbclient</td></tr>
+    </table>
+
+    <div class="callout info">
+      <span class="icon">ℹ</span>
+      <p><strong>PostgreSQL:</strong> requires <code>libpq</code> on your system.
+      Fedora: <code>sudo dnf install libpq</code>. Ubuntu: <code>sudo apt install libpq5</code>.</p>
+    </div>
+
+    <h3>SSL / TLS</h3>
+    <p>
+      Enable <strong>Use SSL</strong> in the connection form to encrypt the connection.
+      You can provide a CA certificate, a client certificate, and a client private key
+      for mutual TLS authentication. All certificate paths are stored per connection.
+    </p>
+
+    <h3>SSH tunnel</h3>
+    <p>
+      qub can route a database connection through an SSH tunnel — useful for databases
+      inside private networks that are not directly reachable. Create the tunnel first
+      under the <strong>SSH</strong> card on the welcome screen (host, port, username,
+      and either a password or a private key file), then select it in the
+      <strong>SSH connection</strong> dropdown of the database connection form.
+    </p>
+
+    <h3>Import and export</h3>
+    <p>
+      Both connections and SSH configurations can be moved between machines as JSON files.
+      Use the <strong>↑</strong> (export) and <strong>↓</strong> (import) icons in the
+      <strong>Data Sources</strong> and <strong>SSH Connections</strong> headers.
+      Connection exports include every setting — driver, host, SSL certificates, timeout,
+      default schema, and the SSH tunnel link. Passwords live in the system keychain and
+      are never written to the file; re-enter them after importing. Importing skips
+      entries that already exist.
+    </p>
+
+    <h3>Import CSV as a table</h3>
+    <p>
+      qub can turn a delimited-text file into a queryable table. It sniffs the delimiter
+      (comma, tab, semicolon, or pipe — quoted fields, embedded delimiters, and newlines are
+      handled), infers a type for each column (<code>INTEGER</code>, <code>REAL</code>, or
+      <code>TEXT</code>), and imports the full file. Blank cells import as <code>NULL</code>.
+      Once imported, the data is queryable with plain SQL — joins, aggregates, filters, and the
+      profile and chart views all work on it. There are two ways in:
+    </p>
+    <ul>
+      <li><p><strong>As a new data source.</strong> Add a connection, choose the
+        <strong>SQLite</strong> driver, and set <strong>Source</strong> to
+        <em>Import CSV</em>. Pick the file, name the table, toggle <em>First row is header</em>
+        if needed, then <strong>Import &amp; Connect</strong> (or <strong>Save</strong>). qub
+        writes a standalone SQLite file and registers it as an ordinary connection that
+        persists across restarts.</p></li>
+      <li><p><strong>Into an existing SQLite connection.</strong> Click the <strong>CSV</strong>
+        icon on any SQLite row in the <strong>Data Sources</strong> list to add the file as a
+        new table in that same database. Because the tables share one database, you can join a
+        second CSV against the first with plain SQL. Importing a table whose name already
+        exists is rejected.</p></li>
+    </ul>
+
+    <h3>Database info &amp; health</h3>
+    <p>
+      Click the <strong>ℹ</strong> button next to the <strong>+</strong> tab to open the
+      Database window for the active connection. Its <strong>Overview</strong> tab shows the
+      database's identity at a glance — version, size, table and view counts, index count,
+      active connections, encoding, and collation. The <strong>Health</strong> tab shows live
+      metric cards with sparklines (connections, rows read, commits, cache hit ratio, lock
+      waits, database size — varying by driver), polled every 3 seconds while the window is
+      open. It's a separate window, so you can move it to another monitor and keep an eye on
+      the database while you work. Embedded databases like SQLite have no server counters;
+      only the file size is tracked there.
+    </p>
+    <p>
+      The <strong>Alerts</strong> section at the bottom of the Health tab lets you get notified
+      when a metric crosses a threshold. Pick a metric, choose <strong>above</strong> or
+      <strong>below</strong>, enter a threshold (for example <em>Active connections above 100</em>
+      or <em>Cache hit ratio below 90</em>), and click <strong>Add</strong>. Each rule shows the
+      metric's current value live, tinted red while it is in breach. When a metric first crosses
+      its threshold qub raises a toast and writes a warning to the
+      <a href="#activity-log">Activity Log</a>, so the breach is still on record after you
+      close the window, and logs a note when it recovers. Alerts are evaluated from the same
+      3-second poll as the metric cards, which only runs <em>while the Database window is
+      open</em> — closing it stops the checking, it does not run in the background. Rules are saved per connection and persist across
+      restarts; the toggle disables a rule without deleting it.
+    </p>
+
+    <h3>Schema graph</h3>
+    <p>
+      Click the <strong>⬡</strong> (graph) button next to the <strong>+</strong> tab to open
+      a separate window showing the foreign key relationship graph for the active database.
+      Tables with FK relationships are highlighted; isolated tables are muted.
+      The graph window can be moved to a second monitor while you keep writing queries.
+    </p>
+
+    <h3>Compare schemas</h3>
+    <p>
+      Click the <strong>git-diff</strong> button next to the <strong>+</strong> tab to open
+      the schema comparison window. Pick a <strong>Base</strong> (A) and a
+      <strong>Compare</strong> (B) connection from the two dropdowns — both must be
+      connected — and qub diffs their live schemas into an add/remove/change tree:
+    </p>
+    <ul>
+      <li><p><strong class="added">+ green</strong> — a schema, table, or column that exists
+      only in B (added).</p></li>
+      <li><p><strong class="removed">− red</strong> — one that exists only in A (removed).</p></li>
+      <li><p><strong class="changed">~ amber</strong> — a table whose columns differ, or a
+      column whose type, nullability, or primary-key membership changed. Changed columns show
+      the before → after (e.g. <code>TEXT → VARCHAR</code>, <code>NULL → NOT NULL</code>).</p></li>
+    </ul>
+    <p>
+      The summary strip tallies the changes, the <strong>⇄</strong> button swaps A and B, and
+      <strong>Differences only</strong> hides everything that matches so you see just the drift.
+      This is the quickest way to check whether staging and production have fallen out of sync.
+    </p>
+
+    <h3>Schema snapshots</h3>
+    <p>
+      Comparing two <em>live</em> connections is great when you have both, but sometimes you
+      want to track how a <em>single</em> database changes over time. The
+      <strong>camera</strong> button next to <strong>Compare schemas</strong> opens the schema
+      snapshots window. Pick a connection, give the snapshot a name, and click
+      <strong>Capture</strong> to save its schema to disk.
+    </p>
+    <p>
+      Snapshots are listed on the left with their connection, table count, and age. Select one,
+      choose a <strong>Live</strong> connection to compare it against, and qub diffs the current
+      schema against the saved snapshot using the same add/remove/change tree as
+      <strong>Compare schemas</strong> — so you can see exactly what has drifted since the
+      snapshot was taken (a migration you forgot to re-apply, a column someone dropped, and so
+      on). <strong>Differences only</strong> hides everything that still matches. Snapshots
+      persist across restarts until you delete them with the trash button.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Query editor ───────────────────────────────────── -->
+  <section id="query-editor">
+    <h2>Query editor</h2>
+    <p>
+      The editor occupies the upper portion of the workspace. It has SQL syntax highlighting,
+      line numbers, and autocomplete for table and column names.
+    </p>
+
+    <h3>Command palette</h3>
+    <p>
+      Press <kbd>Ctrl</kbd>+<kbd>P</kbd> to open the command palette — a searchable
+      launcher for every workspace action. Start typing to filter by name or group,
+      use <kbd>↑</kbd>/<kbd>↓</kbd> to move, <kbd>Enter</kbd> to run, and
+      <kbd>Esc</kbd> to dismiss. Each command lists its own keyboard shortcut, so
+      the palette doubles as a way to learn them.
+    </p>
+    <p>
+      It covers running and explaining queries, formatting SQL, asking the AI,
+      opening/closing tabs, opening and saving files, saving snippets, exporting
+      results, viewing the selected row, toggling the activity log and panels, and
+      opening this shortcuts reference.
+    </p>
+
+    <h3>Running queries</h3>
+    <p>
+      Click <strong>▶ Run</strong> or press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>.
+      If text is selected, only the selection is executed. Otherwise the full buffer runs.
+      Queries run asynchronously — the UI stays responsive while results load.
+    </p>
+
+    <h3>EXPLAIN (query plan)</h3>
+    <p>
+      Press <kbd>Ctrl</kbd>+<kbd>E</kbd> (or the lightning button in the editor
+      toolbar) to explain the current query — the selection if you have one,
+      otherwise the whole editor. The plan opens in the <strong>Explain</strong>
+      tab beside <strong>Results</strong>, drawn as an indented tree of operations
+      rather than raw text.
+    </p>
+    <ul>
+      <li>Each node shows its operation, the table/index/join it touches, and
+        cost/row metric chips.</li>
+      <li>The costliest node (and full table scans) are highlighted, and tuning
+        hints — sequential scans, badly-off row estimates — appear at the top.</li>
+      <li>The plan is <em>dialect-aware</em>: PostgreSQL uses <code>EXPLAIN (FORMAT JSON)</code>
+        with per-node self-cost, SQLite uses <code>EXPLAIN QUERY PLAN</code>, and
+        MySQL/MariaDB use classic tabular <code>EXPLAIN</code>.</li>
+      <li>By default the plan is <em>estimated</em> (the query is not run). For a
+        <code>SELECT</code>/<code>WITH</code> query, the <strong>Analyze</strong>
+        button re-runs it with <code>EXPLAIN ANALYZE</code> for measured timings —
+        this <strong>executes</strong> the statement, so it's offered for read-only
+        queries only.</li>
+    </ul>
+    <p>
+      Explaining a query that contains <a href="#query-parameters">parameters</a>
+      prompts for their values first, then explains the filled-in SQL.
+    </p>
+
+    <h3>Tabs</h3>
+    <p>
+      Open multiple query tabs per connection with <kbd>Ctrl</kbd>+<kbd>T</kbd>.
+      Each tab has its own SQL buffer, result set, and execution state.
+      Close a tab with <kbd>Ctrl</kbd>+<kbd>W</kbd>.
+      Tab state is preserved when you switch connections and restored when you switch back.
+    </p>
+
+    <h3>SQL formatting</h3>
+    <p>
+      Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> to auto-format the SQL in the editor.
+    </p>
+
+    <h3>Find and replace</h3>
+    <p>
+      <kbd>Ctrl</kbd>+<kbd>F</kbd> opens the find bar. <kbd>Ctrl</kbd>+<kbd>H</kbd> opens
+      find-and-replace. Press <kbd>Escape</kbd> to close.
+    </p>
+
+    <h3>Autocomplete</h3>
+    <p>
+      After typing 2 or more characters, qub offers schema-aware suggestions drawn from the
+      connected database. Completion understands the statement under the cursor:
+    </p>
+    <ul>
+      <li><strong>Columns in scope</strong> — a bare word first suggests columns of the tables
+        named in the current statement's <code>FROM</code>, <code>JOIN</code>,
+        <code>UPDATE</code>, or <code>INSERT INTO</code>, tagged with their type and source table.</li>
+      <li><strong>Qualified columns</strong> — <code>alias.</code> or <code>table.</code> resolves
+        the qualifier (aliases first, then table names, schema-qualified names allowed) and lists
+        only that table's columns.</li>
+      <li><strong>Tables and keywords</strong> — matching table names and SQL keywords
+        (<code>SELECT</code>, <code>LEFT JOIN</code>, <code>GROUP BY</code>, …) round out the list.</li>
+    </ul>
+    <p>
+      Use <kbd>↑</kbd> / <kbd>↓</kbd> to navigate and <kbd>Enter</kbd> or <kbd>Tab</kbd> to accept.
+      <kbd>Escape</kbd> dismisses the popup. Autocomplete can be turned off in Settings.
+    </p>
+
+    <h3>Schema insertion</h3>
+    <p>
+      Double-click a table or column name in the <a href="#schema-browser">schema browser</a>
+      to insert it at the cursor position in the editor (requires
+      <em>Insert on double-click</em> to be enabled in Settings).
+    </p>
+
+    <h3>Saving and opening files</h3>
+    <p>
+      <kbd>Ctrl</kbd>+<kbd>S</kbd> saves the current query to a <code>.sql</code> file on disk.
+      <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> saves it as a <a href="#snippets">snippet</a>.
+      <kbd>Ctrl</kbd>+<kbd>O</kbd> opens a file picker to load a SQL file into the editor.
+    </p>
+
+    <h3>Profile guards</h3>
+    <p>
+      If the active connection has a <a href="#profiles">profile</a> assigned, qub inspects
+      every query before it runs. Depending on the profile rules, it will either block
+      the query outright or ask for confirmation before executing destructive statements
+      such as <code>DELETE</code>, <code>DROP</code>, <code>TRUNCATE</code>, or
+      <code>UPDATE</code> without a <code>WHERE</code> clause.
+    </p>
+
+    <h3>Markdown blocks (literate SQL)</h3>
+    <p>
+      You can interleave narrative with your SQL by writing Markdown inside special
+      block comments. A block starts with <code>/* @md</code> and ends at the normal
+      <code>*/</code>:
+    </p>
+    <pre>/* @md
+# Creating the user
+The account has to exist before the FK on `orders` can reference it.
+*/
+CREATE TABLE users (id int PRIMARY KEY);</pre>
+    <p>
+      Because the narrative lives in a comment, the buffer stays a perfectly valid
+      <code>.sql</code> file — the database ignores it, and running, profiles, history,
+      and snippets all work unchanged.
+    </p>
+    <p>
+      <strong>Preview:</strong> <kbd>Ctrl</kbd>+<kbd>5</kbd> (or <em>Panels →
+      Markdown preview</em>) opens a rendered view beside the editor. Markdown blocks are
+      formatted; the SQL between them appears as code blocks. The preview follows your
+      typing live.
+    </p>
+    <p>
+      <strong>Export:</strong> choose <em>Export as Markdown…</em> from the editor's
+      <strong>···</strong> menu to save the whole document as a <code>.md</code> file —
+      narrative becomes prose and each SQL chunk becomes a fenced
+      <code>```sql</code> code block, ready for a wiki, a README, or a pull request.
+      The suggested filename follows the query tab's name.
+    </p>
+    <p>
+      <em>Export as Markdown + results…</em> does the same but appends a
+      <strong>Latest result</strong> section containing the current tab's result set
+      rendered as a Markdown table (capped at 100 rows, with a note when more were
+      returned) — handy for pasting a query and its output together into a report or
+      review.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Query parameters ───────────────────────────────── -->
+  <section id="query-parameters">
+    <h2>Query parameters</h2>
+    <p>
+      You can write queries with named or positional placeholders. When you run such a query,
+      qub opens a parameter dialog where you fill in the values before execution.
+      This is especially useful for snippets you reuse with different inputs.
+    </p>
+
+    <h3>Named parameters</h3>
+    <p>
+      Use <code>:name</code> syntax. Each unique name gets one input field in the dialog.
+    </p>
+    <pre>SELECT * FROM orders
+WHERE status = :status
+  AND created_at BETWEEN :start_date AND :end_date</pre>
+
+    <h3>Positional parameters</h3>
+    <p>
+      Use <code>$1</code>, <code>$2</code>, … syntax (PostgreSQL style).
+      Parameters are filled in order.
+    </p>
+    <pre>SELECT id, total FROM orders
+WHERE customer_id = $1
+  AND total > $2
+ORDER BY created_at DESC
+LIMIT $3</pre>
+
+    <h3>Value typing</h3>
+    <p>
+      Values are inserted as SQL literals with a little type inference so
+      comparisons and <code>LIMIT</code> work as expected:
+    </p>
+    <ul>
+      <li>Numbers (<code>42</code>, <code>-3.14</code>), <code>true</code>/<code>false</code>,
+        and <code>null</code> are inserted <em>unquoted</em>.</li>
+      <li>Everything else becomes a quoted, escaped string.</li>
+      <li>A blank field becomes an empty string <code>''</code>.</li>
+    </ul>
+    <p>
+      To force a value that looks like a number or keyword to be treated as text
+      (e.g. a ZIP code <code>01234</code>, or the literal word <code>true</code>),
+      wrap it in single quotes in the field.
+    </p>
+
+    <h3>Remembered values</h3>
+    <p>
+      The values you enter are kept per tab, so re-running a parameterised query
+      pre-fills the dialog with what you used last time. Values are also collected
+      before an <a href="#query-editor">EXPLAIN</a> of a parameterised query.
+    </p>
+
+    <div class="callout note">
+      <span class="icon">◎</span>
+      <p>Named and positional parameters are mutually exclusive in a single query. If both are present, named parameters take priority.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Results ────────────────────────────────────────── -->
+  <section id="results">
+    <h2>Results &amp; export</h2>
+    <p>
+      Query results appear in the lower portion of the workspace in a scrollable table.
+      Column headers are fixed while you scroll horizontally. The status bar at the bottom
+      shows the row count and execution time.
+    </p>
+
+    <h3>Output console</h3>
+    <p>
+      Next to <strong>Results</strong> sits an <strong>Output</strong> tab — a console-style
+      stream of everything the active connection did in this session: each executed statement
+      with its outcome (<code>SELECT · 500 rows · 142ms</code>), connection and SSH tunnel
+      events, and errors inline in red with the failing SQL echoed underneath. It follows new
+      entries like a terminal; scroll up to read and it pauses, with a <em>Latest</em> button
+      to jump back to the live tail. Hover a line to copy its SQL. The global
+      <a href="#activity-log">activity log</a> (<kbd>Ctrl</kbd>+<kbd>L</kbd>) remains the
+      place to see all connections at once with filtering and export.
+    </p>
+
+    <h3>Chart</h3>
+    <p>
+      A third <strong>Chart</strong> tab sits beside <strong>Results</strong> and
+      <strong>Output</strong>. Pick a chart type — <em>Bar</em>, <em>Line</em>,
+      <em>Area</em>, or <em>Scatter</em> — and choose an <strong>X</strong> column
+      (categories, or the x-axis for scatter) and a <strong>Y</strong> column
+      (the numeric value). The plot is drawn straight from the rows currently in
+      view, so filtering the results narrows the chart too. Non-numeric Y values
+      are treated as zero; scatter plots use only rows where both X and Y are
+      numeric. It's a quick way to eyeball a trend or distribution without
+      exporting to a spreadsheet.
+    </p>
+
+    <h3>Column stats</h3>
+    <p>
+      Click any cell and the status bar shows live aggregates for that whole column,
+      computed over the rows currently in view (so filtering narrows them too) — much
+      like the selection summary at the bottom of a spreadsheet. Numeric columns report
+      <code>Σ sum · avg · min · max · n</code>; text columns report
+      <code>n · nulls · distinct</code>. It's a fast way to sanity-check a result without
+      writing a second <code>GROUP BY</code> query.
+    </p>
+
+    <h3>Profile</h3>
+    <p>
+      The <strong>Profile</strong> tab gives you a <code>df.describe()</code>-style
+      summary of the whole result set — one card per column, computed over the rows
+      currently in view (so filtering narrows it too). Each card shows the column's
+      inferred type (<em>numeric</em>, <em>text</em>, or <em>empty</em>), its
+      <code>count · nulls · distinct</code> counts, and a distribution:
+      numeric columns get <code>min · median · mean · max</code> plus a histogram;
+      text columns get their top values with frequency bars. It's a fast first look
+      at the shape of a dataset before you start slicing it with queries.
+    </p>
+
+    <h3>Explain</h3>
+    <p>
+      The <strong>Explain</strong> tab shows the query plan for the current
+      statement as a visual tree — see
+      <a href="#query-editor">EXPLAIN</a> in the Query editor section. Press
+      <kbd>Ctrl</kbd>+<kbd>E</kbd> or the editor's lightning button to fill it.
+    </p>
+
+    <h3>Pivot</h3>
+    <p>
+      The <strong>Pivot</strong> tab cross-tabulates the result set, spreadsheet
+      pivot-table style. Choose a <strong>Rows</strong> field and a
+      <strong>Columns</strong> field to group by, then an aggregation —
+      <em>Count</em>, <em>Sum</em>, <em>Avg</em>, <em>Min</em> or <em>Max</em> —
+      applied to a chosen value column (<em>Count</em> tallies rows and ignores the
+      value column). Row, column and grand totals are computed automatically.
+    </p>
+    <p>
+      Like the other analysis tabs it works over the rows currently in view, so
+      filtering the results re-pivots them. Cells with no matching rows are left
+      blank, and numeric aggregates skip non-numeric or NULL values. Very
+      high-cardinality fields are capped with a notice so a pivot can't explode
+      into thousands of columns.
+    </p>
+
+    <h3>Checks (data quality)</h3>
+    <p>
+      The <strong>Checks</strong> tab lets you assert data-quality expectations about the
+      result and see them pass or fail live. Click <strong>Add check</strong>, pick a
+      column, and choose a check:
+    </p>
+    <ul>
+      <li><p><strong>Not null</strong> / <strong>Not empty</strong> — no NULLs (and, for
+      <em>Not empty</em>, no blank strings).</p></li>
+      <li><p><strong>Unique</strong> — every value is distinct (duplicate rows are counted
+      as violations).</p></li>
+      <li><p><strong>Positive</strong> / <strong>Non-negative</strong> — numeric values are
+      <code>&gt; 0</code> / <code>≥ 0</code>.</p></li>
+      <li><p><strong>In range</strong> — numeric values fall within a
+      <code>min, max</code> you supply.</p></li>
+      <li><p><strong>Max length</strong> — text is no longer than <em>N</em> characters.</p></li>
+      <li><p><strong>Matches regex</strong> — every value matches a pattern (handy for
+      emails, codes, IDs).</p></li>
+    </ul>
+    <p>
+      Each row shows a green pass or red fail with the number of offending rows and an
+      example value. The header tallies passed and failed checks. Checks evaluate over the
+      rows currently in view, so filtering re-runs them, and they are remembered per query
+      tab. This turns a quick <code>SELECT</code> into a lightweight data-quality gate
+      without leaving qub.
+    </p>
+
+    <h3>Diff (compare result sets)</h3>
+    <p>
+      The <strong>Diff</strong> tab compares the current result against a saved
+      <em>baseline</em> — handy for checking what a query change did, or how data shifted
+      between two runs. Click <strong>Set baseline</strong> to capture the rows in view, then
+      re-run the query (or edit it and run again) and the diff updates live:
+    </p>
+    <ul>
+      <li><p><strong class="added">+ added</strong> — rows present now but not in the baseline.</p></li>
+      <li><p><strong class="removed">− removed</strong> — rows that were in the baseline but are now gone.</p></li>
+      <li><p><strong class="changed">~ changed</strong> — rows matched by a key column whose
+      other values differ; each shown as <code>column: before → after</code>.</p></li>
+    </ul>
+    <p>
+      Use <strong>Match by</strong> to pick the key column that identifies a row across runs
+      (for example a primary key), or leave it on <strong>Whole row</strong> to compare rows
+      exactly. <strong>Differences only</strong> hides unchanged rows. If the baseline and the
+      current result have different columns, the diff says so rather than guessing. The
+      baseline is remembered per query tab until you clear it.
+    </p>
+    <p>
+      To keep a baseline beyond the current tab, click <strong>Save…</strong> to store the
+      result under a name (it's kept with the connection and the SQL that produced it). Later —
+      even in a new session — click <strong>Load…</strong> to pick a saved snapshot for this
+      connection and diff the current result against it. Saved snapshots are per connection, so
+      the <strong>Load…</strong> menu only lists ones captured on the connection in view.
+    </p>
+
+    <h3>Inline editing</h3>
+    <p>
+      For single-table <code>SELECT</code> queries, results are editable directly in the table.
+      Click any cell to edit it; qub generates and executes an <code>UPDATE</code> statement
+      automatically on confirmation. Primary key columns are protected and shown as read-only.
+    </p>
+
+    <h3>Value inspector</h3>
+    <p>
+      To read a value that's too wide for the grid, open it in the inspector: double-click a
+      cell (in read-only results) or right-click and choose <strong>View value…</strong>. The
+      dialog shows the full contents in a scrollable, selectable monospace pane, and
+      <strong>JSON</strong> objects and arrays are automatically pretty-printed (indented and
+      on multiple lines). <strong>Copy</strong> copies exactly what's shown, so you can grab the
+      formatted JSON. In editable single-table results, double-click still starts an inline edit —
+      use the right-click menu to inspect instead.
+    </p>
+
+    <h3>Row viewer</h3>
+    <p>
+      For wide tables that scroll off-screen, right-click a cell and choose
+      <strong>View row…</strong> — or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> with a
+      cell selected — to see the whole record as a vertical field list
+      (column&nbsp;→&nbsp;value). Click any value to open it in the value inspector (full text or
+      pretty-printed JSON), and use the <strong>‹ Prev</strong> / <strong>Next ›</strong> buttons
+      to step through the result set one record at a time. Fields that are foreign keys show a
+      jump icon that opens the referenced row in a new tab, and <strong>Copy row</strong> copies
+      the record as tab-separated values.
+    </p>
+
+    <h3>Foreign-key navigation</h3>
+    <p>
+      When a cell sits in a column that participates in a foreign key, its right-click menu
+      offers one-click navigation that opens the related rows in a new query tab:
+    </p>
+    <ul>
+      <li><strong>Go to <em>table</em> row</strong> — the column is a foreign key, so this jumps
+        to the single referenced row in the parent table
+        (<code>SELECT * FROM parent WHERE pk = value</code>).</li>
+      <li><strong>Rows in <em>table</em> (<em>column</em>)</strong> — the column is referenced by
+        other tables, so this lists the child rows pointing at the current one. One entry appears
+        per referencing table.</li>
+    </ul>
+    <p>
+      Click a cell first (which also selects it), then right-click for its navigation options.
+      Foreign keys are read from the live schema of PostgreSQL, MySQL/MariaDB, and SQLite
+      connections, and the generated query uses the connection's identifier-quoting dialect.
+    </p>
+
+    <h3>Exporting results</h3>
+    <table>
+      <tr><th>Format</th><th>How to export</th></tr>
+      <tr><td>CSV</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> or toolbar button</td></tr>
+      <tr><td>TSV</td><td>Toolbar export menu → TSV</td></tr>
+      <tr><td>JSON</td><td>Toolbar export menu → JSON</td></tr>
+      <tr><td>Excel (.xlsx)</td><td>Toolbar export menu → Excel</td></tr>
+      <tr><td>SQL <code>INSERT</code>s</td><td>Toolbar export menu → SQL INSERTs</td></tr>
+    </table>
+    <p>
+      <strong>SQL INSERTs</strong> writes one <code>INSERT INTO … VALUES …</code> statement per
+      row — handy for moving data into another database. You're prompted for the target table
+      name (prefilled from the query's table when known), and identifier quoting and value
+      literals follow the active connection's dialect: MySQL/MariaDB use back-ticks, everyone
+      else double quotes; booleans, byte data, and backslashes are escaped per dialect. The
+      export covers the rows currently in view, so it respects any active filter.
+    </p>
+
+    <h3>Copying results</h3>
+    <p>
+      Right-click a cell or use the toolbar to copy the result set as CSV, JSON,
+      plain text, or SQL <code>INSERT</code> statements.
+    </p>
+
+    <h3>Result limit</h3>
+    <p>
+      The <strong>Limit</strong> picker in the toolbar caps the number of rows returned.
+      Set it to <em>None</em> to retrieve all rows. The default can be changed in Settings.
+    </p>
+    <p>
+      Exporting is not bound by that display limit: when the visible result is truncated,
+      an export re-runs the same query with no limit and writes the <em>complete</em> result
+      set to the file (up to a 500,000-row safety ceiling). A toast confirms how many rows were
+      written. Non-truncated results export straight from what's on screen.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Schema browser ─────────────────────────────────── -->
+  <section id="schema-browser">
+    <h2>Schema browser</h2>
+    <p>
+      The schema browser lives in the left panel of the workspace. It shows all schemas,
+      tables, and columns for the active connection, and provides quick actions for
+      inspecting your database structure.
+    </p>
+
+    <h3>Browsing tables</h3>
+    <p>
+      Click a table name to select it. Click the arrow to expand it and see its columns,
+      along with type, primary key, and nullable indicators.
+      Double-click a table or column to insert its name at the cursor in the editor
+      (requires <em>Insert on double-click</em> in Settings).
+    </p>
+
+    <h3>Quick browse</h3>
+    <p>
+      Enable the quick-browse button in Settings (<em>Show quick browse button</em>).
+      A ▶ icon appears on hover next to each table and runs
+      <code>SELECT * FROM table LIMIT n</code> instantly.
+    </p>
+
+    <h3>Table actions menu</h3>
+    <p>
+      Hover over any table row to reveal a <strong>···</strong> button on the right.
+      Clicking it opens a menu with two actions:
+    </p>
+    <ul class="rules">
+      <li>
+        <strong>Statistics</strong>
+        Opens a popup with row count, size, pages, dead rows, vacuum and analyze timestamps
+        (PostgreSQL), engine and timestamps (MySQL), and per-column statistics including
+        distinct count, null fraction, average width, and correlation (PostgreSQL only).
+      </li>
+      <li>
+        <strong>View DDL</strong>
+        Opens a read-only popup showing the <code>CREATE TABLE</code> statement for that table,
+        with a Copy button. Uses <code>SHOW CREATE TABLE</code> on MySQL, <code>sqlite_master</code>
+        on SQLite, and reconstructs from <code>information_schema</code> on PostgreSQL.
+      </li>
+    </ul>
+  </section>
+
+  <hr />
+
+  <!-- ── Sidebar ────────────────────────────────────────── -->
+  <section id="sidebar">
+    <h2>Sidebar</h2>
+    <p>
+      The sidebar lives in the right panel of the workspace and has two tabs:
+      <strong>History</strong> and <strong>Snippets</strong>.
+      Toggle it with <kbd>Ctrl</kbd>+<kbd>4</kbd>.
+    </p>
+
+    <h3>History</h3>
+    <p>
+      Every query you run is automatically saved to history. Each entry shows the SQL,
+      the connection it ran on, and the execution time. Entries that resulted in an error
+      are marked in red. Click any entry to load it back into the editor.
+      The history limit is configurable in Settings (default: 50 entries).
+    </p>
+
+    <h3>Snippets tab</h3>
+    <p>
+      The Snippets tab lists your <a href="#snippets">snippet library</a>, grouped under
+      collapsible folder headers. Clicking a snippet inserts its SQL at the cursor —
+      it never replaces what you already wrote. Snippets saved from a connection that
+      no longer exists are shown with a warning indicator.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Snippets ───────────────────────────────────────── -->
+  <section id="snippets">
+    <h2>Snippets</h2>
+    <p>
+      Snippets are reusable pieces of SQL — the queries and DDL you keep coming back to.
+      They live in one global library shared by all workspaces.
+    </p>
+
+    <h3>Saving a snippet</h3>
+    <ul class="rules">
+      <li><p>In the editor, select some SQL and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>
+        (with nothing selected, the whole tab is saved). The editor's <strong>···</strong>
+        menu has the same <em>Save as snippet</em> action.</p></li>
+      <li><p>On the welcome screen, open the <strong>Snippets</strong> card and click
+        <strong>+</strong> to write one from scratch.</p></li>
+    </ul>
+    <p>
+      Names must be unique within a folder — you'll get an inline error instead of a
+      silent duplicate.
+    </p>
+
+    <h3>Folders</h3>
+    <p>
+      Type any folder name when saving — folders are just labels, so they spring into
+      existence with their first snippet and disappear with their last. Existing folder
+      names appear as one-click chips below the folder field, which keeps you from
+      accidentally creating "DDL" and "ddl". Folders group the sidebar list under
+      collapsible headers and the Home list under section headers.
+    </p>
+
+    <h3>Managing snippets</h3>
+    <p>
+      The <strong>Snippets</strong> card on the welcome screen lists the whole library.
+      Click a row (or its pencil) to edit the name, folder, or SQL; the trash icon
+      deletes after confirmation.
+    </p>
+
+    <h3>Import and export</h3>
+    <p>
+      Use the <strong>↑</strong> / <strong>↓</strong> icons in the Snippets header to
+      save the library to a JSON file or load one from another machine. Importing skips
+      snippets that already exist (same name and folder).
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── AI assistant ───────────────────────────────────── -->
+  <section id="ai-assistant">
+    <h2>AI assistant</h2>
+    <p>
+      qub has two ways to generate SQL from natural language — an inline comment syntax
+      that stays in your editor, and a floating command palette for quick one-off prompts.
+      Both use the same configured AI provider and are schema-aware. The prompt also
+      tells the model which database engine the active connection uses, so the generated
+      SQL is written in the right dialect (PostgreSQL, MySQL, SQLite, …).
+    </p>
+
+    <h3>Command palette — Ctrl+K</h3>
+    <p>
+      Press <kbd>Ctrl</kbd>+<kbd>K</kbd> (or click the ✦ button in the query toolbar)
+      to open the AI command palette. Type your prompt and press <kbd>Enter</kbd>.
+      The generated SQL appears below the input with two options:
+    </p>
+    <ul class="rules">
+      <li><strong>Insert at cursor</strong> — inserts the generated SQL at the current cursor position.</li>
+      <li><strong>Replace editor</strong> — replaces the entire editor content.</li>
+    </ul>
+    <p>Press <kbd>Escape</kbd> or click outside to close without inserting.</p>
+
+    <h3>Inline prompts — <code>/* @ai */</code></h3>
+    <p>
+      Write a prompt directly in the editor inside an <code>@ai</code> comment block —
+      the same block-comment convention as <code>/* @md */</code> markdown blocks — then
+      press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>. The block is replaced
+      in-place with the generated SQL. Prompts can span multiple lines:
+    </p>
+    <pre>/* @ai
+list all users who signed up in the last 7 days,
+grouped by country, sorted by count descending
+*/</pre>
+    <p>
+      The block under the cursor is the one that runs (a lone block runs from anywhere).
+      Inline prompts persist with the file and can be saved alongside your queries —
+      useful for documenting intent or keeping a prompt you run regularly.
+    </p>
+
+    <div class="callout tip">
+      <span class="icon">✦</span>
+      <p>Both methods send your database schema (table names and column types) to the AI provider
+      as context, so the generated SQL uses your actual table and column names.</p>
+    </div>
+
+    <h3>Configuring a provider</h3>
+    <p>
+      Go to <strong>Settings → AI</strong> and choose a provider:
+    </p>
+    <table>
+      <tr><th>Provider</th><th>What you need</th></tr>
+      <tr><td>Anthropic</td><td>An API key from <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a></td></tr>
+      <tr><td>OpenAI</td><td>An API key from <a href="https://platform.openai.com" target="_blank">platform.openai.com</a></td></tr>
+      <tr><td>Ollama</td><td>A running Ollama instance; configure its URL in Settings (default: <code>http://localhost:11434</code>)</td></tr>
+    </table>
+    <p>
+      API keys are stored in the system keychain, not in plain text.
+      You can override the model name for any provider in Settings.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Workspaces ─────────────────────────────────────── -->
+  <section id="workspaces">
+    <h2>Workspaces</h2>
+    <p>
+      A workspace is a named work environment. It owns its open query tabs and a chosen
+      subset of your global connections. Keep a <em>Staging</em> workspace and a
+      <em>Production</em> workspace, and neither can accidentally run against the other's
+      databases. qub creates a <em>Default</em> workspace for you, so you can start with
+      one normal editing space and add more only when separate scopes are useful.
+      Everything is saved continuously — close the app mid-task and the workspace
+      reopens exactly as you left it.
+    </p>
+
+    <h3>Creating and switching</h3>
+    <p>
+      The <strong>Workspaces</strong> card on the welcome screen lists all workspaces
+      with their tab counts and connections — click one to open it, or create, rename,
+      and delete from there. Inside the editor, the workspace name in the toolbar opens
+      a switcher menu with the same actions. Switching saves the current workspace
+      first; nothing is lost.
+    </p>
+
+    <h3>Workspace connections</h3>
+    <p>
+      Each workspace contains an explicit subset of your global connections, and only
+      those appear in its connection menus and schema browser. Manage the list via
+      <strong>Workspace connections…</strong> in the switcher menu, or add one on the
+      fly with <strong>Add connection to workspace…</strong> at the bottom of any
+      connection dropdown. Opening a connection from the welcome screen adds it to the
+      current workspace automatically.
+    </p>
+
+    <div class="callout warn">
+      <span class="icon">⚠</span>
+      <p>This is a safety boundary: if a tab's connection is removed from the workspace
+      (or deleted entirely), the tab keeps its SQL and stays editable, but running is
+      blocked and a warning banner appears — qub never silently retargets a query at a
+      different database. The banner's <em>Add to workspace</em> button restores access
+      in one click.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Activity log ───────────────────────────────────── -->
+  <section id="activity-log">
+    <h2>Activity log</h2>
+    <p>
+      The activity log is a separate window recording what qub does behind the scenes:
+      connection opens and failures (<strong>CONN</strong>), executed queries with
+      timing and row counts (<strong>QUERY</strong>), SSH tunnel events
+      (<strong>SSH</strong>), and AI requests (<strong>AI</strong>). Open it with
+      <kbd>Ctrl</kbd>+<kbd>L</kbd> in the editor or the list icon in the welcome
+      screen's top bar.
+    </p>
+    <p>
+      Click an entry to expand its details — a query entry shows the full SQL with an
+      <em>Open in editor</em> button, an AI entry shows the prompt and generated SQL.
+      Entries can be filtered by category and connection, and exported as JSON or CSV.
+    </p>
+
+    <h3>Slow queries</h3>
+    <p>
+      The <strong>Slow Queries</strong> tab of the same window ranks your executions by
+      total time spent. Structurally identical statements are grouped together by a
+      <em>fingerprint</em> — literal strings and numbers are collapsed to
+      <code>?</code>, so <code>WHERE id = 1</code> and <code>WHERE id = 42</code> count
+      as one query — and each group shows the number of calls, total, average and maximum
+      duration, how many runs failed, and when it last ran. Click a row to open its SQL in
+      the editor, or use the connection dropdown to focus on a single database.
+    </p>
+    <p>
+      This turns your ordinary query history into a lightweight profiler: the query at the
+      top of the list is where your time is actually going, whether because it is slow or
+      because you run it constantly.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Live share ─────────────────────────────────────── -->
+  <section id="live-share">
+    <h2>Live share</h2>
+    <p>
+      Live share lets you stream query results to any browser in real time using a
+      shareable link. No installation is required on the viewer's side.
+    </p>
+
+    <h3>Starting a share</h3>
+    <ol class="steps">
+      <li><p>Click <strong>Share</strong> in the workspace toolbar.</p></li>
+      <li><p>Choose the network scope: same machine, local network, or public internet.</p></li>
+      <li><p>Copy the generated URL and send it to viewers.</p></li>
+    </ol>
+    <p>
+      Every time you run a query, the result table updates live in all connected browsers.
+      The viewer count is shown in the toolbar while sharing is active.
+    </p>
+
+    <h3>TLS / HTTPS</h3>
+    <p>
+      qub can serve the share link over HTTPS. By default it generates a self-signed certificate.
+      You can provide your own certificate and private key in <strong>Settings → Sharing</strong>.
+    </p>
+
+    <div class="callout note">
+      <span class="icon">◎</span>
+      <p>Live share exposes your query results over the network. Use with care on production data.
+      Stop sharing with the <strong>Stop</strong> button in the toolbar.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Profiles ───────────────────────────────────────── -->
+  <section id="profiles">
+    <h2>Profiles</h2>
+    <p>
+      A profile is a named set of safety rules you can assign to a connection.
+      Profiles help you avoid costly mistakes — especially on production databases —
+      by either blocking certain query types outright or requiring explicit confirmation.
+    </p>
+
+    <h3>Creating a profile</h3>
+    <ol class="steps">
+      <li><p>Go to <strong>Settings → Profiles → Add Profile</strong>.</p></li>
+      <li><p>Give the profile a name (e.g. <em>Production</em>) and pick a color to identify it visually.</p></li>
+      <li><p>Enable the rules you want to enforce.</p></li>
+      <li><p>Click <strong>Save</strong>.</p></li>
+    </ol>
+
+    <h3>Available rules</h3>
+    <ul class="rules">
+      <li>
+        <strong>Read-only mode</strong>
+        Blocks all write operations: <code>INSERT</code>, <code>UPDATE</code>,
+        <code>DELETE</code>, <code>DROP</code>, <code>TRUNCATE</code>,
+        <code>ALTER</code>, <code>CREATE</code>, and <code>REPLACE</code>.
+      </li>
+      <li>
+        <strong>Confirm DELETE</strong>
+        Shows a confirmation dialog before any <code>DELETE FROM</code> statement runs.
+      </li>
+      <li>
+        <strong>Confirm DROP</strong>
+        Shows a confirmation dialog before <code>DROP TABLE</code>, <code>DROP DATABASE</code>,
+        <code>DROP SCHEMA</code>, <code>DROP VIEW</code>, and <code>DROP INDEX</code>.
+      </li>
+      <li>
+        <strong>Confirm TRUNCATE</strong>
+        Shows a confirmation dialog before any <code>TRUNCATE</code> statement runs.
+      </li>
+      <li>
+        <strong>Confirm UPDATE without WHERE</strong>
+        Shows a confirmation dialog when an <code>UPDATE</code> has no <code>WHERE</code> clause.
+      </li>
+    </ul>
+
+    <h3>Visual indicators</h3>
+    <p>
+      When a connection has a profile assigned, a colored stripe appears along the right edge
+      of that connection's tab, and the profile name and color dot are shown in the status bar.
+    </p>
+
+    <div class="callout tip">
+      <span class="icon">✦</span>
+      <p>A common setup: a red <em>Production</em> profile with all confirm rules enabled,
+      and a green <em>Dev</em> profile with no rules. The color makes the environment obvious at a glance.</p>
+    </div>
+  </section>
+
+  <hr />
+
+  <!-- ── Themes ─────────────────────────────────────────── -->
+  <section id="themes">
+    <h2>Themes</h2>
+    <p>
+      qub supports full palette customization. Every color in the interface — backgrounds,
+      surfaces, borders, text, and status colors — can be changed through the theme system.
+      Themes are applied live and stored locally.
+    </p>
+
+    <h3>Built-in themes</h3>
+    <div class="theme-list">
+      <div class="theme-card">
+        <div class="theme-swatch" style="background: #5B8DF6;"></div>
+        <div>
+          <strong>Default</strong>
+          <p>The standard Mahina palette — clean blues, neutral greys, and warm surfaces.</p>
+        </div>
+      </div>
+      <div class="theme-card">
+        <div class="theme-swatch" style="background: linear-gradient(135deg, #282A36 50%, #BD93F9 50%);"></div>
+        <div>
+          <strong>Dracula</strong>
+          <p>
+            A homage to one of the most beloved dark themes in the developer community,
+            originally created by <a href="https://zenorocha.com" target="_blank">Zeno Rocha</a> —
+            someone whose work and commitment to the open-source community I deeply admire.
+            Purple accents on a near-black canvas, exactly as it should be.
+          </p>
+        </div>
+      </div>
+      <div class="theme-card">
+        <div class="theme-swatch" style="background: linear-gradient(135deg, #EEE8D5 50%, #268BD2 50%);"></div>
+        <div>
+          <strong>Solarized</strong>
+          <p>The classic precision-designed palette by Ethan Schoonover. Works beautifully in both light and dark mode.</p>
+        </div>
+      </div>
+      <div class="theme-card">
+        <div class="theme-swatch" style="background: linear-gradient(135deg, #CB1169 40%, #8DC21A 40%, #8DC21A 60%, #E07820 60%);"></div>
+        <div>
+          <strong>WoMakersCode</strong>
+          <p>
+            A tribute to all women in computer science and technology — and in particular
+            to the incredible people running the
+            <a href="https://womakerscode.org" target="_blank">WoMakersCode</a> program.
+            The colors are taken directly from their iconic pixelated butterfly logo.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout pink">
+      <span class="icon">🦋</span>
+      <p>This theme exists because representation matters. If you are a woman in tech, know that you belong here.</p>
+    </div>
+
+    <h3>Creating a custom theme</h3>
+    <ol class="steps">
+      <li><p>Go to <strong>Settings → Themes → New Theme</strong>.</p></li>
+      <li><p>Give your theme a name.</p></li>
+      <li><p>Use the color pickers to customize each palette token. Changes apply live as you pick.</p></li>
+      <li><p>Click <strong>Save</strong>. The theme appears in the list.</p></li>
+      <li><p>Click the <strong>✓</strong> icon next to it to activate it.</p></li>
+    </ol>
+
+    <h3>Import and export</h3>
+    <p>
+      Use <strong>Export</strong> (↑ icon) next to any theme to save it as a <code>.json</code> file.
+      Use <strong>Import</strong> (↓ icon in the section header) to load a theme someone
+      shared with you; a theme whose name already exists is rejected rather than duplicated.
+      Built-in themes cannot be edited, but you can export one as a starting point,
+      edit the name inside the file, and import your customized copy.
+    </p>
+  </section>
+
+  <hr />
+
+  <!-- ── Settings ───────────────────────────────────────── -->
+  <section id="settings">
+    <h2>Settings</h2>
+    <p>Access settings from the <strong>Settings</strong> tab on the welcome screen.</p>
+
+    <h3>Appearance</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Dark mode</td><td>Switch between light and dark mode. The active theme adapts automatically.</td></tr>
+    </table>
+
+    <h3>Connection</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr>
+        <td>Always close connection when leaving</td>
+        <td>Skip the "keep connections open?" dialog when leaving the workspace.</td>
+      </tr>
+      <tr>
+        <td>Auto-reconnect on disconnect</td>
+        <td>Automatically attempt to reconnect if the database connection drops.</td>
+      </tr>
+    </table>
+
+    <h3>Editor</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Font family</td><td>Monospace font used in the query editor.</td></tr>
+      <tr><td>Font size</td><td>Editor font size in pixels (10–24).</td></tr>
+      <tr><td>Font weight</td><td>Normal or medium weight.</td></tr>
+      <tr><td>Tab size</td><td>Number of spaces per tab (2, 4, or 8).</td></tr>
+      <tr><td>Insert spaces for Tab</td><td>Insert spaces instead of a tab character.</td></tr>
+      <tr><td>Line height</td><td>Compact, normal, or comfortable line spacing.</td></tr>
+      <tr><td>Highlight current line</td><td>Subtle highlight on the line the cursor is on.</td></tr>
+      <tr><td>Autocomplete</td><td>Enable or disable schema-aware autocomplete.</td></tr>
+      <tr><td>Default result limit</td><td>Default row cap applied to every query.</td></tr>
+    </table>
+
+    <h3>Schema browser</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Insert on double-click</td><td>Double-clicking a table or column inserts it at the cursor.</td></tr>
+      <tr><td>Show quick browse button</td><td>Show the ▶ play button on hover in the schema tree.</td></tr>
+    </table>
+
+    <h3>History</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>History limit</td><td>Maximum number of history entries to keep (10–1000).</td></tr>
+    </table>
+
+    <h3>AI</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Provider</td><td>Anthropic, OpenAI, or Ollama.</td></tr>
+      <tr><td>API key</td><td>Stored in the system keychain, never in plain text.</td></tr>
+      <tr><td>Model</td><td>Override the default model for the selected provider.</td></tr>
+      <tr><td>Ollama URL</td><td>Base URL of your Ollama instance (default: <code>http://localhost:11434</code>).</td></tr>
+    </table>
+
+    <h3>Sharing</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Warn on start / stop</td><td>Show a confirmation before starting or stopping live share.</td></tr>
+      <tr><td>TLS certificate</td><td>Path to a custom certificate file for HTTPS sharing.</td></tr>
+      <tr><td>TLS private key</td><td>Path to the private key matching the certificate.</td></tr>
+    </table>
+
+    <h3>Profiles &amp; Themes</h3>
+    <table>
+      <tr><th>Setting</th><th>Description</th></tr>
+      <tr><td>Profiles</td><td>Create and manage safety rule sets. See <a href="#profiles">Profiles</a>.</td></tr>
+      <tr><td>Themes</td><td>Activate a built-in theme or create your own. See <a href="#themes">Themes</a>.</td></tr>
+    </table>
+  </section>
+
+  <hr />
+
+  <!-- ── Keyboard shortcuts ─────────────────────────────── -->
+  <section id="shortcuts">
+    <h2>Keyboard shortcuts</h2>
+
+    <h3>Query editor</h3>
+    <table>
+      <tr><th>Action</th><th>Shortcut</th></tr>
+      <tr><td>Run query (or selection)</td><td><kbd>Ctrl</kbd>+<kbd>Enter</kbd></td></tr>
+      <tr><td>Run <code>/* @ai */</code> block as AI prompt</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd></td></tr>
+      <tr><td>EXPLAIN query</td><td><kbd>Ctrl</kbd>+<kbd>E</kbd></td></tr>
+      <tr><td>Format SQL</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></td></tr>
+      <tr><td>Find</td><td><kbd>Ctrl</kbd>+<kbd>F</kbd></td></tr>
+      <tr><td>Find and replace</td><td><kbd>Ctrl</kbd>+<kbd>H</kbd></td></tr>
+      <tr><td>Undo</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd></td></tr>
+      <tr><td>Redo</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd></td></tr>
+      <tr><td>Select all</td><td><kbd>Ctrl</kbd>+<kbd>A</kbd></td></tr>
+    </table>
+
+    <h3>AI</h3>
+    <table>
+      <tr><th>Action</th><th>Shortcut</th></tr>
+      <tr><td>Open AI command palette</td><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td></tr>
+      <tr><td>Run inline <code>/* @ai */</code> prompt</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd></td></tr>
+    </table>
+
+    <h3>Tabs</h3>
+    <table>
+      <tr><th>Action</th><th>Shortcut</th></tr>
+      <tr><td>New query tab</td><td><kbd>Ctrl</kbd>+<kbd>T</kbd></td></tr>
+      <tr><td>Close query tab</td><td><kbd>Ctrl</kbd>+<kbd>W</kbd></td></tr>
+    </table>
+
+    <h3>Files</h3>
+    <table>
+      <tr><th>Action</th><th>Shortcut</th></tr>
+      <tr><td>Save selection as snippet</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
+      <tr><td>Save to file</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
+      <tr><td>Open file</td><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td></tr>
+      <tr><td>Export as CSV</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td></tr>
+    </table>
+
+    <h3>Panels</h3>
+    <table>
+      <tr><th>Action</th><th>Shortcut</th></tr>
+      <tr><td>Toggle schema panel</td><td><kbd>Ctrl</kbd>+<kbd>1</kbd></td></tr>
+      <tr><td>Toggle query panel</td><td><kbd>Ctrl</kbd>+<kbd>2</kbd></td></tr>
+      <tr><td>Toggle results panel</td><td><kbd>Ctrl</kbd>+<kbd>3</kbd></td></tr>
+      <tr><td>Toggle sidebar</td><td><kbd>Ctrl</kbd>+<kbd>4</kbd></td></tr>
+      <tr><td>Toggle markdown preview</td><td><kbd>Ctrl</kbd>+<kbd>5</kbd></td></tr>
+      <tr><td>Toggle activity log</td><td><kbd>Ctrl</kbd>+<kbd>L</kbd></td></tr>
+      <tr><td>Command palette</td><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td></tr>
+      <tr><td>Show keyboard shortcuts</td><td><kbd>?</kbd></td></tr>
+    </table>
+  </section>
+
+</main>
+
+<script>
+  const sections   = document.querySelectorAll('section[id]');
+  const navLinks   = document.querySelectorAll('nav ul li a');
+  const navItems   = document.querySelectorAll('nav ul li');
+  const navLabels  = document.querySelectorAll('nav .section-label');
+  const searchInput = document.getElementById('search');
+
+  // ── Active link on scroll ─────────────────────────────────────────────────
+  function setActive() {
+    let current = '';
+    sections.forEach(s => {
+      if (window.scrollY >= s.offsetTop - 80) current = s.id;
+    });
+    navLinks.forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+    });
+  }
+
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+
+  // ── Search ────────────────────────────────────────────────────────────────
+  const index = Array.from(navLinks).map(a => {
+    const id      = a.getAttribute('href').slice(1);
+    const section = document.getElementById(id);
+    const text    = section ? section.textContent.toLowerCase() : '';
+    return { link: a, li: a.closest('li'), id, text, label: a.textContent.toLowerCase() };
+  });
+
+  function labelForUl(ul) {
+    let node = ul.previousElementSibling;
+    while (node) {
+      if (node.classList.contains('section-label')) return node;
+      node = node.previousElementSibling;
+    }
+    return null;
+  }
+
+  let highlights = [];
+
+  function clearHighlights() {
+    highlights.forEach(({ node, original }) => { node.innerHTML = original; });
+    highlights = [];
+  }
+
+  function highlightText(section, query) {
+    const walker = document.createTreeWalker(section, NodeFilter.SHOW_TEXT);
+    const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const nodes = [];
+    let n;
+    while ((n = walker.nextNode())) nodes.push(n);
+    nodes.forEach(node => {
+      if (!re.test(node.textContent)) return;
+      const span = document.createElement('span');
+      const original = node.textContent;
+      span.innerHTML = original.replace(re, '<mark class="search-highlight">$1</mark>');
+      node.parentNode.replaceChild(span, node);
+      highlights.push({ node: span, original });
+    });
+  }
+
+  searchInput.addEventListener('input', () => {
+    clearHighlights();
+    const q = searchInput.value.trim().toLowerCase();
+
+    if (!q) {
+      navItems.forEach(li  => li.classList.remove('hidden'));
+      navLabels.forEach(lb => lb.classList.remove('hidden'));
+      return;
+    }
+
+    const visibleUls = new Set();
+    index.forEach(entry => {
+      const match = entry.label.includes(q) || entry.text.includes(q);
+      entry.li.classList.toggle('hidden', !match);
+      if (match) {
+        visibleUls.add(entry.li.closest('ul'));
+        highlightText(document.getElementById(entry.id), q);
+      }
+    });
+
+    navLabels.forEach(lb => {
+      const ul = lb.nextElementSibling;
+      lb.classList.toggle('hidden', !visibleUls.has(ul));
+    });
+
+    const first = index.find(e => !e.li.classList.contains('hidden'));
+    if (first) {
+      const target = document.getElementById(first.id);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+
+  searchInput.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { searchInput.value = ''; searchInput.dispatchEvent(new Event('input')); }
+  });
+</script>
+</body>
+</html>

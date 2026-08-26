@@ -1,0 +1,32 @@
+name: Publish docs
+
+# GitHub Pages serves this repo's `docs/` on `main`, but the help page's single
+# source of truth is `resources/docs/help.html` — that is the copy the app itself
+# loads. This keeps the published copy in step with it so the two can never drift.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'resources/docs/help.html'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy help page into docs/
+        run: cp resources/docs/help.html docs/help.html
+
+      - name: Commit if it changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/help.html
+          git diff --staged --quiet && echo "docs/help.html already current" && exit 0
+          git commit -m "docs: publish help page [skip ci]"
+          git push
