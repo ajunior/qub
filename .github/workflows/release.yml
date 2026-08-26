@@ -79,6 +79,12 @@ jobs:
           arch: win64_msvc2022_64
           modules: 'qtwebsockets qthttpserver'
           cache: true
+          # Qt reorganised its Windows repository at 6.11: the metadata moved from
+          # qt6_6111/qt6_6111/ to one directory per compiler (qt6_6111_msvc2022_64/).
+          # Released aqtinstall 3.3.0 still builds the old path and 404s, so the
+          # Windows job needs the unreleased fix. Pinned to a commit, never a branch.
+          # Drop this once aqtinstall 3.4.0 is on PyPI.
+          aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@16db45a'
 
       - name: Set up MSVC
         uses: ilammy/msvc-dev-cmd@v1
