@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=qub
+Comment=SQL editor powered by Qt
+Exec=qub %u
+Icon=qub
+Type=Application
+Categories=Development;Database;
+MimeType=x-scheme-handler/qub;
+StartupWMClass=qub

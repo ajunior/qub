@@ -1,0 +1,20 @@
+build/
+build-*/
+.cmake/
+CMakeUserPresets.json
+*.user
+.qmake.stash
+
+# Local test databases, exports and screenshots — never commit data
+*.db
+*.sqlite
+*.sqlite3
+*.csv
+*.tsv
+/Screenshot*.png
+
+# Local dev tooling and scratch — not part of the project
+.claude/
+.clangd
+__pycache__/
+query.md

@@ -1,0 +1,38 @@
+// Windows resource file — embedded version info and icon.
+// Tokens replaced by CMake configure_file.
+#include <windows.h>
+
+#define VER_FILEVERSION     @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+#define VER_PRODUCTVERSION  @PROJECT_VERSION_MAJOR@,@PROJECT_VERSION_MINOR@,@PROJECT_VERSION_PATCH@,0
+#define VER_FILEVERSION_STR "@PROJECT_VERSION@\0"
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION     VER_FILEVERSION
+ PRODUCTVERSION  VER_PRODUCTVERSION
+ FILEFLAGSMASK   VS_FFI_FILEFLAGSMASK
+ FILEFLAGS       0
+ FILEOS          VOS__WINDOWS32
+ FILETYPE        VFT_APP
+ FILESUBTYPE     0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription",  "qub SQL editor\0"
+            VALUE "FileVersion",       VER_FILEVERSION_STR
+            VALUE "InternalName",      "qub\0"
+            VALUE "LegalCopyright",    "ajunior\0"
+            VALUE "OriginalFilename",  "qub.exe\0"
+            VALUE "ProductName",       "qub\0"
+            VALUE "ProductVersion",    VER_FILEVERSION_STR
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END
+
+// App icon (convert assets/logo.svg to .ico first):
+// IDI_ICON1 ICON "assets\\qub.ico"

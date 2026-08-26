@@ -1,0 +1,172 @@
+name: Release
+
+# Runs on every version tag (v0.1.0, v1.2.3, …) and can be triggered manually.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  QT_VERSION: '6.11.1'
+  CMAKE_BUILD_TYPE: Release
+
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+# ── Linux — AppImage ──────────────────────────────────────────────────────────
+# Pinned to 22.04 rather than ubuntu-latest: an AppImage inherits the glibc of
+# the machine that built it, so the oldest supported image is the one that runs
+# on the most distros. 24.04 also dropped `libfuse2` (renamed `libfuse2t64`),
+# which AppImages need to self-mount.
+  build-linux:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            libgl1-mesa-dev libgles2-mesa-dev \
+            libxcb-cursor0 libxcb-icccm4-dev libxcb-image0-dev \
+            libxcb-keysyms1-dev libxcb-render-util0-dev \
+            libxcb-xinerama0-dev libxcb-xkb-dev libxkbcommon-x11-dev \
+            libfuse2 \
+            libpq-dev \
+            libmariadb-dev \
+            imagemagick
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtwebsockets qthttpserver'
+          cache: true
+
+      - name: Configure
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package AppImage
+        run: bash packaging/linux/build-appimage.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qub-linux-appimage
+          path: dist/qub-*.AppImage
+          if-no-files-found: error
+
+# ── Windows — Inno Setup installer ────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          modules: 'qtwebsockets qthttpserver'
+          cache: true
+
+      - name: Set up MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ISCC ships with the runner image but is not on PATH; install it only if
+      # this image ever stops carrying it.
+      - name: Put Inno Setup on PATH
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6"
+          if (-not (Test-Path "$iscc\ISCC.exe")) {
+            choco install innosetup --no-progress -y
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $iscc
+
+      - name: Configure
+        run: cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Deploy and package
+        shell: pwsh
+        run: packaging\windows\deploy.ps1
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qub-windows-setup
+          path: dist/qub-*-setup.exe
+          if-no-files-found: error
+
+# ── macOS — DMG ───────────────────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install postgresql mariadb-connector-c
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtwebsockets qthttpserver'
+          cache: true
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Package DMG
+        run: bash packaging/macos/package.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qub-macos-dmg
+          path: dist/qub-*.dmg
+          if-no-files-found: error
+
+# ── Release — attach all artifacts to the tag ─────────────────────────────────
+  release:
+    needs: [build-linux, build-windows, build-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+
+    # The only permission the release step needs; GITHUB_TOKEN is issued
+    # automatically, so there is no RELEASE_TOKEN secret to keep in sync.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          draft: true
+          generate_release_notes: true

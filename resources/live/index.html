@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>qub · Live Share</title>
+<style>
+  /* ── Design tokens (Mahina light defaults) ─────────────────────────────── */
+  :root {
+    --bg:            #EDEEF6;
+    --panel:         #F4F4FA;
+    --surface:       #FFFFFF;
+    --surface-alt:   #F8F8FD;
+    --border:        #E2E5F0;
+    --border-strong: #C8CEDF;
+    --text:          #1E2030;
+    --text-muted:    #697180;
+    --text-faint:    #9AA3AF;
+    --primary:       #5B8DF6;
+    --success:       #59A14F;
+    --error:         #E15759;
+    --warning:       #F28E2B;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:            #151922;
+      --panel:         #171D27;
+      --surface:       #1E2430;
+      --surface-alt:   #222A36;
+      --border:        #313B4C;
+      --border-strong: #475569;
+      --text:          #F4F7FB;
+      --text-muted:    #AAB4C4;
+      --text-faint:    #7F8A9A;
+    }
+  }
+
+  /* ── Reset ─────────────────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    background: var(--bg);
+    min-height: 100vh;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────────────── */
+  header {
+    height: 48px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .logo-mark {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+  }
+
+  .logo-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.2px;
+  }
+
+  .sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .page-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+  }
+
+  .spacer { flex: 1; }
+
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .status.connected .status-dot { background: var(--success); }
+  .status.connected              { color: var(--text); }
+  .status.disconnected .status-dot { background: var(--error); }
+
+  /* ── Content ───────────────────────────────────────────────────────────── */
+  .content {
+    padding: 16px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 1400px;
+  }
+
+  /* ── Card shell ────────────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ── Query card ────────────────────────────────────────────────────────── */
+  .query-body {
+    padding: 11px 14px;
+    font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace, monospace;
+    font-size: 12.5px;
+    line-height: 1.65;
+    color: var(--text);
+    white-space: pre-wrap;
+    word-break: break-word;
+    min-height: 42px;
+  }
+
+  .query-body.placeholder { color: var(--text-faint); font-style: italic; }
+
+  /* ── Error banner ──────────────────────────────────────────────────────── */
+  .error-banner {
+    display: none;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(225, 87, 89, 0.08);
+    border: 1px solid rgba(225, 87, 89, 0.25);
+    border-radius: 6px;
+    color: var(--error);
+    font-size: 12.5px;
+    font-family: "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .error-banner.visible { display: flex; }
+
+  /* ── Download bar ──────────────────────────────────────────────────────── */
+  .dl-bar {
+    display: none;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dl-bar.visible { display: flex; }
+
+  .dl-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+
+  .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s;
+  }
+
+  .dl-btn:hover {
+    background: var(--surface-alt);
+    border-color: var(--border-strong);
+  }
+
+  /* ── Stats row ─────────────────────────────────────────────────────────── */
+  .stats {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 18px;
+  }
+
+  .stat {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .stat.visible { display: flex; }
+  .stat-value   { font-weight: 500; color: var(--text); }
+
+  /* ── Results table ─────────────────────────────────────────────────────── */
+  .table-wrap {
+    display: none;
+    overflow-x: auto;
+  }
+
+  .table-wrap.visible { display: block; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+    font-family: "JetBrains Mono", "Cascadia Code", ui-monospace, monospace;
+  }
+
+  thead th {
+    background: var(--surface-alt);
+    padding: 7px 12px;
+    text-align: left;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody tr { transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface-alt); }
+
+  tbody td {
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.null { color: var(--text-faint); font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg class="logo-mark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="gTop" x1="22" y1="34" x2="78" y2="50" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#D4ECFF"/>
+          <stop offset="100%" stop-color="#88C6F8"/>
+        </linearGradient>
+        <linearGradient id="gRight" x1="64" y1="34" x2="64" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#2BAEF8"/>
+          <stop offset="100%" stop-color="#126ACC"/>
+        </linearGradient>
+        <linearGradient id="gLeft" x1="36" y1="34" x2="36" y2="82" gradientUnits="userSpaceOnUse">
+          <stop offset="0%"   stop-color="#1274DC"/>
+          <stop offset="100%" stop-color="#083E96"/>
+        </linearGradient>
+      </defs>
+      <rect width="100" height="100" rx="20" fill="#12151E"/>
+      <polygon points="50,18 78,34 50,50 22,34" fill="url(#gTop)"/>
+      <polygon points="78,34 78,66 50,82 50,50" fill="url(#gRight)"/>
+      <polygon points="22,34 50,50 50,82 22,66" fill="url(#gLeft)"/>
+      <polygon points="50,18 78,34 50,50 22,34" fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="0.6" stroke-linejoin="round"/>
+      <text transform="matrix(0.875,0.5,0,1,36,58)" text-anchor="middle" dominant-baseline="central" font-size="13" font-family="sans-serif" font-weight="bold" fill="rgba(255,255,255,0.82)">q</text>
+      <text transform="matrix(0.875,0.5,-0.875,0.5,50,34)" text-anchor="middle" dominant-baseline="central" font-size="11" font-family="sans-serif" font-weight="bold" fill="#0D4FA8">u</text>
+      <text transform="matrix(0.875,-0.5,0,1,64,58)" text-anchor="middle" dominant-baseline="central" font-size="13" font-family="sans-serif" font-weight="bold" fill="rgba(255,255,255,0.88)">b</text>
+    </svg>
+    <span class="logo-name">qub</span>
+  </div>
+  <div class="sep"></div>
+  <span class="page-label">Live Share</span>
+  <div class="spacer"></div>
+  <div class="status" id="status">
+    <div class="status-dot"></div>
+    <span id="status-text">Connecting…</span>
+  </div>
+</header>
+
+<div class="content">
+
+  <div class="card" id="query-card">
+    <div class="card-header">
+      <span class="card-label">SQL</span>
+    </div>
+    <div class="query-body placeholder" id="query-body">Waiting for query…</div>
+  </div>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <div class="stats">
+    <div class="stat" id="stat-rows">
+      <span>Rows</span>
+      <span class="stat-value" id="row-count"></span>
+    </div>
+    <div class="stat" id="stat-time">
+      <span>Time</span>
+      <span class="stat-value" id="elapsed"></span>
+    </div>
+  </div>
+
+  <div class="dl-bar" id="dl-bar">
+    <span class="dl-label">Download</span>
+    <button class="dl-btn" onclick="downloadCsv()">CSV</button>
+    <button class="dl-btn" onclick="downloadJson()">JSON</button>
+    <button class="dl-btn" onclick="downloadTsv()">TSV</button>
+  </div>
+
+  <div class="card table-wrap" id="table-wrap">
+    <table>
+      <thead><tr id="thead-row"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const statusEl     = document.getElementById('status');
+  const statusTextEl = document.getElementById('status-text');
+  const queryBodyEl  = document.getElementById('query-body');
+  const errorBanner  = document.getElementById('error-banner');
+  const statRows     = document.getElementById('stat-rows');
+  const statTime     = document.getElementById('stat-time');
+  const rowCountEl   = document.getElementById('row-count');
+  const elapsedEl    = document.getElementById('elapsed');
+  const theadRow     = document.getElementById('thead-row');
+  const tbody        = document.getElementById('tbody');
+  const tableWrap    = document.getElementById('table-wrap');
+  const dlBar        = document.getElementById('dl-bar');
+
+  // In-memory result buffer for download — populated as rows arrive.
+  let _columns      = [];
+  let _rows         = [];
+  let _allowDownload = false;
+  let _hasResult    = false;
+
+  function _refreshDownloadBar() {
+    dlBar.className = (_allowDownload && _hasResult) ? 'dl-bar visible' : 'dl-bar';
+  }
+
+  // Escape untrusted strings before inserting into innerHTML.
+  // All DB-sourced data (column names, cell values, error messages) must go
+  // through this — they can contain arbitrary HTML/JS from the database.
+  function esc(val) {
+    return String(val ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ── Download helpers ──────────────────────────────────────────────────────
+  function _triggerDownload(filename, mime, content) {
+    const blob = new Blob([content], { type: mime });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Cells starting with = + - @ (or tab/CR) execute as formulas when the
+  // export is opened in Excel/LibreOffice; prefix them with an apostrophe.
+  // Plain numbers ("-42.5") are harmless and left as-is.
+  function spreadsheetSafe(s) {
+    return /^[=+\-@\t\r]/.test(s) && isNaN(Number(s)) ? "'" + s : s;
+  }
+
+  function downloadCsv() {
+    const escCsv = v => {
+      const s = spreadsheetSafe(String(v ?? ''));
+      return (s.includes(',') || s.includes('"') || s.includes('\n'))
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const lines = [
+      _columns.map(escCsv).join(','),
+      ..._rows.map(r => r.map(c => c === null ? '' : escCsv(c)).join(','))
+    ];
+    _triggerDownload('results.csv', 'text/csv', lines.join('\r\n'));
+  }
+
+  function downloadJson() {
+    const data = _rows.map(r => {
+      const obj = {};
+      _columns.forEach((col, i) => { obj[col] = r[i] ?? null; });
+      return obj;
+    });
+    _triggerDownload('results.json', 'application/json', JSON.stringify(data, null, 2));
+  }
+
+  function downloadTsv() {
+    const escTsv = v => spreadsheetSafe(String(v ?? '').replace(/\t/g, '  ').replace(/\r?\n/g, ' '));
+    const lines = [
+      _columns.map(escTsv).join('\t'),
+      ..._rows.map(r => r.map(c => c === null ? '' : escTsv(c)).join('\t'))
+    ];
+    _triggerDownload('results.tsv', 'text/tab-separated-values', lines.join('\n'));
+  }
+
+  // ── WebSocket ─────────────────────────────────────────────────────────────
+  const token    = new URLSearchParams(location.search).get('token') || '';
+  const wsScheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const ws       = new WebSocket(`${wsScheme}//${location.host}/live/ws?token=${token}`);
+
+  ws.onopen = () => {
+    statusEl.className       = 'status connected';
+    statusTextEl.textContent = 'Connected';
+  };
+
+  ws.onclose = () => {
+    statusEl.className       = 'status disconnected';
+    statusTextEl.textContent = 'Disconnected';
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+
+    if (msg.type === 'init' || msg.type === 'config') {
+      _allowDownload = !!msg.allowDownload;
+      _refreshDownloadBar();
+    }
+
+    if (msg.type === 'query') {
+      queryBodyEl.textContent = msg.sql;
+      queryBodyEl.className   = 'query-body';
+      errorBanner.textContent = '';
+      errorBanner.className   = 'error-banner';
+      theadRow.innerHTML      = '';
+      tbody.innerHTML         = '';
+      statRows.className      = 'stat';
+      statTime.className      = 'stat';
+      tableWrap.className     = 'card table-wrap';
+      _columns  = [];
+      _rows     = [];
+      _hasResult = false;
+      _refreshDownloadBar();
+    }
+
+    if (msg.type === 'columns') {
+      _columns = msg.columns;
+      theadRow.innerHTML  = _columns.map(c => `<th>${esc(c)}</th>`).join('');
+      tableWrap.className = 'card table-wrap visible';
+    }
+
+    if (msg.type === 'rows') {
+      msg.rows.forEach(row => {
+        _rows.push(row);
+        const tr = document.createElement('tr');
+        tr.innerHTML = row.map(cell =>
+          cell === null
+            ? `<td class="null">NULL</td>`
+            : `<td>${esc(cell)}</td>`
+        ).join('');
+        tbody.appendChild(tr);
+      });
+    }
+
+    if (msg.type === 'done') {
+      rowCountEl.textContent = msg.rowCount.toLocaleString();
+      elapsedEl.textContent  = msg.elapsedMs + ' ms';
+      statRows.className     = 'stat visible';
+      statTime.className     = 'stat visible';
+      _hasResult = _columns.length > 0;
+      _refreshDownloadBar();
+    }
+
+    if (msg.type === 'error') {
+      errorBanner.textContent = msg.message || 'Unknown error';
+      errorBanner.className   = 'error-banner visible';
+      tableWrap.className     = 'card table-wrap';
+      _hasResult = false;
+      _refreshDownloadBar();
+    }
+  };
+</script>
+</body>
+</html>

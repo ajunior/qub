@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleIdentifier</key>
+  <string>org.ajunior.qub</string>
+
+  <key>CFBundleName</key>
+  <string>qub</string>
+
+  <key>CFBundleDisplayName</key>
+  <string>qub</string>
+
+  <key>CFBundleExecutable</key>
+  <string>qub</string>
+
+  <key>CFBundleVersion</key>
+  <string>@PROJECT_VERSION@</string>
+
+  <key>CFBundleShortVersionString</key>
+  <string>@PROJECT_VERSION@</string>
+
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+
+  <key>NSHighResolutionCapable</key>
+  <true/>
+
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+
+  <!-- Register the qub:// custom URL scheme -->
+  <key>CFBundleURLTypes</key>
+  <array>
+    <dict>
+      <key>CFBundleURLName</key>
+      <string>org.ajunior.qub.url</string>
+      <key>CFBundleURLSchemes</key>
+      <array>
+        <string>qub</string>
+      </array>
+    </dict>
+  </array>
+
+  <key>LSMinimumSystemVersion</key>
+  <string>13.0</string>
+</dict>
+</plist>
