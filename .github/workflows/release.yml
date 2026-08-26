@@ -37,6 +37,8 @@ jobs:
             libfuse2 \
             libpq-dev \
             libmariadb-dev \
+            unixodbc-dev \
+            firebird-dev \
             imagemagick
 
       - name: Install Qt ${{ env.QT_VERSION }}
