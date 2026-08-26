@@ -230,7 +230,7 @@ Item {
                 Item { Layout.fillHeight: true }
 
                 Text {
-                    text: "v0.1.0"
+                    text: "v" + Qt.application.version
                     color: Theme.textDisabled
                     font.family:    Theme.fontFamily
                     font.pixelSize: Theme.textXs
@@ -2570,7 +2570,7 @@ Item {
                                 }
 
                                 Text {
-                                    text: "v0.1.0"
+                                    text: "v" + Qt.application.version
                                     color: Theme.textDisabled
                                     font.family:    Theme.fontFamily
                                     font.pixelSize: Theme.textSm

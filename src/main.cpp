@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
     app.setOrganizationName("qub");
     app.setApplicationName("qub");
-    app.setApplicationVersion("0.1.0");
+    app.setApplicationVersion(QStringLiteral(QUB_VERSION));
 
     // Query history, sessions and connection metadata live here — keep the
     // whole directory owner-only before any manager creates files in it.
