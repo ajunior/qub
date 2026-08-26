@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(qub VERSION 0.1.0 LANGUAGES CXX)
+project(qub VERSION 0.44.9 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -161,6 +161,11 @@ qt_add_qml_module(qub
 # src/core is on the path because qmltyperegistrar emits <Header.h> for every
 # QML_ELEMENT class using the bare file name, without its directory.
 target_include_directories(qub PRIVATE src src/core ${qtkeychain_SOURCE_DIR} ${qtkeychain_BINARY_DIR})
+
+# Single source of truth for the version the app reports. It used to be a literal
+# in main.cpp and two more in HomeScreen.qml, which is three places to forget on
+# a release; QML reads it back through Qt.application.version.
+target_compile_definitions(qub PRIVATE QUB_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(qub
     PRIVATE
