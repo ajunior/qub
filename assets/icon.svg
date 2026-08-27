@@ -1,23 +1,37 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <!--
     App icon master — the same cube the app and the site draw (assets/cube.svg),
-    on a square, transparent canvas.
+    on a white rounded-square plate.
 
-    No background plate and no letters on the faces. An earlier mark had both,
-    which is why they are called out here — the cube the product actually shows
-    everywhere else has neither, and this file is meant to be that same cube.
+    The mark itself is unchanged and carries no letters: below 64px the letters
+    of the very first version were never legible, they only muddied the faces.
+    What changed is the ground under it. A free-form mark on a transparent
+    canvas borrows whatever is behind it, and in the macOS Dock that is a grey
+    that reads as dirt around the cube rather than as nothing.
+
+    The plate is Apple's icon grid: 824 x 824 centred in the 1024 canvas, corner
+    radius 185.4. White, but not flat white — a barely-there gradient down to
+    #F1F5F9 and an 8% hairline, both of which cost nothing on a dark or grey
+    ground and are the only thing keeping the icon a shape at all on a white one
+    (a Finder list, a white page). Both are drawn with plain fills and
+    stroke-opacity: filters are outside SVG Tiny 1.2, and the renderers that
+    turn this file into qub.png silently drop what they cannot do.
 
     The geometry below is assets/cube.svg untouched, in its original 100-unit
-    space, scaled into the 1024 canvas by the wrapper transform. Its bounding
-    box is 56 x 64 centred on (50,50); the transform maps that to 717.5 x 820
-    centred on (512,512) — about 80% of the canvas height, which is the inset a
-    free-form mark needs to carry the same optical weight as a rounded-rect icon
-    beside it in a dock or a taskbar.
+    space, scaled into the canvas by the wrapper transform. Its bounding box is
+    56 x 64 centred on (50,50); the transform maps that to 437.5 x 500 centred
+    on (512,512) — about half the canvas, three fifths of the plate, which is
+    the inset a mark needs inside a plate to avoid looking crammed against the
+    corners.
 
     Gradients are userSpaceOnUse in the original space and live inside the
     transformed group, so they scale with the geometry.
   -->
   <defs>
+    <linearGradient id="gPlate" x1="512" y1="100" x2="512" y2="924" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
     <linearGradient id="gTop" x1="22" y1="34" x2="78" y2="50" gradientUnits="userSpaceOnUse">
       <stop offset="0%"   stop-color="#D4ECFF"/>
       <stop offset="100%" stop-color="#88C6F8"/>
@@ -32,7 +46,10 @@
     </linearGradient>
   </defs>
 
-  <g transform="translate(-128.625,-128.625) scale(12.8125)">
+  <rect x="100" y="100" width="824" height="824" rx="185.4" ry="185.4"
+        fill="url(#gPlate)" stroke="#0F172A" stroke-opacity="0.08" stroke-width="3"/>
+
+  <g transform="translate(121.375,121.375) scale(7.8125)">
     <polygon points="50,18 78,34 50,50 22,34" fill="url(#gTop)"/>
     <polygon points="78,34 78,66 50,82 50,50" fill="url(#gRight)"/>
     <polygon points="22,34 50,50 50,82 22,66" fill="url(#gLeft)"/>
