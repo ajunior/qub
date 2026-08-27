@@ -34,5 +34,6 @@ BEGIN
     END
 END
 
-// App icon (convert assets/logo.svg to .ico first):
-// IDI_ICON1 ICON "assets\\qub.ico"
+// App icon. Lowest-numbered ICON resource wins, and that is the one Explorer,
+// the taskbar and Qt's own window decoration all read.
+IDI_ICON1 ICON "qub.ico"

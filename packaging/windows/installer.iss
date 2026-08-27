@@ -1,10 +1,13 @@
 ; installer.iss — Inno Setup script for qub.
-; Tokens __VERSION__ and __STAGE__ are substituted by deploy.ps1.
+; Tokens __VERSION__, __STAGE__ and __ICON__ are substituted by deploy.ps1.
 #define AppName    "qub"
 #define AppVersion "__VERSION__"
 #define AppPublisher "ajunior"
 #define AppExeName "qub.exe"
 #define StageDir   "__STAGE__"
+; Absolute, because deploy.ps1 compiles this script from the temp directory and
+; a relative path would be resolved against that.
+#define IconFile   "__ICON__"
 
 [Setup]
 AppId={{F6A1B2C3-D4E5-4F60-A7B8-C9D0E1F2A3B4}
@@ -21,6 +24,8 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupIconFile={#IconFile}
+UninstallDisplayIcon={app}\{#AppExeName}
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

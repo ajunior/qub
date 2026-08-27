@@ -267,17 +267,42 @@ add_test(NAME qub_executor_tests COMMAND qub_executor_tests)
 if(APPLE)
     configure_file(packaging/macos/Info.plist.in
                    ${CMAKE_BINARY_DIR}/Info.plist @ONLY)
+
+    # The icon has to be a real file inside Contents/Resources; a plist naming
+    # one that was never generated is exactly how the app shipped with the
+    # default macOS icon. MACOSX_PACKAGE_LOCATION puts it there.
+    add_custom_command(
+        OUTPUT  ${CMAKE_BINARY_DIR}/qub.icns
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/make-icns.sh
+                     ${CMAKE_CURRENT_SOURCE_DIR}/assets/qub.png
+                     ${CMAKE_BINARY_DIR}/qub.icns
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/assets/qub.png
+                ${CMAKE_CURRENT_SOURCE_DIR}/packaging/macos/make-icns.sh
+        COMMENT "Generating qub.icns"
+        VERBATIM
+    )
+    target_sources(qub PRIVATE ${CMAKE_BINARY_DIR}/qub.icns)
+    set_source_files_properties(${CMAKE_BINARY_DIR}/qub.icns PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
+
     set_target_properties(qub PROPERTIES
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_BINARY_DIR}/Info.plist"
         MACOSX_BUNDLE_BUNDLE_NAME        "qub"
         MACOSX_BUNDLE_BUNDLE_VERSION     "${PROJECT_VERSION}"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_GUI_IDENTIFIER     "org.ajunior.qub"
+        MACOSX_BUNDLE_ICON_FILE          "qub.icns"
     )
 endif()
 
 # ── Windows: embed version + icon resource ────────────────────────────────────
 if(WIN32)
+    # The icon is copied next to the generated qub.rc so the script can name it
+    # with no path at all: rc.exe resolves a bare filename against its own
+    # directory, and a backslash inside a quoted path is an escape character
+    # there — a rule that is easy to get wrong and impossible to test off
+    # Windows.
+    configure_file(assets/qub.ico ${CMAKE_BINARY_DIR}/qub.ico COPYONLY)
     configure_file(packaging/windows/qub.rc.in
                    ${CMAKE_BINARY_DIR}/qub.rc @ONLY)
     target_sources(qub PRIVATE ${CMAKE_BINARY_DIR}/qub.rc)
