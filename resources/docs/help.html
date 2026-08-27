@@ -516,6 +516,63 @@
       also reconnects on its own when a connection drops mid-query.
     </p>
 
+    <h3>Passwords and the system keychain</h3>
+    <p>
+      qub never writes a password to its own files. Connection passwords, SSH passwords and
+      AI provider keys go to the credential store your operating system already runs, under
+      the service name <code>qub</code>: Keychain on macOS, the Secret Service (GNOME Keyring
+      or KWallet) on Linux, Credential Manager on Windows. That store is the one asking when
+      you see a prompt — qub has no password of its own to ask for.
+    </p>
+    <p>
+      <strong>Expect a prompt the first time a saved password is read</strong>, which is
+      usually the first connection after installing, and again after an update:
+    </p>
+    <table>
+      <thead><tr><th>System</th><th>What you see</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>macOS</td>
+          <td>A dialog: <em>"qub wants to use your confidential information stored in 'qub'
+            in your keychain."</em> Enter your login password and choose <strong>Always
+            Allow</strong> so it stops asking. The permission is tied to that exact build of
+            the app, so a new version of qub asks once more.</td>
+        </tr>
+        <tr>
+          <td>Linux</td>
+          <td>Usually nothing: on most desktops the login keyring is unlocked when you log
+            in. If your keyring has its own password, or you use automatic login, a dialog
+            asks to unlock it the first time qub stores or reads a password.</td>
+        </tr>
+        <tr>
+          <td>Windows</td>
+          <td>Nothing. Credential Manager stores the entry for your Windows account without
+            prompting.</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Denying the prompt is not fatal, but qub gets no password back and the connection fails
+      with whatever the database says about the credentials. Type the password into the
+      connection form and connect again — you will be asked once more, and can allow it then.
+      The same applies on a machine with no keyring service running at all: qub cannot save
+      the password, so it has to be typed each session.
+    </p>
+    <p>
+      The entries are visible and revocable in the tools you already have — Keychain Access,
+      Seahorse or KDE Wallet Manager, Credential Manager — under the service <code>qub</code>,
+      keyed by connection name (<code>ssh_&hellip;</code> for a tunnel's password,
+      <code>ai_&hellip;</code> for a provider key). Deleting a connection in qub deletes its
+      entry with it.
+    </p>
+
+    <div class="callout tip">
+      <span class="icon">◎</span>
+      <p>Nothing else in qub is protected by that prompt: it guards the stored passwords, not
+      the application. Anyone at an unlocked machine can open qub and use a connection that is
+      already up.</p>
+    </div>
+
     <h3>Supported drivers</h3>
     <table>
       <tr><th>Driver</th><th>Database</th><th>System dependency</th></tr>
