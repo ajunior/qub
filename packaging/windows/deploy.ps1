@@ -56,6 +56,19 @@ $Exe = @("$BuildDir\qub.exe", "$BuildDir\Release\qub.exe") |
 if (-not $Exe) { throw "qub.exe not found under $BuildDir" }
 Copy-Item $Exe "$StageDir\qub.exe"
 
+# ── DLLs built alongside qub ─────────────────────────────────────────────────
+# qtkeychain comes in through FetchContent, so qt6keychain.dll is produced in the
+# build tree rather than shipped next to Qt. windeployqt resolves an executable's
+# imports from the directory that executable sits in, so anything built here has
+# to be staged before it runs — otherwise it reports the import as unresolvable
+# and stops. The installer needs these files regardless.
+Get-ChildItem -Path $BuildDir -Recurse -Filter *.dll |
+    Where-Object { $_.FullName -notmatch '[\\/]CMakeFiles[\\/]' } |
+    ForEach-Object {
+        Write-Host "Staging $($_.Name)"
+        Copy-Item $_.FullName $StageDir -Force
+    }
+
 # ── windeployqt ─────────────────────────────────────────────────────────────
 & $WinDeployQt `
     --no-translations `
