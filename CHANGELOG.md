@@ -13,9 +13,10 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
   - **Connections** — PostgreSQL, MySQL/MariaDB, SQLite, Oracle, Firebird and
     ODBC, open simultaneously, each tab carrying its own. Passwords go to the
     OS keychain, never to disk. Reusable SSH tunnel definitions, each testable
-    on its own, and per-connection TLS. Named safety profiles (read-only, destructive-query
-    guards) assigned per connection. A running database container can fill the
-    connection form in for itself, host-mapped port included.
+    on its own, and per-connection TLS. Named safety profiles (read-only,
+    destructive-query guards) assigned per connection. A running database
+    container can fill the connection form in for itself, host-mapped port
+    included.
   - **Writing SQL** — completion that knows the columns of the tables actually
     in scope, through aliases; `:name` and `$1` parameters that prompt for
     typed values and remember them per tab; SQL generated from plain language
