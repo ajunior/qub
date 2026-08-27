@@ -3,8 +3,9 @@
     App icon master — the same cube the app and the site draw (assets/cube.svg),
     on a square, transparent canvas.
 
-    No background plate and no letters on the faces: the earlier logo.svg had
-    both, and the mark the product actually shows everywhere else has neither.
+    No background plate and no letters on the faces. An earlier mark had both,
+    which is why they are called out here — the cube the product actually shows
+    everywhere else has neither, and this file is meant to be that same cube.
 
     The geometry below is assets/cube.svg untouched, in its original 100-unit
     space, scaled into the 1024 canvas by the wrapper transform. Its bounding
