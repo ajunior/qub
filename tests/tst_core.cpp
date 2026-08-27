@@ -68,6 +68,9 @@ private slots:
     // ── Cell value inspector (cellview.js) ────────────────────────────────────
     void cellview_classifies();
 
+    // ── Driver list (drivers.js) ──────────────────────────────────────────────
+    void drivers_onlyAvailableOffered();
+
     // CSV / TSV export
     void export_csvNeutralizesFormulas();
     void export_csvQuoting();
@@ -171,6 +174,15 @@ void TestCore::initTestCase()
     const QJSValue vres = m_js.evaluate(vsrc, QStringLiteral("cellview.js"));
     QVERIFY2(!vres.isError(), qPrintable(vres.toString()));
     QVERIFY(m_js.globalObject().property("inspect").isCallable());
+
+    // Load drivers.js into the same engine (function names don't collide).
+    QFile df(QStringLiteral(DRIVERS_JS_PATH));
+    QVERIFY2(df.open(QIODevice::ReadOnly | QIODevice::Text), "drivers.js not found");
+    QString dsrc = QString::fromUtf8(df.readAll());
+    dsrc.remove(QRegularExpression(QStringLiteral("^\\.pragma[^\n]*\n")));
+    const QJSValue dres = m_js.evaluate(dsrc, QStringLiteral("drivers.js"));
+    QVERIFY2(!dres.isError(), qPrintable(dres.toString()));
+    QVERIFY(m_js.globalObject().property("availableLabels").isCallable());
 }
 
 QJSValue TestCore::runGuard(const QString &statementsJson, const QString &profileJson)
@@ -556,6 +568,50 @@ void TestCore::cellview_classifies()
     // Null / empty → empty text, no crash.
     QCOMPARE(text(QStringLiteral("null")), QString());
     QCOMPARE(kind(QStringLiteral("''")),   QStringLiteral("text"));
+}
+
+// ── Driver list (drivers.js) ──────────────────────────────────────────────────
+
+void TestCore::drivers_onlyAvailableOffered()
+{
+    auto labels = [&](const QString &keysJsArray) {
+        return m_js.evaluate(QStringLiteral("availableLabels(%1).join('|')").arg(keysJsArray))
+                   .toString();
+    };
+
+    // What Qt's official Windows binaries report: six plugins, no MySQL. The
+    // form must not offer MySQL or MariaDB there, because no client library the
+    // user installs can make them work.
+    QCOMPARE(labels(QStringLiteral(
+                 "['QIBASE','QSQLITE','QMIMER','QOCI','QODBC','QPSQL']")),
+             QStringLiteral("PostgreSQL|SQLite|Oracle|Firebird|ODBC"));
+
+    // macOS: no MySQL, no Oracle, no Firebird either.
+    QCOMPARE(labels(QStringLiteral("['QMIMER','QODBC','QPSQL','QSQLITE']")),
+             QStringLiteral("PostgreSQL|SQLite|ODBC"));
+
+    // Linux, where every driver qub supports is present. QMYSQL and QMARIADB
+    // are two keys of one plugin and both are offered.
+    QCOMPARE(labels(QStringLiteral(
+                 "['QIBASE','QSQLITE','QMIMER','QMARIADB','QMYSQL','QOCI','QODBC','QPSQL']")),
+             QStringLiteral("PostgreSQL|MySQL|MariaDB|SQLite|Oracle|Firebird|ODBC"));
+
+    // QMIMER is reported by Qt on all three but qub has no support for it, so
+    // it never reaches the form — the intersection drops it in every case above.
+
+    // The order is the declared one, not the order Qt happens to report in.
+    QCOMPARE(labels(QStringLiteral("['QODBC','QPSQL','QSQLITE']")),
+             QStringLiteral("PostgreSQL|SQLite|ODBC"));
+
+    // A build with no SQL plugins at all yields an empty list rather than
+    // throwing: the form renders an empty dropdown, which is the truth.
+    QCOMPARE(labels(QStringLiteral("[]")), QString());
+
+    // label()/qtKey() round-trip for every key the list can produce.
+    QCOMPARE(m_js.evaluate(QStringLiteral("qtKey(label('QMARIADB'))")).toString(),
+             QStringLiteral("QMARIADB"));
+    QCOMPARE(m_js.evaluate(QStringLiteral("label('QMIMER')")).toString(),
+             QStringLiteral("QMIMER"));   // unmapped keys pass through
 }
 
 // ── CSV / TSV export ──────────────────────────────────────────────────────────

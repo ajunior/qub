@@ -213,7 +213,8 @@ target_compile_definitions(qub_tests PRIVATE
     GUARD_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/guard.js"
     COMPLETE_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/complete.js"
     FK_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/fk.js"
-    CELLVIEW_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/cellview.js")
+    CELLVIEW_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/cellview.js"
+    DRIVERS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/drivers.js")
 target_link_libraries(qub_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql)
 add_test(NAME qub_tests COMMAND qub_tests)
 
