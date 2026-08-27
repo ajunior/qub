@@ -8,6 +8,8 @@
 #include <QUuid>
 #include <QThread>
 #include <QFile>
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
 
 // Keychain entry for an SSH config's password. Passwords live only in the OS
 // keychain (and in memory); save() never writes them to QSettings.
@@ -15,6 +17,42 @@ static QString sshKeychainKey(const QString &id)
 {
     return QStringLiteral("ssh_") + id;
 }
+
+namespace {
+
+struct SshTestOutcome {
+    bool    ok = false;
+    QString message;
+
+    // Set when the host is not in known_hosts: nothing was tried, the user
+    // must confirm the key first.
+    bool    hostKeyUnknown = false;
+    QString endpoint;      // "host:port", for display
+    QString fingerprints;
+    QString keyLines;
+};
+
+// Worker-thread body. An unknown host stops the test before any login attempt,
+// the same way the connection path does — otherwise the failure would just be
+// "Host key verification failed" with no way forward.
+SshTestOutcome verifyChecked(const QVariantMap &cfg)
+{
+    SshTestOutcome r;
+    const QString host = cfg.value("host").toString();
+    const int     port = cfg.value("port", 22).toInt();
+
+    if (!host.isEmpty() && !SshTunnel::isHostKnown(host, port)) {
+        r.endpoint = host + ":" + QString::number(port);
+        if (SshTunnel::scanHostKey(host, port, r.keyLines, r.fingerprints, r.message))
+            r.hostKeyUnknown = true;
+        return r;
+    }
+
+    r.ok = SshTunnel::verify(cfg, r.message);
+    return r;
+}
+
+} // namespace
 
 SshManager::SshManager(CredentialStore *credentials, QObject *parent)
     : QObject(parent)
@@ -79,6 +117,54 @@ void SshManager::removeConfig(const QString &id)
     });
     save();
     emit configsChanged();
+}
+
+void SshManager::testConfig(const QVariantMap &data)
+{
+    emit testPending(true);
+
+    auto *watcher = new QFutureWatcher<SshTestOutcome>(this);
+    connect(watcher, &QFutureWatcher<SshTestOutcome>::finished, this,
+            [this, watcher, data]() {
+        const SshTestOutcome r = watcher->result();
+        watcher->deleteLater();
+        emit testPending(false);
+
+        if (r.hostKeyUnknown) {
+            m_pendingTestConfig   = data;
+            m_pendingTestKeyLines = r.keyLines;
+            emit hostKeyConfirmationRequired(r.endpoint, r.fingerprints);
+            return;
+        }
+        emit testResult(r.ok, r.message);
+    });
+
+    watcher->setFuture(QtConcurrent::run([data]() -> SshTestOutcome {
+        return verifyChecked(data);
+    }));
+}
+
+void SshManager::acceptTestHostKey()
+{
+    if (m_pendingTestConfig.isEmpty()) return;
+    const QVariantMap cfg      = m_pendingTestConfig;
+    const QString     keyLines = m_pendingTestKeyLines;
+    m_pendingTestConfig.clear();
+    m_pendingTestKeyLines.clear();
+
+    if (!SshTunnel::trustHostKey(keyLines)) {
+        emit testResult(false, "Could not save the host key to ~/.ssh/known_hosts.");
+        return;
+    }
+    testConfig(cfg);
+}
+
+void SshManager::rejectTestHostKey()
+{
+    if (m_pendingTestConfig.isEmpty()) return;
+    m_pendingTestConfig.clear();
+    m_pendingTestKeyLines.clear();
+    emit testResult(false, "SSH host key was not trusted — test cancelled.");
 }
 
 // Configs are exported with their id so connections referencing them via

@@ -12,8 +12,8 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
   window, and everything else is a keystroke from it rather than a menu dive.
   - **Connections** — PostgreSQL, MySQL/MariaDB, SQLite, Oracle, Firebird and
     ODBC, open simultaneously, each tab carrying its own. Passwords go to the
-    OS keychain, never to disk. Reusable SSH tunnel definitions and
-    per-connection TLS. Named safety profiles (read-only, destructive-query
+    OS keychain, never to disk. Reusable SSH tunnel definitions, each testable
+    on its own, and per-connection TLS. Named safety profiles (read-only, destructive-query
     guards) assigned per connection. A running database container can fill the
     connection form in for itself, host-mapped port included.
   - **Writing SQL** — completion that knows the columns of the tables actually

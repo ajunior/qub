@@ -29,6 +29,13 @@ public:
     Q_INVOKABLE void updateConfig(const QString &id, const QVariantMap &data);
     Q_INVOKABLE void removeConfig(const QString &id);
 
+    // Logs in to the host in `data` (an unsaved form map is fine) without
+    // opening a tunnel, and answers on testResult. Unknown host keys stop the
+    // test and raise hostKeyConfirmationRequired; acceptTestHostKey re-runs it.
+    Q_INVOKABLE void testConfig(const QVariantMap &data);
+    Q_INVOKABLE void acceptTestHostKey();
+    Q_INVOKABLE void rejectTestHostKey();
+
     Q_INVOKABLE bool        exportConfigs(const QUrl &fileUrl);
     Q_INVOKABLE QVariantMap importConfigs(const QUrl &fileUrl);
 
@@ -39,11 +46,18 @@ public:
 
 signals:
     void configsChanged();
+    void testResult(bool success, const QString &message);
+    void testPending(bool pending);
+    void hostKeyConfirmationRequired(const QString &host, const QString &fingerprints);
 
 private:
     CredentialStore        *m_credentials = nullptr;
     QList<QVariantMap>      m_configs;
     QMap<QString, SshTunnel*> m_tunnels;  // connectionName → tunnel (main thread only)
+
+    // Config whose test stopped on an unknown host key, waiting on the user.
+    QVariantMap             m_pendingTestConfig;
+    QString                 m_pendingTestKeyLines;
 
     void save();
     void load();

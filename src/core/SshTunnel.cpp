@@ -9,6 +9,44 @@
 #include <QFile>
 #include <QFileDevice>
 
+namespace {
+
+// The UI stores the key under "keyPath"; accept the legacy "keyFile" too.
+// Ignore it when password auth is selected (the field may hold stale text).
+QString resolveKeyPath(const QVariantMap &sshConfig)
+{
+    QString keyFile = sshConfig.value("keyPath",
+                                      sshConfig.value("keyFile")).toString().trimmed();
+    if (sshConfig.value("authMethod").toString() == QLatin1String("password"))
+        keyFile.clear();
+    if (keyFile == "~")
+        keyFile = QDir::homePath();
+    else if (keyFile.startsWith("~/"))
+        keyFile = QDir::homePath() + keyFile.mid(1);
+    return keyFile;
+}
+
+// Boils ssh -v output down to something worth showing. The debug lines are the
+// bulk of it and say nothing a user can act on; the reason ("Permission
+// denied", "Connection refused", "Host key verification failed") is on the
+// plain lines at the end.
+QString sshFailureMessage(const QString &output)
+{
+    QStringList lines;
+    const auto raw = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString &line : raw) {
+        const QString trimmed = line.trimmed();
+        if (trimmed.isEmpty() || trimmed.startsWith(QLatin1String("debug")))
+            continue;
+        lines << trimmed;
+    }
+    if (lines.isEmpty())
+        return QStringLiteral("ssh did not authenticate within 20 s.");
+    return lines.mid(qMax(0, lines.size() - 4)).join(QLatin1Char('\n'));
+}
+
+} // namespace
+
 SshTunnel::SshTunnel(QObject *parent)
     : QObject(parent)
 {}
@@ -59,16 +97,7 @@ int SshTunnel::start(const QVariantMap &sshConfig,
     const int     sshPort = sshConfig.value("port", 22).toInt();
     const QString sshUser = sshConfig.value("username").toString();
 
-    // The UI stores the key under "keyPath"; accept the legacy "keyFile" too.
-    // Ignore it when password auth is selected (the field may hold stale text).
-    QString keyFile = sshConfig.value("keyPath",
-                                      sshConfig.value("keyFile")).toString().trimmed();
-    if (sshConfig.value("authMethod").toString() == QLatin1String("password"))
-        keyFile.clear();
-    if (keyFile == "~")
-        keyFile = QDir::homePath();
-    else if (keyFile.startsWith("~/"))
-        keyFile = QDir::homePath() + keyFile.mid(1);
+    const QString keyFile = resolveKeyPath(sshConfig);
 
     if (sshHost.isEmpty()) {
         errorMsg = "SSH config has no host set.";
@@ -122,6 +151,80 @@ int SshTunnel::start(const QVariantMap &sshConfig,
     }
 
     return m_localPort;
+}
+
+bool SshTunnel::verify(const QVariantMap &sshConfig, QString &message)
+{
+    const QString sshHost = sshConfig.value("host").toString();
+    const int     sshPort = sshConfig.value("port", 22).toInt();
+    const QString sshUser = sshConfig.value("username").toString();
+    const QString keyFile = resolveKeyPath(sshConfig);
+
+    if (sshHost.isEmpty()) {
+        message = "SSH config has no host set.";
+        return false;
+    }
+
+    const QString target = sshUser.isEmpty() ? sshHost : (sshUser + "@" + sshHost);
+
+    QStringList args;
+    args << "-v" << "-N"
+         << "-o" << "BatchMode=yes"
+         << "-o" << "StrictHostKeyChecking=yes"
+         << "-o" << "ConnectTimeout=10"
+         << "-p" << QString::number(sshPort);
+    if (!keyFile.isEmpty())
+        args << "-i" << keyFile;
+    args << target;
+
+    QProcess p;
+    p.setProcessChannelMode(QProcess::MergedChannels);
+    p.start("ssh", args);
+
+    if (!p.waitForStarted(5000)) {
+        message = "Could not start ssh: " + p.errorString()
+                  + ". Make sure 'ssh' is on your PATH.";
+        return false;
+    }
+
+    // -N asks for no channel, so a successful ssh just sits there: waiting for
+    // it to exit would mean waiting out the timeout on every success. What it
+    // does say is the verbose "Authenticated to ..." line, and that is the
+    // answer. Running a remote command instead (ssh ... true) would report a
+    // failure on bastions that forbid one, even though the login worked.
+    QString       output;
+    bool          authenticated = false;
+    QElapsedTimer timer;
+    timer.start();
+
+    while (!timer.hasExpired(20000)) {
+        if (p.waitForReadyRead(500))
+            output += QString::fromUtf8(p.readAll());
+        if (output.contains(QLatin1String("Authenticated to"))
+            || output.contains(QLatin1String("Authentication succeeded"))) {
+            authenticated = true;
+            break;
+        }
+        if (p.state() == QProcess::NotRunning) {
+            output += QString::fromUtf8(p.readAll());
+            break;
+        }
+    }
+
+    if (p.state() != QProcess::NotRunning) {
+        p.terminate();
+        if (!p.waitForFinished(2000))
+            p.kill();
+    }
+
+    if (authenticated) {
+        message = "Authenticated to " + target + " on port "
+                  + QString::number(sshPort) + ".";
+        return true;
+    }
+
+    message = sshFailureMessage(output);
+    return false;
 }
 
 void SshTunnel::stop()
