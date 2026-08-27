@@ -25,7 +25,7 @@
   <string>APPL</string>
 
   <key>CFBundleIconFile</key>
-  <string>AppIcon</string>
+  <string>qub.icns</string>
 
   <key>NSHighResolutionCapable</key>
   <true/>

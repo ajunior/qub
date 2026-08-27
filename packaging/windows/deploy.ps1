@@ -123,7 +123,8 @@ foreach ($lib in @("libpq.dll", "libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
 # ── Compile Inno Setup installer ─────────────────────────────────────────────
 $iss = (Get-Content packaging\windows\installer.iss -Raw) `
     -replace "__VERSION__", $Version `
-    -replace "__STAGE__",   $StageDir.Replace("\", "\\")
+    -replace "__STAGE__",   $StageDir.Replace("\", "\\") `
+    -replace "__ICON__",    (Get-Item assets\qub.ico).FullName.Replace("\", "\\")
 $tmpIss = "$env:TEMP\qub-installer.iss"
 Set-Content -Path $tmpIss -Value $iss
 

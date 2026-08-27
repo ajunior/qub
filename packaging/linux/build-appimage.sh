@@ -57,9 +57,11 @@ done
 
 # ── Desktop file + icon ───────────────────────────────────────────────────────
 install -Dm644 packaging/linux/qub.desktop   "$APPDIR/usr/share/applications/qub.desktop"
-convert assets/logo.svg -resize 256x256 /tmp/qub.png 2>/dev/null \
-  || cp assets/qub.png /tmp/qub.png 2>/dev/null \
-  || true
+# assets/qub.png is the same 1024px master the macOS icns and the Windows ico
+# are cut from, so all three platforms show one icon. The copy is the fallback
+# for a machine without ImageMagick: an oversized icon still beats none.
+convert assets/qub.png -resize 256x256 /tmp/qub.png 2>/dev/null \
+  || cp assets/qub.png /tmp/qub.png
 install -Dm644 /tmp/qub.png "$APPDIR/usr/share/icons/hicolor/256x256/apps/qub.png"
 
 # ── linuxdeploy ───────────────────────────────────────────────────────────────
