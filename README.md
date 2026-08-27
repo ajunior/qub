@@ -69,7 +69,32 @@ Live share and multi-connection raise fair questions about where your data goes.
 | OpenSSL | any | Required; used for the live-share server's TLS |
 | libsecret | any | Linux only (`libsecret-devel` on Fedora/RHEL, `libsecret-dev` on Debian/Ubuntu) |
 
-PostgreSQL and MySQL need their client libraries installed (`libpq`, `libmysqlclient`). SQLite works out of the box.
+### Database drivers
+
+Each driver is a Qt plugin that loads a vendor client library at connect time,
+so a driver is only usable where both the plugin and that library exist —
+otherwise the connection fails with *"The … driver could not be loaded"*.
+
+Which plugins exist is decided by Qt, not by qub: Qt's official macOS and
+Windows binaries carry no MySQL driver at all, and the macOS ones carry no
+Oracle or Firebird driver either. The release packages then bundle every client
+library they can, so what is left is what a user has to install.
+
+| | Linux (AppImage) | macOS (DMG) | Windows (installer) |
+|---|---|---|---|
+| SQLite | bundled | bundled | bundled |
+| PostgreSQL | bundled | bundled | bundled |
+| ODBC | bundled | bundled | system |
+| MySQL / MariaDB | bundled | *no plugin* | *no plugin* |
+| Firebird | bundled | *no plugin* | bring `fbclient.dll` |
+| Oracle | *not bundled* | *no plugin* | bring [Instant Client](https://www.oracle.com/database/technologies/instant-client.html) |
+
+*No plugin* means nothing you install will help; only a qub built against a Qt
+compiled with that driver will. Oracle is left out of the AppImage because its
+client is not redistributable.
+
+Building from source, every client library is your system's: `libpq`,
+`libmariadb` or `libmysqlclient`, `libfbclient`, `unixODBC`, Instant Client.
 
 [Mahina](https://github.com/ajunior/mahina) (the QML component library qub's UI is built on) and
 [qtkeychain](https://github.com/frankosterfeld/qtkeychain) are fetched automatically at build time,
