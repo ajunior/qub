@@ -74,6 +74,7 @@ private slots:
     void export_tsvNeutralizesFormulas();
     void export_markdownTable();
     void export_sqlInserts();
+    void export_xlsxZipChecksums();
     void columnStats_numericAndText();
     void filter_matchingNothingHidesEveryRow();
     void columnValues_visibleRows();
@@ -682,6 +683,81 @@ void TestCore::export_sqlInserts()
     QCOMPARE(model.toSqlInserts("users", "QSQLITE", 1).split('\n', Qt::SkipEmptyParts).size(), 1);
     ResultModel empty;
     QCOMPARE(empty.toSqlInserts("users", "QSQLITE"), QString());
+}
+
+// The XLSX writer builds a STORE-only ZIP by hand, and every entry carries a
+// CRC-32 that Excel refuses the file without. The checksum used to come from
+// zlib; it is computed in ResultModel.cpp now, so this walks the archive back
+// and re-checks each entry with a deliberately different implementation —
+// bit-by-bit, no lookup table.
+static quint32 bitwiseCrc32(const QByteArray &data)
+{
+    quint32 c = 0xFFFFFFFFu;
+    for (const char byte : data) {
+        c ^= quint8(byte);
+        for (int k = 0; k < 8; ++k)
+            c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+    }
+    return c ^ 0xFFFFFFFFu;
+}
+
+static quint32 u32At(const QByteArray &b, int off)
+{
+    return quint32(quint8(b.at(off)))
+         | quint32(quint8(b.at(off + 1))) << 8
+         | quint32(quint8(b.at(off + 2))) << 16
+         | quint32(quint8(b.at(off + 3))) << 24;
+}
+
+static quint16 u16At(const QByteArray &b, int off)
+{
+    return quint16(quint8(b.at(off))) | quint16(quint8(b.at(off + 1))) << 8;
+}
+
+void TestCore::export_xlsxZipChecksums()
+{
+    QueryResult r;
+    r.success = true;
+    r.columns = { "id", "name" };
+    r.rows = { { 1, QStringLiteral("Ada") }, { 2, QStringLiteral("Grace & <co>") } };
+
+    ResultModel model;
+    model.setResult(r);
+
+    QTemporaryDir dir;
+    const QString path = dir.filePath("out.xlsx");
+    QVERIFY(model.exportXlsx(QUrl::fromLocalFile(path)));
+
+    QFile f(path);
+    QVERIFY(f.open(QIODevice::ReadOnly));
+    const QByteArray zip = f.readAll();
+
+    QVERIFY(zip.startsWith("PK\x03\x04"));
+    QVERIFY(zip.contains("PK\x05\x06"));          // end of central directory
+
+    QStringList names;
+    int off = 0;
+    while (off + 30 <= zip.size() && zip.mid(off, 4) == QByteArray("PK\x03\x04", 4)) {
+        const quint32 crc      = u32At(zip, off + 14);
+        const quint32 size     = u32At(zip, off + 18);
+        const quint16 nameLen  = u16At(zip, off + 26);
+        const quint16 extraLen = u16At(zip, off + 28);
+        const QByteArray name  = zip.mid(off + 30, nameLen);
+        const QByteArray data  = zip.mid(off + 30 + nameLen + extraLen, size);
+
+        QCOMPARE(quint32(data.size()), size);
+        QCOMPARE(crc, bitwiseCrc32(data));
+
+        names << QString::fromUtf8(name);
+        off += 30 + nameLen + extraLen + size;
+    }
+
+    // Every part Excel needs, and the cells actually made it in.
+    QVERIFY(names.contains("[Content_Types].xml"));
+    QVERIFY(names.contains("xl/workbook.xml"));
+    QVERIFY(names.contains("xl/worksheets/sheet1.xml"));
+    QVERIFY(zip.contains("Ada"));
+    QVERIFY(zip.contains("Grace &amp; &lt;co&gt;"));
 }
 
 void TestCore::columnStats_numericAndText()

@@ -10,8 +10,8 @@
 #include <QSet>
 #include <QRegularExpression>
 #include "ResultDiff.h"
-#include <zlib.h>
 #include <algorithm>
+#include <array>
 #include <numeric>
 #include <cmath>
 
@@ -28,12 +28,34 @@ static void u32le(QByteArray &o, quint32 v) {
 
 struct ZipEntry { QByteArray name; QByteArray data; quint32 crc32 = 0; quint32 offset = 0; };
 
+// CRC-32 (IEEE 802.3) — the one checksum a STORE-only ZIP needs. It used to come
+// from zlib, which meant the whole project carried a native dependency for two
+// calls; that only ever linked because Qt drags libz in on Linux and macOS, and
+// on Windows the build stopped at a missing zlib.h.
+static quint32 crc32Of(const QByteArray &data)
+{
+    static const std::array<quint32, 256> table = [] {
+        std::array<quint32, 256> t{};
+        for (quint32 i = 0; i < 256; ++i) {
+            quint32 c = i;
+            for (int k = 0; k < 8; ++k)
+                c = (c & 1) ? (0xEDB88320u ^ (c >> 1)) : (c >> 1);
+            t[i] = c;
+        }
+        return t;
+    }();
+
+    quint32 c = 0xFFFFFFFFu;
+    for (const char byte : data)
+        c = table[(c ^ quint8(byte)) & 0xFF] ^ (c >> 8);
+    return c ^ 0xFFFFFFFFu;
+}
+
 static QByteArray buildZip(QList<ZipEntry> &es)
 {
     QByteArray out;
     for (auto &e : es) {
-        e.crc32  = ::crc32(0L, Z_NULL, 0);
-        e.crc32  = ::crc32(e.crc32, reinterpret_cast<const Bytef*>(e.data.constData()), e.data.size());
+        e.crc32  = crc32Of(e.data);
         e.offset = out.size();
         out.append("PK\x03\x04", 4);
         u16le(out, 20); u16le(out, 0); u16le(out, 0);   // need / flags / method=STORE
