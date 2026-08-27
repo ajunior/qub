@@ -154,7 +154,6 @@ qt_add_qml_module(qub
     RESOURCES
         resources/live/index.html
         resources/docs/help.html
-        assets/logo.svg
         assets/cube.svg
 )
 

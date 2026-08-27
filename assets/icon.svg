@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!--
+    App icon master — the same cube the app and the site draw (assets/cube.svg),
+    on a square, transparent canvas.
+
+    No background plate and no letters on the faces: the earlier logo.svg had
+    both, and the mark the product actually shows everywhere else has neither.
+
+    The geometry below is assets/cube.svg untouched, in its original 100-unit
+    space, scaled into the 1024 canvas by the wrapper transform. Its bounding
+    box is 56 x 64 centred on (50,50); the transform maps that to 717.5 x 820
+    centred on (512,512) — about 80% of the canvas height, which is the inset a
+    free-form mark needs to carry the same optical weight as a rounded-rect icon
+    beside it in a dock or a taskbar.
+
+    Gradients are userSpaceOnUse in the original space and live inside the
+    transformed group, so they scale with the geometry.
+  -->
+  <defs>
+    <linearGradient id="gTop" x1="22" y1="34" x2="78" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#D4ECFF"/>
+      <stop offset="100%" stop-color="#88C6F8"/>
+    </linearGradient>
+    <linearGradient id="gRight" x1="64" y1="34" x2="64" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#2BAEF8"/>
+      <stop offset="100%" stop-color="#126ACC"/>
+    </linearGradient>
+    <linearGradient id="gLeft" x1="36" y1="34" x2="36" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#1274DC"/>
+      <stop offset="100%" stop-color="#083E96"/>
+    </linearGradient>
+  </defs>
+
+  <g transform="translate(-128.625,-128.625) scale(12.8125)">
+    <polygon points="50,18 78,34 50,50 22,34" fill="url(#gTop)"/>
+    <polygon points="78,34 78,66 50,82 50,50" fill="url(#gRight)"/>
+    <polygon points="22,34 50,50 50,82 22,66" fill="url(#gLeft)"/>
+    <polygon points="50,18 78,34 50,50 22,34"
+             fill="none" stroke="rgba(255,255,255,0.30)" stroke-width="0.6" stroke-linejoin="round"/>
+  </g>
+</svg>

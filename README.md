@@ -1,6 +1,6 @@
 # qub
 
-<img src="assets/logo.svg" width="80" alt="qub logo"/>
+<img src="assets/cube.svg" width="80" alt="qub logo"/>
 
 The SQL editor I built because I needed it. Shared because you might too.
 
