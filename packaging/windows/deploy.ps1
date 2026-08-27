@@ -145,6 +145,29 @@ function Get-DllImports([string]$Dll) {
              Where-Object { $_ -match '^[\w.+-]+\.dll$' })
 }
 
+# An API set contract — api-ms-win-*, ext-ms-* — is not a file. The loader
+# resolves the name through the OS API-set schema to whichever system DLL
+# actually implements it, so nothing is on disk to find and nothing has to be
+# shipped. dumpbin lists them like any other import, and 0.44.9-rc.8 failed its
+# Windows package because the verifier below looked for them in System32, did
+# not find them, and declared SQLite, PostgreSQL and ODBC broken over the
+# Universal CRT.
+function Test-IsApiSet([string]$Name) {
+    return $Name -match '^(api-ms-win-|ext-ms-)'
+}
+
+# The imports that nothing in $SearchDirs provides. A function rather
+# than a few lines inside the verification loop so that tests/tst_deploy.ps1 can
+# exercise it: rc.8 failed inside exactly this logic, in the one part of the
+# packager the old test could not reach.
+function Get-UnresolvedImports([string[]]$Imports, [string[]]$SearchDirs) {
+    return @($Imports | Where-Object {
+        $name = $_
+        -not (Test-IsApiSet $name) -and
+        -not ($SearchDirs | Where-Object { Test-Path (Join-Path $_ $name) })
+    })
+}
+
 # Copy $Name out of $SrcDir together with everything it transitively imports
 # that also lives in $SrcDir. A name that is not there is a Windows system DLL
 # and comes from the target machine, so it is skipped rather than chased.
@@ -255,11 +278,7 @@ foreach ($drv in $Drivers) {
         Write-Warning "dumpbin unavailable — cannot verify $drv"
         continue
     }
-    $missing = @($imports | Where-Object {
-        -not (Test-Path (Join-Path $StageDir  $_)) -and
-        -not (Test-Path (Join-Path $System32  $_)) -and
-        -not (Test-Path (Join-Path $DriverDir $_))
-    })
+    $missing = Get-UnresolvedImports $imports @($StageDir, $System32, $DriverDir)
     if ($missing.Count -eq 0) {
         Write-Host "  $drv — ok"
     } elseif ($SupportedOutOfTheBox -contains $drv) {

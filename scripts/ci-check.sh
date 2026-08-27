@@ -105,6 +105,32 @@ else
     fail "ctest"
 fi
 
+# ---------------------------------------------------------- packaging ----
+# The packagers are shell and PowerShell, so ctest never sees them — and both
+# times a release shipped broken it was one of them that broke, on a runner,
+# after the gate had gone green. These harnesses fake otool/brew and dumpbin so
+# the dependency logic can be exercised here, on Linux, before the tag.
+step "Packaging harnesses"
+if bash "$ROOT/tests/tst_mac.sh" > "$LOGS/tst_mac.log" 2>&1; then
+    pass "macOS packager ($(grep -c '^  ok' "$LOGS/tst_mac.log") checks)"
+else
+    tail -30 "$LOGS/tst_mac.log"
+    fail "tst_mac.sh"
+fi
+
+# pwsh is on the GitHub runners and on almost no Linux desktop, so its absence
+# is reported rather than fatal: CI still covers it.
+if command -v pwsh > /dev/null 2>&1; then
+    if pwsh -NoProfile -File "$ROOT/tests/tst_deploy.ps1" > "$LOGS/tst_deploy.log" 2>&1; then
+        pass "Windows packager ($(grep -c '^  ok' "$LOGS/tst_deploy.log") checks)"
+    else
+        tail -30 "$LOGS/tst_deploy.log"
+        fail "tst_deploy.ps1"
+    fi
+else
+    note "Windows packager skipped (no pwsh here; CI runs it)"
+fi
+
 # ----------------------------------------------------------- boot smoke ----
 # Booting the app is the only check that exercises QML at runtime: qmllint reads
 # files in isolation and cannot see a binding that resolves to undefined once
