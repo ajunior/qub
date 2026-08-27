@@ -92,10 +92,16 @@ Item {
                 Item { Layout.fillWidth: true }
 
                 Button {
+                    // Deliberately ungated. This used to require a saved
+                    // connection, which was wrong twice over: the workspace
+                    // screen carries its own "New connection" button, so a
+                    // connection is something you make *there*; and the
+                    // Workspaces card below opens the very same screen with
+                    // no such check, so the gate only ever stopped the one
+                    // route a first-run user would find.
                     text:     "Workspace"
                     iconName: Icons.layout
                     variant:  Button.Variant.Ghost
-                    enabled:  ConnectionManager.connections.length > 0
                     onClicked: root.goToWorkspace()
                 }
 
