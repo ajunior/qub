@@ -546,8 +546,17 @@
       qub can route a database connection through an SSH tunnel — useful for databases
       inside private networks that are not directly reachable. Create the tunnel first
       under the <strong>SSH</strong> card on the welcome screen (host, port, username,
-      and either a password or a private key file), then select it in the
-      <strong>SSH connection</strong> dropdown of the database connection form.
+      and a private key file — leave the key empty to use your default keys or a running
+      ssh-agent), then select it in the <strong>SSH connection</strong> dropdown of the
+      database connection form. Authentication is key-based: the tunnel runs
+      <code>ssh</code> non-interactively, so it never prompts for a password.
+    </p>
+    <p>
+      <strong>Test</strong> checks the SSH login on its own, without a database behind
+      it — in the form, before you save, and from the plug icon on each saved entry.
+      It logs in, reports what <code>ssh</code> said, and drops the session again; no
+      port is forwarded. The first connection to a host stops on its fingerprint, which
+      you confirm before qub writes it to <code>~/.ssh/known_hosts</code>.
     </p>
 
     <h3>Import and export</h3>
