@@ -91,31 +91,18 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                Tooltip {
-                    // The gate here is a *connection*, not a workspace: the
-                    // workspace screen opens fine with none saved, but there is
-                    // nothing to run a query against without a database. So the
-                    // tooltip has to point at the connection, which is what the
-                    // left panel of this very screen is for.
-                    //
-                    // Explained-and-disabled beats hidden. A button that is not
-                    // drawn never teaches that the feature exists, and this is
-                    // the one control that leads out of the home screen — on a
-                    // first run it is precisely the thing a new user is looking
-                    // for. Empty text while enabled: Tooltip already treats that
-                    // as "no tooltip", so a working button stays quiet.
-                    text: _workspaceBtn.enabled
-                        ? ""
-                        : "Add a connection first — a workspace needs a database to query"
-
-                    Button {
-                        id:       _workspaceBtn
-                        text:     "Workspace"
-                        iconName: Icons.layout
-                        variant:  Button.Variant.Ghost
-                        enabled:  ConnectionManager.connections.length > 0
-                        onClicked: root.goToWorkspace()
-                    }
+                Button {
+                    // Deliberately ungated. This used to require a saved
+                    // connection, which was wrong twice over: the workspace
+                    // screen carries its own "New connection" button, so a
+                    // connection is something you make *there*; and the
+                    // Workspaces card below opens the very same screen with
+                    // no such check, so the gate only ever stopped the one
+                    // route a first-run user would find.
+                    text:     "Workspace"
+                    iconName: Icons.layout
+                    variant:  Button.Variant.Ghost
+                    onClicked: root.goToWorkspace()
                 }
 
                 Tooltip {
