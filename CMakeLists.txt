@@ -183,7 +183,6 @@ target_link_libraries(qub
         Mahinaplugin
         OpenSSL::SSL
         OpenSSL::Crypto
-        z
 )
 
 qt_import_qml_plugins(qub)
@@ -216,7 +215,7 @@ target_compile_definitions(qub_tests PRIVATE
     COMPLETE_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/complete.js"
     FK_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/fk.js"
     CELLVIEW_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/cellview.js")
-target_link_libraries(qub_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql z)
+target_link_libraries(qub_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql)
 add_test(NAME qub_tests COMMAND qub_tests)
 
 qt_add_executable(qub_workspace_tests
@@ -261,7 +260,7 @@ qt_add_executable(qub_executor_tests
     src/core/adapters/DatabaseAdapter.cpp
 )
 target_include_directories(qub_executor_tests PRIVATE src src/core)
-target_link_libraries(qub_executor_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql Qt6::Concurrent z)
+target_link_libraries(qub_executor_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql Qt6::Concurrent)
 add_test(NAME qub_executor_tests COMMAND qub_executor_tests)
 
 # ── macOS bundle metadata ─────────────────────────────────────────────────────
