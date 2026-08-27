@@ -29,10 +29,31 @@ rm -rf "$APPDIR"
 install -Dm755 build/qub "$APPDIR/usr/bin/qub"
 
 # ── SQL driver plugins ────────────────────────────────────────────────────────
+# linuxdeploy's Qt plugin deploys every driver it finds in the Qt sqldrivers
+# directory and resolves each one's shared libraries, so a driver whose client
+# library is not installed kills the whole run — Mimer did exactly that
+# ("Could not find dependency: libmimerapi.so"). Mimer and Oracle are the two we
+# cannot ship: neither client library is packaged for Ubuntu, and Oracle's is not
+# redistributable anyway. Move them aside for the duration and put them back on
+# the way out, because this runs against a real Qt installation, CI or not.
 QT_SQL_PLUGINS="$(qmake -query QT_INSTALL_PLUGINS)/sqldrivers"
-install -Dm755 "$QT_SQL_PLUGINS/libqsqlpsql.so"    "$APPDIR/usr/lib/qt6/plugins/sqldrivers/libqsqlpsql.so"
-install -Dm755 "$QT_SQL_PLUGINS/libqsqlmysql.so"   "$APPDIR/usr/lib/qt6/plugins/sqldrivers/libqsqlmysql.so" 2>/dev/null || true
-install -Dm755 "$QT_SQL_PLUGINS/libqsqlite.so"     "$APPDIR/usr/lib/qt6/plugins/sqldrivers/libqsqlite.so"
+SQLDRIVER_STASH="$(mktemp -d)"
+
+restore_sqldrivers() {
+    for stashed in "$SQLDRIVER_STASH"/*; do
+        if [[ -e "$stashed" ]]; then
+            mv -f "$stashed" "$QT_SQL_PLUGINS/"
+        fi
+    done
+    rmdir "$SQLDRIVER_STASH" 2>/dev/null || true
+}
+trap restore_sqldrivers EXIT
+
+for driver in libqsqlmimer.so libqsqloci.so; do
+    if [[ -e "$QT_SQL_PLUGINS/$driver" ]]; then
+        mv "$QT_SQL_PLUGINS/$driver" "$SQLDRIVER_STASH/"
+    fi
+done
 
 # ── Desktop file + icon ───────────────────────────────────────────────────────
 install -Dm644 packaging/linux/qub.desktop   "$APPDIR/usr/share/applications/qub.desktop"
