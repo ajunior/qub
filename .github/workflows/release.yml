@@ -106,11 +106,17 @@ jobs:
           }
           Add-Content -Path $env:GITHUB_PATH -Value $iscc
 
+      # NMake builds one file at a time, which cost this job 18 minutes a round.
+      # Ninja is parallel and is what the other two jobs use; it is not on the
+      # runner image, so install it.
+      - name: Install Ninja
+        run: choco install ninja --no-progress -y
+
       - name: Configure
-        run: cmake -B build -G "NMake Makefiles" -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --parallel
 
       - name: Deploy and package
         shell: pwsh
