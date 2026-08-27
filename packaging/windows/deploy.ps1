@@ -3,7 +3,11 @@
 # Requires Qt's windeployqt and Inno Setup (ISCC) on PATH.
 param(
     [string]$BuildDir = "build",
-    [string]$OutDir   = "dist"
+    [string]$OutDir   = "dist",
+    # Local builds on a machine without PostgreSQL installed. A release build
+    # must never set this: it is what turns a missing client library from a
+    # failed build into an installer that cannot connect to anything.
+    [switch]$SkipClientLibs
 )
 $ErrorActionPreference = "Stop"
 
@@ -99,25 +103,175 @@ finally {
     }
 }
 
-# ── Bundle SQL driver plugins ────────────────────────────────────────────────
-$QtPlugins = & $Qmake -query QT_INSTALL_PLUGINS
-$DriverDst = "$StageDir\plugins\sqldrivers"
-New-Item -ItemType Directory -Force -Path $DriverDst | Out-Null
+# ── SQL client libraries ─────────────────────────────────────────────────────
+# windeployqt already staged Qt's SQL driver plugins into $StageDir\sqldrivers,
+# which is where Qt looks for them. It does not, and cannot, bring the vendor
+# client library each one dlopens: qsqlpsql.dll is useless without libpq.dll
+# next to the executable, and the failure is a bare "Driver not loaded" at
+# connect time. So the plugins that shipped are read back off disk and their
+# client libraries chased down here.
+#
+# What this block used to do, and why it changed. It copied three plugins into
+# $StageDir\plugins\sqldrivers, a directory Qt never searches — windeployqt had
+# already put the real ones in $StageDir\sqldrivers, so those two were dead
+# weight in the installer. And it looked for client libraries on PATH with
+# `if ($found)`, taking silence for absence: libpq.dll happened to be on the
+# runner's PATH and shipped, but libssl-3-x64.dll and libcrypto-3-x64.dll are
+# in the same directory and were only found if that directory was on PATH too.
+# A libpq that cannot load its OpenSSL fails exactly like no libpq at all.
+#
+# So: client libraries are resolved from where PostgreSQL actually is rather
+# than from PATH alone, the whole dependency closure comes along, and a missing
+# one is fatal instead of silent.
 
-foreach ($drv in @("qsqlpsql.dll", "qsqlmysql.dll", "qsqlite.dll")) {
-    $src = "$QtPlugins\sqldrivers\$drv"
-    if (Test-Path $src) { Copy-Item $src $DriverDst }
+$DriverDir = "$StageDir\sqldrivers"
+if (-not (Test-Path $DriverDir)) {
+    throw "windeployqt staged no sqldrivers directory — qub cannot open a database"
+}
+$Drivers = (Get-ChildItem $DriverDir -Filter *.dll).Name
+Write-Host "SQL drivers deployed: $($Drivers -join ', ')"
+
+# Resolve a DLL's import table with dumpbin, which the MSVC environment this
+# builds under already provides. Returns $null when dumpbin is unavailable, so
+# the caller can fall back rather than conclude the DLL has no dependencies.
+function Get-DllImports([string]$Dll) {
+    if (-not (Get-Command dumpbin -ErrorAction SilentlyContinue)) { return $null }
+    $out = & dumpbin /nologo /dependents $Dll 2>$null
+    if ($LASTEXITCODE -ne 0) { return $null }
+    # Inside the dependents block each line is an indented bare filename; every
+    # other line in the report is prose or a section name, neither of which
+    # ends in .dll.
+    return @($out | ForEach-Object { $_.Trim() } |
+             Where-Object { $_ -match '^[\w.+-]+\.dll$' })
 }
 
-# MariaDB Connector/C runtime (LGPL — allowed to bundle)
-foreach ($lib in @("libmariadb.dll", "libmariadb3.dll")) {
-    $found = Find-OnPath $lib
-    if ($found) { Copy-Item $found $StageDir }
+# Copy $Name out of $SrcDir together with everything it transitively imports
+# that also lives in $SrcDir. A name that is not there is a Windows system DLL
+# and comes from the target machine, so it is skipped rather than chased.
+function Copy-RuntimeClosure([string]$Name, [string]$SrcDir, [string]$DstDir) {
+    $copied  = @()
+    $seen    = @{}
+    $pending = New-Object System.Collections.Queue
+    $pending.Enqueue($Name)
+
+    while ($pending.Count -gt 0) {
+        $n = $pending.Dequeue()
+        if ($seen.ContainsKey($n)) { continue }
+        $seen[$n] = $true
+
+        $src = Join-Path $SrcDir $n
+        if (-not (Test-Path $src)) { continue }
+
+        Copy-Item $src $DstDir -Force
+        $copied += $n
+
+        $imports = Get-DllImports $src
+        if ($null -eq $imports) { return $null }
+        foreach ($i in $imports) { $pending.Enqueue($i) }
+    }
+    return $copied
 }
-# libpq runtime
-foreach ($lib in @("libpq.dll", "libssl-3-x64.dll", "libcrypto-3-x64.dll")) {
-    $found = Find-OnPath $lib
-    if ($found) { Copy-Item $found $StageDir }
+
+# ── PostgreSQL ───────────────────────────────────────────────────────────────
+if ($SkipClientLibs) {
+    Write-Warning "-SkipClientLibs: shipping SQL driver plugins with no client libraries"
+}
+elseif ($Drivers -contains "qsqlpsql.dll") {
+    # PGBIN is set by the GitHub runner image; the glob covers a normal EDB
+    # install, and PATH is the last resort rather than the only one.
+    $LibpqDir = $null
+    $cands = @()
+    if ($env:PGBIN)  { $cands += $env:PGBIN }
+    if ($env:PGROOT) { $cands += (Join-Path $env:PGROOT "bin") }
+    $cands += @(Get-ChildItem "C:\Program Files\PostgreSQL" -Directory -ErrorAction SilentlyContinue |
+                Sort-Object { if ($_.Name -match '^\d+') { [int]$Matches[0] } else { 0 } } -Descending |
+                ForEach-Object { Join-Path $_.FullName "bin" })
+    $onPath = Find-OnPath "libpq.dll"
+    if ($onPath) { $cands += (Split-Path $onPath) }
+
+    foreach ($c in $cands) {
+        if ($c -and (Test-Path (Join-Path $c "libpq.dll"))) { $LibpqDir = $c; break }
+    }
+    if (-not $LibpqDir) {
+        throw "qsqlpsql.dll was deployed but libpq.dll was not found. Looked in " +
+              "PGBIN, PGROOT\bin, C:\Program Files\PostgreSQL\*\bin and PATH. " +
+              "Install PostgreSQL or pass -SkipClientLibs to build without Postgres support."
+    }
+
+    $staged = Copy-RuntimeClosure "libpq.dll" $LibpqDir $StageDir
+    if ($null -eq $staged) {
+        # No dumpbin: fall back to the DLLs an EDB build of libpq is known to
+        # pull in. Anything absent is simply not part of that build.
+        Write-Host "dumpbin unavailable — falling back to a fixed libpq dependency list"
+        $staged = @()
+        foreach ($lib in @("libpq.dll", "libssl-3-x64.dll", "libcrypto-3-x64.dll",
+                           "libintl-9.dll", "libiconv-2.dll", "libwinpthread-1.dll",
+                           "zlib1.dll")) {
+            $src = Join-Path $LibpqDir $lib
+            if (Test-Path $src) { Copy-Item $src $StageDir -Force; $staged += $lib }
+        }
+    }
+    Write-Host "libpq from ${LibpqDir}: $($staged -join ', ')"
+}
+
+# ── MySQL / MariaDB ──────────────────────────────────────────────────────────
+# Qt's official Windows binaries carry no qsqlmysql plugin, so there is nothing
+# for a client library to serve. The check is kept so that a Qt build that does
+# ship one does not silently repeat the libpq mistake.
+if (-not $SkipClientLibs -and $Drivers -contains "qsqlmysql.dll") {
+    $MysqlLib = @("libmariadb.dll", "libmysql.dll") |
+                ForEach-Object { Find-OnPath $_ } |
+                Where-Object { $_ } | Select-Object -First 1
+    if (-not $MysqlLib) {
+        throw "qsqlmysql.dll was deployed but neither libmariadb.dll nor libmysql.dll was found on PATH"
+    }
+    $staged = Copy-RuntimeClosure ([IO.Path]::GetFileName($MysqlLib)) (Split-Path $MysqlLib) $StageDir
+    if ($null -eq $staged) { Copy-Item $MysqlLib $StageDir -Force }
+    Write-Host "MySQL client: $MysqlLib"
+}
+
+# Oracle (qsqloci), Firebird (qsqlibase) and Mimer (qsqlmimer) are deliberately
+# left to the user. Their clients are either not redistributable or a separate
+# vendor install, so the plugin ships and finds its client on PATH if the user
+# has one. ODBC needs nothing: the driver manager is part of Windows.
+
+# ── Verify every deployed driver can actually load ───────────────────────────
+# The failure this guards against is silent by construction: a driver plugin
+# whose client library is absent still installs, still appears in the connection
+# dialog, and only fails on the user's machine with "Driver not loaded". So each
+# plugin's imports are resolved here against what is in the package plus what
+# Windows itself provides, and anything left over is reported by name.
+#
+# SQLite, PostgreSQL and ODBC are what qub claims to support out of the box on
+# Windows, so a gap in those fails the build. The rest ship on the understanding
+# that the user brings the vendor client, which is exactly an unresolved import.
+$SupportedOutOfTheBox = @("qsqlite.dll", "qsqlpsql.dll", "qsqlodbc.dll")
+$System32 = Join-Path $env:SystemRoot "System32"
+$Broken   = @()
+
+foreach ($drv in $Drivers) {
+    $imports = Get-DllImports (Join-Path $DriverDir $drv)
+    if ($null -eq $imports) {
+        Write-Warning "dumpbin unavailable — cannot verify $drv"
+        continue
+    }
+    $missing = @($imports | Where-Object {
+        -not (Test-Path (Join-Path $StageDir  $_)) -and
+        -not (Test-Path (Join-Path $System32  $_)) -and
+        -not (Test-Path (Join-Path $DriverDir $_))
+    })
+    if ($missing.Count -eq 0) {
+        Write-Host "  $drv — ok"
+    } elseif ($SupportedOutOfTheBox -contains $drv) {
+        $Broken += "$drv needs $($missing -join ', ')"
+    } else {
+        Write-Host "  $drv — needs a vendor client at runtime: $($missing -join ', ')"
+    }
+}
+
+if ($Broken.Count -gt 0) {
+    $detail = "These drivers would ship unloadable:`n  " + ($Broken -join "`n  ")
+    if ($SkipClientLibs) { Write-Warning $detail } else { throw $detail }
 }
 
 # ── Compile Inno Setup installer ─────────────────────────────────────────────

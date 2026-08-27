@@ -137,8 +137,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # libpq and libiodbc are keg-only, so they are named explicitly: Qt's
+      # sqldrivers plugins reference libpq.5.dylib and libiodbc.2.dylib by the
+      # absolute path they had on Qt's own build machine, and package.sh can
+      # only repoint them at a copy it can actually find here.
       - name: Install dependencies
-        run: brew install postgresql mariadb-connector-c
+        run: brew install postgresql libpq libiodbc mariadb-connector-c
 
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v4
