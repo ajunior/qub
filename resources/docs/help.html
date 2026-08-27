@@ -615,6 +615,14 @@
       port is forwarded. The first connection to a host stops on its fingerprint, which
       you confirm before qub writes it to <code>~/.ssh/known_hosts</code>.
     </p>
+    <p>
+      With a tunnel selected, the connection&rsquo;s <strong>Host</strong> and
+      <strong>Port</strong> are read from the SSH host&rsquo;s point of view, not from
+      yours: <code>localhost</code> means the SSH machine itself, and a private name
+      like <code>db.internal</code> is resolved over there. If the database runs on the
+      SSH host, that is <code>127.0.0.1</code> and its real port; if it runs elsewhere
+      on the private network, use the address the SSH host would use to reach it.
+    </p>
 
     <h3>Import and export</h3>
     <p>
