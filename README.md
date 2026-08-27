@@ -146,6 +146,19 @@ exiting non-zero), then runs `qmllint` against a checked-in ceiling per warning
 category. By default it builds against the pinned Mahina commit, the way CI
 does; pass `--local-mahina` to use a `../mahina` checkout instead.
 
+There is also a load test, which is not part of the gate because it needs a
+graphical stack and several minutes:
+
+```bash
+bash scripts/load-test.sh
+```
+
+It builds a million-row SQLite database, drives the real UI against it on a
+private Xvfb display — typing queries, then opening the chart, profile, pivot
+and plan panes over each result — and reports what the process holds after the
+last cycle against what it held after the first. Linux only; it reads `/proc`
+for the numbers and needs `Xvfb`, `xdotool` and ImageMagick.
+
 ## UI
 
 qub's interface is built on top of [Mahina](https://github.com/ajunior/mahina), a QML component library I developed alongside this project. It started with the components qub needed and grew from there.
