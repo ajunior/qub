@@ -244,6 +244,19 @@ Item {
     // purely a template; it never retargets an existing tab. Each tab keeps its
     // own connection (changed via its color-coded dot menu).
     property string _defaultConnection: ""
+    // The dropdown is a template for new tabs, not a mirror of the active tab,
+    // so an explicit pick is left alone. What is never right is a template that
+    // is empty or points outside the workspace while the user is sitting on a
+    // working connection — re-derive it whenever that can have happened.
+    function _syncDefaultConnection(): void {
+        if (_defaultConnection !== "" && _inWorkspace(_defaultConnection)
+            && _connExists(_defaultConnection))
+            return
+        _defaultConnection = (_activeTabUsable ? activeConnection : "")
+                          || _firstUsableConnection()
+    }
+    onActiveConnectionChanged:   _syncDefaultConnection()
+    on_UsableConnectionsChanged: _syncDefaultConnection()
     property var  _tabSqlMap:         ({})   // { tabId: sqlString } — only written on tab switch
     property var  _tabCursorMap:      ({})   // { tabId: cursorPosition }
     property bool _tabSwitching:      false
@@ -2300,15 +2313,12 @@ Item {
             // A genuinely new connection created from inside this workspace:
             // add it to the workspace (an explicit act) and give it a tab.
             root.openConnection(name)
-            if (root._defaultConnection === "")
-                root._defaultConnection = name
         }
         function onConnectionRemoved(name: string): void {
             // Never retarget tabs — they keep their SQL and target name, and
             // render disabled until a same-named connection exists again.
             // (Silent retargeting is exactly wrong in a prod/staging split.)
-            if (root._defaultConnection === name)
-                root._defaultConnection = root._firstUsableConnection()
+            root._syncDefaultConnection()
         }
         function onConnectionRenamed(oldName: string, newName: string): void {
             if (!oldName || !newName || oldName === newName) return
@@ -3018,8 +3028,7 @@ Item {
                 const ws = WorkspaceManager.workspace(id)
                 root.workspaceName     = ws.name ?? root.workspaceName
                 root.workspaceConnections = ws.connections ?? []
-                if (root._defaultConnection === "" || !root._inWorkspace(root._defaultConnection))
-                    root._defaultConnection = root._firstUsableConnection()
+                root._syncDefaultConnection()
             }
         }
     }
