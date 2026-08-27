@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileDevice>
+#include <QRegularExpression>
 
 namespace {
 
@@ -24,6 +25,33 @@ QString resolveKeyPath(const QVariantMap &sshConfig)
     else if (keyFile.startsWith("~/"))
         keyFile = QDir::homePath() + keyFile.mid(1);
     return keyFile;
+}
+
+// -L takes host:port, so a bare IPv6 literal would be unparseable. ssh accepts
+// it in brackets.
+QString bracketIfIpv6(const QString &host)
+{
+    return host.contains(QLatin1Char(':')) && !host.startsWith(QLatin1Char('['))
+               ? QLatin1Char('[') + host + QLatin1Char(']')
+               : host;
+}
+
+// Both the readiness check and the forward probe open a connection, so ssh
+// reports a broken forward once per probe — same sentence, different channel
+// number. Show it once.
+QString uniqueLines(const QString &output)
+{
+    QStringList out;
+    const auto lines = output.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+    for (const QString &line : lines) {
+        // Drop the leading "channel N: " so repeats compare equal.
+        static const QRegularExpression channelPrefix(
+            QStringLiteral("^channel \\d+: "));
+        const QString trimmed = line.trimmed().remove(channelPrefix);
+        if (!trimmed.isEmpty() && !out.contains(trimmed))
+            out << trimmed;
+    }
+    return out.join(QLatin1Char('\n'));
 }
 
 // Boils ssh -v output down to something worth showing. The debug lines are the
@@ -110,7 +138,16 @@ int SshTunnel::start(const QVariantMap &sshConfig,
         return -1;
     }
 
-    const QString fwdSpec = QString("%1:127.0.0.1:%2").arg(m_localPort).arg(remotePort);
+    // The forward target is resolved by the SSH host, not by us: "localhost"
+    // here means the far end's loopback. Using the database host as configured
+    // is what makes a bastion work at all — the database is rarely on the
+    // bastion itself.
+    const QString fwdHost = remoteHost.trimmed().isEmpty()
+                                ? QStringLiteral("127.0.0.1")
+                                : bracketIfIpv6(remoteHost.trimmed());
+    const QString fwdSpec = QString("%1:%2:%3").arg(m_localPort)
+                                               .arg(fwdHost)
+                                               .arg(remotePort);
     const QString target  = sshUser.isEmpty() ? sshHost
                                                : (sshUser + "@" + sshHost);
 
@@ -146,6 +183,27 @@ int SshTunnel::start(const QVariantMap &sshConfig,
         errorMsg = "SSH tunnel did not become ready within 10 s.";
         if (!sshOutput.isEmpty())
             errorMsg += "\nssh output: " + sshOutput.trimmed();
+        stop();
+        return -1;
+    }
+
+    // A listening local port proves nothing: ssh binds it whether or not the
+    // far end is reachable, and only opens the channel once something
+    // connects. If that fails it closes the connection it just accepted, and
+    // the driver reports it as the *database* hanging up — which sends the
+    // user looking at the wrong machine entirely. Find out here instead.
+    if (!probeForward(m_localPort, 1200)) {
+        // ssh names the reason ("Connection refused", "Name or service not
+        // known"), which is the difference between a wrong port and a wrong
+        // host. It writes it as the channel fails, so give it a moment.
+        m_process->waitForReadyRead(300);
+        const QString sshOutput = uniqueLines(QString::fromUtf8(m_process->readAll()));
+        errorMsg = QString("SSH is connected, but forwarding to %1:%2 failed. "
+                           "Check that the database host and port are correct "
+                           "as seen from %3.")
+                       .arg(fwdHost).arg(remotePort).arg(sshHost);
+        if (!sshOutput.isEmpty())
+            errorMsg += "\nssh: " + sshOutput;
         stop();
         return -1;
     }
@@ -225,6 +283,24 @@ bool SshTunnel::verify(const QVariantMap &sshConfig, QString &message)
 
     message = sshFailureMessage(output);
     return false;
+}
+
+// A working forward leaves the probe connection open and silent — every
+// protocol qub tunnels has the client speak first, and even the ones that
+// greet (MySQL) do not hang up. A refused target is closed by ssh at once, so
+// an early disconnect is the signal. A target that black-holes packets instead
+// of refusing them still times out here and is let through: the alternative is
+// stalling every good connection for the length of ssh's own connect timeout.
+bool SshTunnel::probeForward(int port, int timeoutMs)
+{
+    QTcpSocket sock;
+    sock.connectToHost(QHostAddress::LocalHost, static_cast<quint16>(port));
+    if (!sock.waitForConnected(2000))
+        return false;
+
+    const bool closedByPeer = sock.waitForDisconnected(timeoutMs);
+    sock.abort();
+    return !closedByPeer;
 }
 
 void SshTunnel::stop()

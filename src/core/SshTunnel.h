@@ -49,6 +49,7 @@ public:
 
 private:
     bool waitForPort(int port, int timeoutMs);
+    bool probeForward(int port, int timeoutMs);
     int  findFreePort();
 
     QProcess *m_process  = nullptr;
