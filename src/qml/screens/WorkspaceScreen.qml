@@ -2180,73 +2180,80 @@ Item {
                                 return rows
                             }
 
-                            delegate: Loader {
-                                id: delegateItem3
+                            // Both row shapes live in the one delegate and
+                            // qualify their data through _snipRow. The folder
+                            // header and the entry used to be Components loaded
+                            // by a Loader that carried the row on a property of
+                            // its own — which this file's `pragma
+                            // ComponentBehavior: Bound` forbids a Component from
+                            // reading, so every binding in them resolved to
+                            // undefined and the whole list rendered blank.
+                            delegate: Item {
+                                id: _snipRow
+
                                 required property var modelData
-                                property var row: modelData
 
-                                // Indent snippets that sit under a folder header.
-                                x:     modelData.kind === "snippet" && modelData.snip.folder !== "" ? 10 : 0
-                                width: ListView.view.width - x
-                                sourceComponent: modelData.kind === "folder"
-                                                 ? _snipFolderHeader : _snipEntry
-                            }
-                        }
+                                readonly property bool isFolder: _snipRow.modelData.kind === "folder"
+                                readonly property var  snip:     _snipRow.modelData.snip ?? null
 
-                        Component {
-                            id: _snipFolderHeader
+                                width:  ListView.view.width
+                                height: _snipRow.isFolder ? 30 : _snipEntry.implicitHeight
 
-                            Item {
-                                height: 30
-
-                                Row {
-                                    anchors {
-                                        left: parent.left; leftMargin: Theme.sp2
-                                        verticalCenter: parent.verticalCenter
-                                    }
-                                    spacing: 6
-
-                                    Icon {
-                                        name:  row.collapsed ? Icons.caretRight : Icons.caretDown
-                                        size:  11
-                                        color: Theme.textSecondary
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                    Text {
-                                        text:  row.folder
-                                        color: Theme.textSecondary
-                                        font.family:    Theme.fontFamily
-                                        font.pixelSize: Theme.textXs
-                                        font.weight:    Theme.weightSemibold
-                                        anchors.verticalCenter: parent.verticalCenter
-                                    }
-                                }
-
-                                MouseArea {
+                                Item {
                                     anchors.fill: parent
-                                    cursorShape:  Qt.PointingHandCursor
-                                    onClicked:    _snippetList._toggleFolder(row.folder)
+                                    visible:      _snipRow.isFolder
+
+                                    Row {
+                                        anchors {
+                                            left: parent.left; leftMargin: Theme.sp2
+                                            verticalCenter: parent.verticalCenter
+                                        }
+                                        spacing: 6
+
+                                        Icon {
+                                            name:  _snipRow.modelData.collapsed ? Icons.caretRight : Icons.caretDown
+                                            size:  11
+                                            color: Theme.textSecondary
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                        Text {
+                                            text:  _snipRow.modelData.folder ?? ""
+                                            color: Theme.textSecondary
+                                            font.family:    Theme.fontFamily
+                                            font.pixelSize: Theme.textXs
+                                            font.weight:    Theme.weightSemibold
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape:  Qt.PointingHandCursor
+                                        onClicked:    _snippetList._toggleFolder(_snipRow.modelData.folder)
+                                    }
                                 }
-                            }
-                        }
 
-                        Component {
-                            id: _snipEntry
+                                SidebarEntry {
+                                    id: _snipEntry
 
-                            SidebarEntry {
-                                label: row.snip.name
+                                    anchors.fill: parent
+                                    // Indent snippets that sit under a folder header.
+                                    anchors.leftMargin: (_snipRow.snip?.folder ?? "") !== "" ? 10 : 0
+                                    visible:            !_snipRow.isFolder
 
-                                readonly property bool _orphaned:
-                                    row.snip.connectionName !== "" &&
-                                    ConnectionManager.connections.every(
-                                        c => c.name !== row.snip.connectionName)
+                                    readonly property bool _orphaned:
+                                        (_snipRow.snip?.connectionName ?? "") !== "" &&
+                                        ConnectionManager.connections.every(
+                                            c => c.name !== _snipRow.snip.connectionName)
 
-                                severity: _orphaned ? "warning" : ""
-                                detail:   _orphaned
-                                    ? "⚠ connection not found"
-                                    : row.snip.connectionName
+                                    label:    _snipRow.snip?.name ?? ""
+                                    severity: _snipEntry._orphaned ? "warning" : ""
+                                    detail:   _snipEntry._orphaned
+                                        ? "⚠ connection not found"
+                                        : (_snipRow.snip?.connectionName ?? "")
 
-                                onClicked: queryEditor.insertAtCursor(row.snip.sql)
+                                    onClicked: queryEditor.insertAtCursor(_snipRow.snip.sql)
+                                }
                             }
                         }
 
