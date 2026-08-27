@@ -42,27 +42,44 @@ DRIVER_DST="$APP/Contents/PlugIns/sqldrivers"
 FRAMEWORKS="$APP/Contents/Frameworks"
 mkdir -p "$FRAMEWORKS"
 
-# Where to look for a client library that macdeployqt could not resolve. Homebrew
+# >>> repair helpers — extracted and exercised by tests/tst_mac.sh, which fakes
+# otool, install_name_tool and brew. Keep the markers: the test reads the code
+# between them out of this file so that what it exercises is what ships.
+# Where to look for a client library whose recorded path does not exist on this
+# machine — Qt's plugins name the libraries of Qt's own build host. Homebrew
 # keg-only formulae are not symlinked into the prefix, hence the explicit opt/
 # entries. `brew --prefix <formula>` exits non-zero for a formula that is not
-# installed, and with `set -o pipefail` that would abort the whole function
-# before the fixed paths below ever got listed — so each lookup is neutralised.
-search_dirs() {
-    local f p
-    for f in libpq libiodbc unixodbc openssl@3; do
-        p="$(brew --prefix "$f" 2>/dev/null || true)"
-        if [ -n "$p" ]; then echo "$p/lib"; fi
-    done
-    echo "/usr/local/lib"
-    echo "/opt/homebrew/lib"
-}
+# installed, so each lookup is neutralised.
+#
+# Built once into a variable rather than re-run per lookup: as a function piped
+# into a loop that returns early, every lookup that hit on the first directory
+# killed the pipe and printed "echo: write error: Broken pipe".
+SEARCH_DIRS=""
+for f in libpq libiodbc unixodbc openssl@3 krb5; do
+    d="$(brew --prefix "$f" 2>/dev/null || true)"
+    if [ -n "$d" ]; then SEARCH_DIRS="$SEARCH_DIRS $d/lib"; fi
+done
+SEARCH_DIRS="$SEARCH_DIRS /usr/local/lib /opt/homebrew/lib"
 
 locate_lib() {
     local name="$1" dir
-    while read -r dir; do
+    for dir in $SEARCH_DIRS; do
         if [ -f "$dir/$name" ]; then echo "$dir/$name"; return 0; fi
-    done < <(search_dirs)
+    done
     return 1
+}
+
+# The dependencies of a Mach-O file, and only those. Two lines in `otool -L`
+# output are not dependencies and cost 0.44.9-rc.8 its macOS package:
+#
+#   * a header line per architecture, unindented, which in a universal binary
+#     appears once per slice — `tail -n +2` dropped the first and kept the rest;
+#   * the file's own install name, which is the first indented line.
+#
+# Header lines are dropped by requiring the leading tab; the self-reference is
+# dropped by basename, since nothing links against a file named like itself.
+deps() {
+    otool -L "$1" | grep '^	' | awk '{print $1}' | sort -u
 }
 
 # References that need no rewriting: already relative to the bundle, or part of
@@ -86,9 +103,16 @@ fix_binary() {
     while read -r ref; do
         if is_ok_ref "$ref"; then continue; fi
         lib="$(basename "$ref")"
+        # A universal binary lists its own install name once per slice.
+        if [ "$lib" = "$(basename "$target")" ]; then continue; fi
 
         if [ ! -f "$FRAMEWORKS/$lib" ]; then
-            if found="$(locate_lib "$lib")"; then
+            # The recorded path first: a reference that still resolves here is
+            # the library this binary was actually linked against, and chasing
+            # it beats guessing from a search list. Homebrew's libpq names its
+            # krb5 and OpenSSL that way, and no search list would have to know.
+            if [ -f "$ref" ]; then found="$ref"; else found=""; fi
+            if [ -n "$found" ] || found="$(locate_lib "$lib")"; then
                 cp "$found" "$FRAMEWORKS/$lib"
                 chmod u+w "$FRAMEWORKS/$lib"
                 install_name_tool -id "@executable_path/../Frameworks/$lib" \
@@ -103,13 +127,12 @@ fix_binary() {
 
         install_name_tool -change "$ref" \
             "@executable_path/../Frameworks/$lib" "$target"
-    # Skip the first otool -L line: it is the file's own install name, not a
-    # dependency.
-    done < <(otool -L "$target" | tail -n +2 | awk '{print $1}')
+    done < <(deps "$target")
     # Explicit: the function is read through a pipeline under `set -o pipefail`,
     # so it must not end on the incidental status of a loop that finished.
     return 0
 }
+# <<< repair helpers
 
 BROKEN_DRIVERS=""
 for plugin in "$DRIVER_DST"/*.dylib; do

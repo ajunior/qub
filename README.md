@@ -139,8 +139,9 @@ locally with one command rather than by reading YAML:
 bash scripts/ci-check.sh
 ```
 
-It builds, runs the unit tests, boots the app headless and requires it to stay
-up **and stay silent** (Qt reports a broken QML binding on stderr without
+It builds, runs the unit tests, exercises the macOS and Windows packagers
+against fake `otool`/`dumpbin` output, boots the app headless and requires it to
+stay up **and stay silent** (Qt reports a broken QML binding on stderr without
 exiting non-zero), then runs `qmllint` against a checked-in ceiling per warning
 category. By default it builds against the pinned Mahina commit, the way CI
 does; pass `--local-mahina` to use a `../mahina` checkout instead.
