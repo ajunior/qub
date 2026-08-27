@@ -21,6 +21,11 @@ public:
                int                remotePort,
                QString           &errorMsg);
 
+    // Checks that ssh can log in to the host in a config, without forwarding
+    // anything. Blocks (up to ~20 s); safe to call from a worker thread.
+    // Returns true on success; message always carries something to show.
+    static bool verify(const QVariantMap &sshConfig, QString &message);
+
     void stop();
     bool isRunning() const;
     int  localPort() const { return m_localPort; }

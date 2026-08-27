@@ -616,6 +616,47 @@ Item {
                                         property var    _editingConfig:     ({})
                                         property string _pendingDeleteId:   ""
                                         property string _pendingDeleteName: ""
+                                        property bool   _testing:           false
+
+                                        function _formData(): var {
+                                            return {
+                                                name:     _sName.text.trim(),
+                                                host:     _sHost.text.trim(),
+                                                port:     _sPort.value,
+                                                username: _sUser.text.trim(),
+                                                keyPath:  _sKey.text.trim()
+                                            }
+                                        }
+                                        // Logs in and drops the session again — no tunnel is opened, so an
+                                        // unsaved form can be tried before it is saved.
+                                        function _test(cfg: var): void {
+                                            _sshAlert.type    = Alert.Type.Info
+                                            _sshAlert.message = "Testing "
+                                                + (cfg.username ? cfg.username + "@" : "")
+                                                + cfg.host + ":" + (cfg.port || 22) + "…"
+                                            _sshAlert.visible = true
+                                            SshManager.testConfig(cfg)
+                                        }
+
+                                        Connections {
+                                            target: SshManager
+
+                                            function onTestPending(pending: bool): void {
+                                                _sshSection._testing = pending
+                                            }
+                                            function onTestResult(success: bool, message: string): void {
+                                                _sshAlert.type    = success ? Alert.Type.Success : Alert.Type.Error
+                                                _sshAlert.message = message
+                                                _sshAlert.visible = true
+                                            }
+                                            function onHostKeyConfirmationRequired(host: string, fingerprints: string): void {
+                                                _sshHostKeyDialog.dialogMessage =
+                                                    "qub has never connected to " + host + ".\n" +
+                                                    "Compare the fingerprint below with one obtained from the " +
+                                                    "server administrator before trusting it:\n\n" + fingerprints
+                                                _sshHostKeyDialog.open()
+                                            }
+                                        }
 
                                         function _openCreate(): void {
                                             _editingId     = ""
@@ -702,6 +743,17 @@ Item {
                                                     backgroundOpacity: _sshRow.hovered ? 0.0 : 1.0
                                                     Behavior on backgroundOpacity { NumberAnimation { duration: Theme.durationFast } }
                                                     anchors.verticalCenter: parent.verticalCenter
+                                                }
+                                                Tooltip {
+                                                    text: "Test SSH connection"
+
+                                                    Button {
+                                                        iconOnly: true
+                                                        iconName: Icons.plugsConnected
+                                                        variant:  Button.Variant.Ghost
+                                                        enabled:  !_sshSection._testing
+                                                        onClicked: _sshSection._test(_sshRow.modelData)
+                                                    }
                                                 }
                                                 Tooltip {
                                                     text: "Edit SSH connection"
@@ -826,6 +878,15 @@ Item {
                                             RowLayout {
                                                 Layout.fillWidth: true
                                                 spacing: 8
+                                                Button {
+                                                    text:    _sshSection._testing ? "Testing…" : "Test"
+                                                    variant: Button.Variant.Outlined
+                                                    enabled: !_sshSection._testing
+                                                             && _sHost.text.trim() !== ""
+                                                             && _sUser.text.trim() !== ""
+                                                    onClicked: _sshSection._test(_sshSection._formData())
+                                                }
+
                                                 Item { Layout.fillWidth: true }
                                                 Button {
                                                     text:    "Cancel"
@@ -3045,6 +3106,18 @@ Item {
         isDestructive: true
         z:             100
         onConfirmed:   SshManager.removeConfig(_sshSection._pendingDeleteId)
+    }
+
+    // Shown when a tested SSH host is not in known_hosts yet. Trusting it here
+    // writes the key and re-runs the test.
+    ConfirmDialog {
+        id:          _sshHostKeyDialog
+        dialogTitle: "Verify SSH host key"
+        confirmText: "Trust & Test"
+        cancelText:  "Cancel"
+        z:           100
+        onConfirmed: SshManager.acceptTestHostKey()
+        onCancelled: SshManager.rejectTestHostKey()
     }
 
     FileDialog {
