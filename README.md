@@ -57,7 +57,7 @@ AI helped write the code. Every feature, every decision, and every line of code 
 
 Live share and multi-connection raise fair questions about where your data goes. Here is what qub does:
 
-- **Passwords go to the system keychain**, not to disk. qub uses the OS keychain (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows) and never writes credentials itself.
+- **Passwords go to the system keychain**, not to disk. qub uses the OS keychain (Keychain on macOS, Secret Service on Linux, Credential Manager on Windows) and never writes credentials itself. Expect your system to ask about it: macOS shows a keychain prompt the first time a saved password is read — and again after each update, since the permission is tied to that build — and a Linux desktop asks to unlock the keyring if it is not already unlocked at login. Windows does not prompt.
 - **Live share links are token-protected.** No token, no access.
 - **Nothing leaves your machine unless you share it.** The live share server is local. There is no telemetry, no cloud, no external service.
 
