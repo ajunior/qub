@@ -1,0 +1,66 @@
+name: CI
+
+# Every gate lives in scripts/ci-check.sh, not in this file, so a red run can be
+# reproduced locally with one command instead of by reading YAML:
+#
+#     CMAKE_PREFIX_PATH=~/Qt/6.11.2/gcc_64 bash scripts/ci-check.sh
+#
+# Until this existed, nothing checked a push or a pull request: release.yml only
+# runs on a version tag, which is far too late to learn that the app no longer
+# boots.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, test, boot and lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Pinned rather than floating, and the same version release.yml ships on:
+      # the qmllint warning ceilings in scripts/qmllint-baseline.txt were
+      # measured against this exact Qt, and qmllint gains checks between
+      # releases. Bump the two together.
+      - name: Install Qt
+        uses: jurplel/install-qt-action@48d3ad6db93f3627c8ee7a0454bc6f3744f7e730 # v4.3.1
+        with:
+          version: 6.11.2
+          modules: 'qtwebsockets qthttpserver'
+          cache: true
+
+      # libsecret is a build dependency (qtkeychain links it for the Secret
+      # Service backend). The rest are what Qt's offscreen platform plugin still
+      # wants present at boot: it renders nothing, but it initialises a GL stack,
+      # a keyboard mapping and fontconfig all the same.
+      - name: Install system libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            libsecret-1-dev \
+            libgl1 libegl1 libxkbcommon0 libfontconfig1
+
+      - name: Run the gate
+        env:
+          CMAKE_PREFIX_PATH: ${{ env.QT_ROOT_DIR }}
+        run: bash scripts/ci-check.sh "${{ runner.temp }}/build-ci"
+
+      # The gate prints what failed, but the underlying compiler, ctest, boot and
+      # qmllint output is what you actually need to fix it.
+      - name: Upload logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-logs
+          path: ${{ runner.temp }}/build-ci/ci-logs/
+          retention-days: 7

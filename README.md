@@ -2,6 +2,8 @@
 
 <img src="assets/cube.svg" width="80" alt="qub logo"/>
 
+[![CI](https://github.com/ajunior/qub/actions/workflows/ci.yml/badge.svg)](https://github.com/ajunior/qub/actions/workflows/ci.yml)
+
 The SQL editor I built because I needed it. Shared because you might too.
 
 Connect to multiple databases, run queries, browse your history, and share live results with a link.
@@ -129,6 +131,19 @@ cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.x.x/gcc_64
 ```bash
 ctest --test-dir build --output-on-failure
 ```
+
+Everything CI checks lives in one script, so a red pipeline can be reproduced
+locally with one command rather than by reading YAML:
+
+```bash
+bash scripts/ci-check.sh
+```
+
+It builds, runs the unit tests, boots the app headless and requires it to stay
+up **and stay silent** (Qt reports a broken QML binding on stderr without
+exiting non-zero), then runs `qmllint` against a checked-in ceiling per warning
+category. By default it builds against the pinned Mahina commit, the way CI
+does; pass `--local-mahina` to use a `../mahina` checkout instead.
 
 ## UI
 
