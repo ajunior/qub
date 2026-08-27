@@ -8,7 +8,10 @@ on:
   workflow_dispatch:
 
 env:
-  QT_VERSION: '6.11.1'
+  # Kept in step with ci.yml, which is the gate every change passes through and
+  # which the qmllint baseline is measured against. Shipping on a Qt the gate
+  # never ran on would mean the checks that guard a release ran somewhere else.
+  QT_VERSION: '6.11.2'
   CMAKE_BUILD_TYPE: Release
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -84,9 +87,10 @@ jobs:
           modules: 'qtwebsockets qthttpserver'
           cache: true
           # Qt reorganised its Windows repository at 6.11: the metadata moved from
-          # qt6_6111/qt6_6111/ to one directory per compiler (qt6_6111_msvc2022_64/).
+          # qt6_611N/qt6_611N/ to one directory per compiler (qt6_611N_msvc2022_64/).
           # Released aqtinstall 3.3.0 still builds the old path and 404s, so the
-          # Windows job needs the unreleased fix. Pinned to a commit, never a branch.
+          # Windows job needs the unreleased fix. Pinned to a commit, never a
+          # branch. This is about the 6.11 layout, not one patch release.
           # Drop this once aqtinstall 3.4.0 is on PyPI.
           aqtsource: 'git+https://github.com/miurahr/aqtinstall.git@16db45a'
 

@@ -18,3 +18,4 @@ CMakeUserPresets.json
 .clangd
 __pycache__/
 query.md
+build-ci/
