@@ -29,6 +29,23 @@ ColumnLayout {
     // Suppresses the driver-change port autofill while loadNew/loadEdit run.
     property bool _loading: false
 
+    // Drivers the connection form offers. Only what Qt can actually load here:
+    // a driver with no plugin behind it produces a connection that fails with
+    // "driver could not be loaded" and nothing the user can do about it, and
+    // Qt's official macOS and Windows binaries ship no MySQL plugin at all.
+    //
+    // _unusableDriver is the exception. Editing a connection saved with a
+    // driver this build lacks — imported from another machine, most likely —
+    // keeps that driver in the list so opening the form does not silently
+    // rewrite it to whatever sorts first.
+    property string _unusableDriver: ""
+    readonly property var _driverLabels: {
+        const avail = Drivers.availableLabels(ConnectionManager.availableDrivers)
+        return (root._unusableDriver !== "" && avail.indexOf(root._unusableDriver) === -1)
+            ? avail.concat([root._unusableDriver])
+            : avail
+    }
+
     // Docker discovery: whether the `docker` CLI is present (cached once, per
     // loadNew, rather than re-scanning PATH on every binding) and the last set
     // of discovered database containers offered in the picker menu.
@@ -105,6 +122,7 @@ ColumnLayout {
     function loadNew(): void {
         _loading = true
         editingName              = ""
+        _unusableDriver          = ""
         _nameInput.text          = ""
         _driverDrop.currentIndex = 0
         _profileDrop.currentIndex = 0
@@ -164,7 +182,13 @@ ColumnLayout {
         editingName = conn.name
         _nameInput.text = conn.name
 
-        const di = _driverDrop.model.indexOf(Drivers.label(conn.driver))
+        // Set _unusableDriver before reading the model: _driverLabels appends it,
+        // so the index below finds the saved driver rather than falling back to
+        // the first entry and quietly changing what the connection is.
+        const savedLabel = Drivers.label(conn.driver)
+        if (root._driverLabels.indexOf(savedLabel) === -1)
+            root._unusableDriver = savedLabel
+        const di = _driverDrop.model.indexOf(savedLabel)
         _driverDrop.currentIndex = di >= 0 ? di : 0
         const pi = ProfileManager.profiles.findIndex(p => p.id === conn.profileId)
         _profileDrop.currentIndex = pi >= 0 ? pi + 1 : 0
@@ -254,7 +278,7 @@ ColumnLayout {
             id: _driverDrop
             label: "Driver"
             Layout.preferredWidth: 160
-            model: ["PostgreSQL", "MySQL", "MariaDB", "SQLite", "Oracle", "Firebird", "ODBC"]
+            model: root._driverLabels
             onCurrentIndexChanged: {
                 if (root._loading) return
                 _alert.visible = false
@@ -502,6 +526,17 @@ ColumnLayout {
             echoMode: TextInput.Password
             Layout.fillWidth: true
         }
+    }
+
+    // Kept apart from _alert, which is cleared by half the handlers in this
+    // file: this one states a fact about the build, not the result of an action.
+    Alert {
+        Layout.fillWidth: true
+        type:    Alert.Type.Warning
+        visible: root._unusableDriver !== ""
+                 && _driverDrop.currentValue === root._unusableDriver
+        message: "This build has no " + root._unusableDriver + " driver, so the "
+               + "connection cannot be opened here. Saving keeps the driver as it is."
     }
 
     Alert {

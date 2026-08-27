@@ -22,6 +22,11 @@ class ConnectionManager : public QObject, public AdapterProvider {
 public:
     Q_PROPERTY(QVariantList connections READ connections NOTIFY connectionsChanged)
 
+    // Qt driver keys this build can actually load ("QPSQL", "QSQLITE", …).
+    // Constant: Qt resolves its sqldrivers plugins once, at first use, and the
+    // set cannot change while the app is running.
+    Q_PROPERTY(QStringList availableDrivers READ availableDrivers CONSTANT)
+
 public:
     explicit ConnectionManager(CredentialStore *credentials,
                                SshManager      *ssh     = nullptr,
@@ -30,6 +35,7 @@ public:
     ~ConnectionManager() override;
 
     QVariantList connections() const;
+    QStringList  availableDrivers() const;
 
     Q_INVOKABLE void        addConnection(const QVariantMap &params);
     Q_INVOKABLE void        removeConnection(const QString &name);

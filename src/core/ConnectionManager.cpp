@@ -12,6 +12,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QStandardPaths>
+#include <QSqlDatabase>
 #include <QtConcurrent/QtConcurrent>
 #include <QFutureWatcher>
 #include <algorithm>
@@ -84,6 +85,18 @@ ConnectionManager::ConnectionManager(CredentialStore *credentials,
 ConnectionManager::~ConnectionManager()
 {
     qDeleteAll(m_adapters);
+}
+
+QStringList ConnectionManager::availableDrivers() const
+{
+    // The plugin key map, not a dlopen of each plugin: a driver listed here has
+    // its Qt plugin present, which is not the same as its vendor client library
+    // being installed. That second failure is reported at connect time by
+    // QtSqlAdapter, with a hint naming the library. What this does rule out is
+    // offering a driver whose plugin does not exist at all — Qt's official
+    // macOS and Windows binaries ship none for MySQL, and the macOS ones none
+    // for Oracle or Firebird.
+    return QSqlDatabase::drivers();
 }
 
 QVariantList ConnectionManager::connections() const
