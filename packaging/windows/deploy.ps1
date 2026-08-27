@@ -58,10 +58,8 @@ Copy-Item $Exe "$StageDir\qub.exe"
 
 # ── DLLs built alongside qub ─────────────────────────────────────────────────
 # qtkeychain comes in through FetchContent, so qt6keychain.dll is produced in the
-# build tree rather than shipped next to Qt. windeployqt resolves an executable's
-# imports from the directory that executable sits in, so anything built here has
-# to be staged before it runs — otherwise it reports the import as unresolvable
-# and stops. The installer needs these files regardless.
+# build tree rather than shipped next to Qt. The installer needs it, so stage it
+# with everything else the build produced.
 Get-ChildItem -Path $BuildDir -Recurse -Filter *.dll |
     Where-Object { $_.FullName -notmatch '[\\/]CMakeFiles[\\/]' } |
     ForEach-Object {
@@ -70,14 +68,36 @@ Get-ChildItem -Path $BuildDir -Recurse -Filter *.dll |
     }
 
 # ── windeployqt ─────────────────────────────────────────────────────────────
-& $WinDeployQt `
-    --no-translations `
-    --no-system-d3d-compiler `
-    --no-opengl-sw `
-    --qmldir src\qml `
-    "$StageDir\qub.exe"
+# A dependency named qt6keychain.dll reads to windeployqt as one of Qt's own
+# libraries, so it goes looking in Qt's bin directory and fails there — staging
+# the DLL next to the executable does not help, and there is no flag to add a
+# search path. So lend Qt's bin directory whatever it is missing for the length
+# of the call, and take it back out afterwards whatever happens.
+$QtBin    = Split-Path $WinDeployQt
+$Borrowed = @()
+foreach ($dll in Get-ChildItem $StageDir -Filter *.dll) {
+    $target = Join-Path $QtBin $dll.Name
+    if (-not (Test-Path $target)) {
+        Copy-Item $dll.FullName $target
+        $Borrowed += $target
+    }
+}
 
-if ($LASTEXITCODE -ne 0) { throw "windeployqt failed" }
+try {
+    & $WinDeployQt `
+        --no-translations `
+        --no-system-d3d-compiler `
+        --no-opengl-sw `
+        --qmldir src\qml `
+        "$StageDir\qub.exe"
+
+    if ($LASTEXITCODE -ne 0) { throw "windeployqt failed" }
+}
+finally {
+    foreach ($lent in $Borrowed) {
+        Remove-Item $lent -Force -ErrorAction SilentlyContinue
+    }
+}
 
 # ── Bundle SQL driver plugins ────────────────────────────────────────────────
 $QtPlugins = & $Qmake -query QT_INSTALL_PLUGINS
