@@ -100,7 +100,7 @@ Item {
                     // no such check, so the gate only ever stopped the one
                     // route a first-run user would find.
                     text:     "Workspace"
-                    iconName: Icons.layout
+                    iconName: Icons.stack
                     variant:  Button.Variant.Ghost
                     onClicked: root.goToWorkspace()
                 }
