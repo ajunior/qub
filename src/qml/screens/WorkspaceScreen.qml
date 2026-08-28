@@ -252,7 +252,8 @@ Item {
         if (_defaultConnection !== "" && _inWorkspace(_defaultConnection)
             && _connExists(_defaultConnection))
             return
-        _defaultConnection = (_activeTabUsable ? activeConnection : "")
+        _defaultConnection = _activeTabUsable ? activeConnection
+                                              : _firstUsableConnection()
                           || _firstUsableConnection()
     }
     onActiveConnectionChanged:   _syncDefaultConnection()
@@ -699,6 +700,18 @@ Item {
         _sessionDirty = false
     }
 
+    // A workspace whose first tab was built before it had any connection keeps
+    // an empty target on that tab: nothing runs, and the reconnect button is
+    // hidden because it only ever acts on the active tab's connection and there
+    // is none. Adding a connection later has to reach that tab, or the
+    // workspace stays stuck and the home screen is the only way out — which is
+    // exactly what the default workspace does on a first run.
+    function _adoptIfUnassigned(name: string): void {
+        if (!name || !_inWorkspace(name)) return
+        const t = _queryTabs[_activeQueryTabIdx]
+        if (t && !t.connectionName) _setActiveTabConnection(name)
+    }
+
     // Bring a connection into this workspace (adding it if needed) and give
     // it a tab. Used by the Home screen's connection cards and new-connection
     // flow — an explicit act, so the implicit add is the low-friction choice.
@@ -1100,7 +1113,7 @@ Item {
                 // ── Default-connection dropdown ───────────────────────────────
                 // Picks the connection new tabs open on; never retargets a tab.
                 Tooltip {
-                    text: "Default connection for new tabs"
+                    text: "Default connection for new tabs — an offline one connects when picked"
                     Button {
                         id:       _connBtn
                         iconName: Icons.database
@@ -1114,19 +1127,35 @@ Item {
                 Menu {
                     id:     _connMenu
                     anchor: _connBtn
-                    // Only connections in this workspace are offered.
+                    // Only connections in this workspace are offered. The row icon
+                    // is the connection's state, in the same two symbols the status
+                    // bar uses; the check mark is which one new tabs open on.
                     model: {
                         const items = root._usableConnections.map(c => ({
                             label:   c.name,
+                            icon:    c.connected ? Icons.checkCircle : Icons.xCircle,
                             checked: c.name === root._defaultConnection,
-                            _conn:   c.name
+                            _conn:   c.name,
+                            _down:   !c.connected
                         }))
                         if (items.length > 0) items.push(null)
                         items.push({ label: "Add connection to workspace…", icon: Icons.plus, _act: "add" })
                         return items
                     }
                     onTriggered: (index, item) => {
-                        if (item._conn !== undefined) root._defaultConnection = item._conn
+                        if (item._conn !== undefined) {
+                            root._defaultConnection = item._conn
+                            // Picking an offline connection opens it. Otherwise the
+                            // only way in was the reconnect button, which acts on the
+                            // active tab's connection alone and hides itself while
+                            // that one is up — so a second, offline connection could
+                            // only be reached by leaving for the home screen.
+                            root._adoptIfUnassigned(item._conn)
+                            if (item._down) {
+                                _toaster.show("Connecting to " + item._conn + "…", Toaster.Type.Info)
+                                ConnectionManager.reconnect(item._conn)
+                            }
+                        }
                         else if (item._act === "add") _wsFormDialog.openConnections(root.workspaceId)
                     }
                 }
@@ -2303,16 +2332,20 @@ Item {
     Connections {
         target: ConnectionManager
         function onConnectionAdded(name: string): void {
-            // Reconnect of the active connection: retry the pending query.
-            if (root._reconnectRetryPending && name === root.activeConnection) {
-                root._reconnectRetryPending = false
-                _toaster.show("Reconnected. Retrying query…", Toaster.Type.Success)
-                QueryExecutor.execute(root.activeConnection, root._executingSql)
-                return
-            }
             // A genuinely new connection created from inside this workspace:
             // add it to the workspace (an explicit act) and give it a tab.
             root.openConnection(name)
+        }
+        // The auto-reconnect retry belongs here rather than on connectionAdded,
+        // which fires when a connection is *saved*. reconnect() reopens one that
+        // already exists and emits connectionOpened alone, so the retry never ran
+        // and the pending flag stayed true — which then blocked the next
+        // auto-reconnect, the guard being !_reconnectRetryPending.
+        function onConnectionOpened(name: string): void {
+            if (!root._reconnectRetryPending || name !== root.activeConnection) return
+            root._reconnectRetryPending = false
+            _toaster.show("Reconnected. Retrying query…", Toaster.Type.Success)
+            QueryExecutor.execute(root.activeConnection, root._executingSql)
         }
         function onConnectionRemoved(name: string): void {
             // Never retarget tabs — they keep their SQL and target name, and
@@ -3029,6 +3062,7 @@ Item {
                 root.workspaceName     = ws.name ?? root.workspaceName
                 root.workspaceConnections = ws.connections ?? []
                 root._syncDefaultConnection()
+                root._adoptIfUnassigned(root._defaultConnection)
             }
         }
     }
