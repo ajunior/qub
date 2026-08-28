@@ -251,6 +251,25 @@ Item {
                 anchors { left: parent.left; right: parent.right; top: parent.top; topMargin: 10 }
                 spacing: 8
 
+                // ── Full message ──────────────────────────────────────────────
+                // The summary row shows only the first line, so a multi-line
+                // driver error (libpq writes three) is readable only here.
+                Rectangle {
+                    Layout.fillWidth: true
+                    visible: _det.entry !== null && String(_det.entry.message ?? "").indexOf("\n") !== -1
+                    Layout.preferredHeight: _msgTxt.implicitHeight + 16
+                    color:   Theme.surfaceVariant
+                    radius:  Theme.radiusSm
+                    Text {
+                        id:      _msgTxt
+                        anchors { left: parent.left; right: parent.right; top: parent.top; margins: 8 }
+                        text:    _det.entry ? (_det.entry.message ?? "") : ""
+                        color:   Theme.textSecondary
+                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
                 // ── SSH ───────────────────────────────────────────────────────
                 PropertyGrid {
                     Layout.fillWidth: true
