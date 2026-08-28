@@ -188,6 +188,55 @@
     }
     .btn-ghost:hover { color: var(--text); border-color: var(--text-sec); }
 
+    /* ── Download picker ───────────────────────────────────────────────── */
+    /* The toggle stays hidden until the script wires it up, so with no
+       JavaScript the button is still the plain link it always was. */
+    .dl { position: relative; display: inline-flex; }
+    .dl-toggle {
+      display: none;
+      margin-left: 1px;
+      padding: 11px 13px;
+      font-size: 11px;
+    }
+    .dl.ready .dl-toggle { display: inline-flex; border-radius: 0 8px 8px 0; }
+    .dl.ready .dl-main   { border-radius: 8px 0 0 8px; }
+    .dl-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 30;
+      display: none;
+      min-width: 280px;
+      padding: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 10px;
+      box-shadow: 0 18px 44px rgba(0,0,0,0.45);
+      text-align: left;
+    }
+    .dl.open .dl-menu { display: block; }
+    .dl-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      border-radius: 7px;
+      font-size: 13.5px;
+      transition: background 0.15s;
+    }
+    .dl-item:hover, .dl-item:focus-visible { background: var(--primary-s); outline: none; }
+    .dl-item .os   { font-weight: 600; }
+    .dl-item .meta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-sec); }
+    .dl-foot {
+      margin-top: 6px;
+      padding: 8px 10px 3px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-sec);
+    }
+    .dl-foot a { color: var(--primary); }
+    .dl-foot a:hover { text-decoration: underline; }
+
     /* ── App mockup ────────────────────────────────────────────────────── */
     .app-mockup {
       background: var(--surface);
@@ -569,7 +618,21 @@
     </div>
     <p class="hero-tagline">The SQL editor I built because I needed it.<br>Shared because you might too.</p>
     <div class="hero-actions">
-      <a class="btn btn-primary" href="https://github.com/ajunior/qub/releases">Download</a>
+      <div class="dl" id="dl">
+        <a class="btn btn-primary dl-main" id="dl-main"
+           href="https://github.com/ajunior/qub/releases">Download</a>
+        <button class="btn btn-primary dl-toggle" id="dl-toggle" type="button"
+                aria-haspopup="true" aria-expanded="false"
+                aria-label="Choose a platform">&#9662;</button>
+        <div class="dl-menu" id="dl-menu" role="menu">
+          <a class="dl-item" role="menuitem" data-os="macos"   href="https://github.com/ajunior/qub/releases"><span class="os">macOS</span><span class="meta">.dmg</span></a>
+          <a class="dl-item" role="menuitem" data-os="windows" href="https://github.com/ajunior/qub/releases"><span class="os">Windows</span><span class="meta">.exe</span></a>
+          <a class="dl-item" role="menuitem" data-os="linux"   href="https://github.com/ajunior/qub/releases"><span class="os">Linux</span><span class="meta">.AppImage</span></a>
+          <div class="dl-foot">
+            <a href="https://github.com/ajunior/qub/releases">All releases and checksums</a>
+          </div>
+        </div>
+      </div>
       <a class="btn btn-ghost" href="https://github.com/ajunior/qub">View Source</a>
       <a class="btn btn-ghost" href="help.html">Docs</a>
     </div>
@@ -786,6 +849,91 @@
     <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">License</a>
   </div>
 </footer>
+
+<script>
+// ── Download picker ──────────────────────────────────────────────────────
+// Names the visitor's own platform on the button and puts the other two a
+// click away. The asset URLs come from the GitHub API so a new release needs
+// no edit here; when the call fails — offline, rate-limited — every link
+// falls back to the version pinned below, and the button still works.
+(function () {
+  var VERSION = '0.44.9';
+  var REPO    = 'ajunior/qub';
+  var TARGETS = {
+    macos:   { label: 'macOS',   file: 'qub-VER-macos.dmg',       match: /\.dmg$/ },
+    windows: { label: 'Windows', file: 'qub-VER-setup.exe',       match: /setup\.exe$/ },
+    linux:   { label: 'Linux',   file: 'qub-VER-x86_64.AppImage', match: /\.AppImage$/ }
+  };
+
+  var box    = document.getElementById('dl');
+  var main   = document.getElementById('dl-main');
+  var toggle = document.getElementById('dl-toggle');
+  var items  = [].slice.call(document.querySelectorAll('.dl-item'));
+  if (!box || !main || !toggle) return;
+
+  function pinned(os) {
+    return 'https://github.com/' + REPO + '/releases/download/v' + VERSION + '/' +
+           TARGETS[os].file.replace('VER', VERSION);
+  }
+
+  function detect() {
+    var s = (navigator.userAgentData && navigator.userAgentData.platform) ||
+            navigator.platform || navigator.userAgent || '';
+    if (/mac|iphone|ipad/i.test(s)) return 'macos';
+    if (/win/i.test(s))             return 'windows';
+    if (/linux|x11|cros/i.test(s))  return 'linux';
+    return null;
+  }
+
+  function size(bytes) {
+    return bytes ? (bytes / 1048576).toFixed(0) + ' MB' : '';
+  }
+
+  // Fill in the pinned URLs first: whatever the network does, the menu works.
+  items.forEach(function (a) { a.href = pinned(a.getAttribute('data-os')); });
+
+  var os = detect();
+  if (os) {
+    main.href = pinned(os);
+    main.textContent = 'Download for ' + TARGETS[os].label;
+  }
+  box.classList.add('ready');
+
+  function open(yes) {
+    box.classList.toggle('open', yes);
+    toggle.setAttribute('aria-expanded', yes ? 'true' : 'false');
+  }
+  toggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    open(!box.classList.contains('open'));
+  });
+  document.addEventListener('click', function (e) {
+    if (!box.contains(e.target)) open(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && box.classList.contains('open')) { open(false); toggle.focus(); }
+  });
+
+  // The real assets, when GitHub answers.
+  fetch('https://api.github.com/repos/' + REPO + '/releases/latest')
+    .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+    .then(function (rel) {
+      var assets = rel.assets || [];
+      var tag = (rel.tag_name || '').replace(/^v/, '');
+      items.forEach(function (a) {
+        var t = TARGETS[a.getAttribute('data-os')];
+        var hit = assets.filter(function (x) { return t.match.test(x.name); })[0];
+        if (!hit) return;
+        var meta = a.querySelector('.meta');
+        a.href = hit.browser_download_url;
+        meta.textContent = meta.textContent.split(' ')[0] + '  ' + size(hit.size);
+        if (os && a.getAttribute('data-os') === os) main.href = hit.browser_download_url;
+      });
+      if (tag && os) main.textContent = 'Download for ' + TARGETS[os].label + ' ' + tag;
+    })
+    .catch(function () { /* the pinned links above are already in place */ });
+})();
+</script>
 
 </body>
 </html>
