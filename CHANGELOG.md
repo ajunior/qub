@@ -27,8 +27,10 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
     per-column profile, a pivot table, a query plan, a set of data-quality
     checks, or a diff against an earlier run. Cells and whole rows expand into
     a reader, and a foreign key opens the rows it points at in a new tab.
-    Exports go out as CSV, TSV, JSON, Excel, Markdown or SQL `INSERT`s, and are
-    never truncated to what the grid happens to be displaying.
+    The row limit says so when it actually cut a result, rather than letting a
+    partial answer read as the whole one. Exports go out as CSV, TSV, JSON,
+    Excel, Markdown or SQL `INSERT`s, and are never truncated to what the grid
+    happens to be displaying.
   - **Around the database** — searchable history of everything you have run,
     with slow-query aggregation by fingerprint; named snippets; workspaces that
     restore their own tabs and restrict themselves to the connections you

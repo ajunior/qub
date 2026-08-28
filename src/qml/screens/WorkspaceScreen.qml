@@ -270,7 +270,7 @@ Item {
     readonly property int    _currentTabId:  _queryTabs[_activeQueryTabIdx]?.id ?? -1
     readonly property bool   _running:       QueryExecutor.running
 
-    property var    _tabStateMap:   ({})   // { [tabId]: { success, rowCount, rowsAffected, elapsedMs, error } }
+    property var    _tabStateMap:   ({})   // { [tabId]: { success, rowCount, rowsAffected, elapsedMs, error, truncated } }
 
     // Computed from active tab — re-evaluates when _tabStateMap or _currentTabId changes
     readonly property bool   _success:      _tabStateMap[_currentTabId]?.success      ?? true
@@ -278,6 +278,8 @@ Item {
     readonly property int    _rowsAffected: _tabStateMap[_currentTabId]?.rowsAffected ?? 0
     readonly property int    _elapsedMs:    _tabStateMap[_currentTabId]?.elapsedMs    ?? 0
     readonly property string _lastError:    _tabStateMap[_currentTabId]?.error        ?? ""
+    // The result came back cut: the limit is hiding rows the query would return.
+    readonly property bool   _truncated:    _tabStateMap[_currentTabId]?.truncated    ?? false
 
     property string _executingSql:          ""    // SQL that was actually sent (may be a selection)
     property bool   _reconnectRetryPending: false // auto-reconnect in flight
@@ -433,6 +435,13 @@ Item {
 
     property int _limit: AppSettings.queryLimit
 
+    // The limit is pushed down to the server so the database never streams more
+    // rows than we can show. We ask for one row *past* it on purpose: that extra
+    // row is the only thing that distinguishes "the table has exactly N rows"
+    // from "we cut it off at N". The executor fetches up to rowLimit + 1, drops
+    // the surplus row and marks the result truncated — which is what colours the
+    // limit picker and what makes an export re-run the query unlimited. Asking
+    // for exactly N made every limited result look complete.
     function _applyLimit(sql: string): string {
         if (root._limit <= 0) return sql
         const s = sql.trim().replace(/;+\s*$/, "")  // strip trailing semicolons
@@ -440,7 +449,9 @@ Item {
         if (!/^\s*(?:WITH\b[\s\S]*?\bSELECT\b|SELECT\b)/i.test(s)) return sql
         // Skip if a LIMIT clause already exists anywhere
         if (/\bLIMIT\s+\d+/i.test(s)) return sql
-        return s + "\nLIMIT " + root._limit
+        // The marker is what lets a full export strip *our* clause back off
+        // without also stripping a LIMIT the user wrote themselves.
+        return s + "\nLIMIT " + (root._limit + 1) + " /* qub:limit */"
     }
 
     // Parse a 1-based line number out of a DB error message, or return null.
@@ -1008,7 +1019,9 @@ Item {
                     ? _rowsAffected + (_rowsAffected === 1 ? " row affected" : " rows affected")
                     : "0 rows")
             var items = [
-                { icon: Icons.rows,  text: rowLabel },
+                { icon: Icons.rows,
+                  text:  _truncated ? rowLabel + " (limited)" : rowLabel,
+                  color: _truncated ? Theme.warning : Theme.textSecondary },
                 { icon: Icons.timer, text: _elapsedMs + " ms", color: Theme.textDisabled }
             ]
             // Selection stats — column aggregates for the clicked cell's column.
@@ -1702,12 +1715,21 @@ Item {
                                 Layout.rightMargin:  Theme.sp3
                                 Layout.alignment:    Qt.AlignVCenter
 
+                                Tooltip {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: root._truncated
+                                          ? "The limit cut this result — the query returns more rows"
+                                          : "Row limit applied to SELECT results"
+
                                 QQC.ComboBox {
                                     id: _limitPicker
-                                    implicitWidth:  84
+                                    // Wide enough for "No limit", the longest preset, with the
+                                    // caret beside it rather than on top of it.
+                                    implicitWidth:  100
                                     implicitHeight: 26
                                     editable: true
-                                    anchors.verticalCenter: parent.verticalCenter
+                                    leftPadding:  0
+                                    rightPadding: 24
 
                                     readonly property var _presets: [50, 100, 500, 1000, 5000, 10000, 0]
                                     model: _presets.map(v => v === 0 ? "No limit" : v.toString())
@@ -1725,16 +1747,35 @@ Item {
                                     contentItem: TextInput {
                                         leftPadding:  8
                                         text:         _limitPicker.displayText
-                                        color:        Theme.textPrimary
+                                        color:        root._truncated ? Theme.warning : Theme.textPrimary
                                         font { family: Theme.fontFamily; pixelSize: Theme.textSm }
                                         verticalAlignment: Text.AlignVCenter
                                         selectByMouse: true
                                     }
+
+                                    // The default indicator is an unstyled up/down
+                                    // pair — the only such control in the toolbar,
+                                    // and wide enough to push "No limit" off its own
+                                    // left edge. One caret, matching Mahina's.
+                                    indicator: Icon {
+                                        x:     _limitPicker.width - width - 8
+                                        y:     (_limitPicker.height - height) / 2
+                                        name:  _limitPicker.popup.visible ? Icons.caretUp : Icons.caretDown
+                                        size:  12
+                                        color: root._truncated ? Theme.warning : Theme.textSecondary
+                                    }
+
+                                    // A limit that is merely set is not news; a limit
+                                    // that actually cut the result is. Quiet until it
+                                    // hides something, then loud — the same rule the
+                                    // status bar uses for a dropped connection.
                                     background: Rectangle {
                                         color:        Theme.surface
                                         radius:       Theme.radiusSm
-                                        border.color: _limitPicker.popup.visible ? Theme.primary : Theme.border
-                                        border.width: _limitPicker.popup.visible ? 2 : 1
+                                        border.color: _limitPicker.popup.visible ? Theme.primary
+                                                    : root._truncated             ? Theme.warning
+                                                    : Theme.border
+                                        border.width: _limitPicker.popup.visible || root._truncated ? 2 : 1
                                         Behavior on border.color { ColorAnimation { duration: Theme.durationFast } }
                                     }
                                     popup: QQC.Popup {
@@ -1771,6 +1812,7 @@ Item {
                                                 : "transparent"
                                         }
                                     }
+                                }
                                 }
 
                                 Button {
@@ -1943,11 +1985,14 @@ Item {
                                         onTabClicked: (i) => root._resultsPane = i
                                     }
 
-                                    // Row count
+                                    // Row count. When the limit cut the result the
+                                    // count alone reads as the whole answer, so it
+                                    // says so.
                                     Text {
                                         visible: root._rowCount > 0
                                         text:    root._rowCount + (root._rowCount === 1 ? " row" : " rows")
-                                        color:   Theme.textSecondary
+                                                 + (root._truncated ? " (limited)" : "")
+                                        color:   root._truncated ? Theme.warning : Theme.textSecondary
                                         font { family: Theme.fontFamily; pixelSize: Theme.textSm }
                                     }
                                     Text {
@@ -2438,7 +2483,10 @@ Item {
                 rowCount,
                 rowsAffected,
                 elapsedMs,
-                error: m[tabId]?.error ?? ""
+                error: m[tabId]?.error ?? "",
+                // setResult() ran before this signal, so the model already knows
+                // whether the surplus row _applyLimit asked for came back.
+                truncated: QueryExecutor.tabResultModel(tabId).truncated
             }
             root._tabStateMap = m
 
