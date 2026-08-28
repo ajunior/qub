@@ -56,6 +56,8 @@ private slots:
     // Full-result export
     void exportFull_guardsWhenNothingToReExport();
     void exportFull_writesFileForRememberedSelect();
+    void exportFull_stripsTheEditorsInjectedLimit();
+    void exportFull_keepsALimitTheUserWrote();
 
 private:
     QTemporaryDir   m_dir;
@@ -246,6 +248,54 @@ void TestExecutor::exportFull_writesFileForRememberedSelect()
     QVERIFY(csv.contains("id,name"));
     QVERIFY(csv.contains("1,a"));
     QVERIFY(csv.contains("3,c"));
+    delete ex;
+}
+
+
+// The editor pushes its display limit down to the server as a trailing
+// "LIMIT n /* qub:limit */". A full export re-runs the remembered SQL with no
+// row limit, so that clause has to come back off — otherwise the "complete"
+// export stops at the very limit it exists to escape.
+void TestExecutor::exportFull_stripsTheEditorsInjectedLimit()
+{
+    QueryExecutor *ex = makeExecutor();
+    ex->setActiveTabId(7);
+    ex->setRowLimit(1);
+
+    QSignalSpy finSpy(ex, &QueryExecutor::executionFinished);
+    ex->execute(m_connName, "SELECT id, name FROM t ORDER BY id\nLIMIT 2 /* qub:limit */");
+    QVERIFY(finSpy.wait(5000));
+    QCOMPARE(finSpy.first().at(2).toInt(), 1);          // one row shown, cut
+
+    const QString outPath = m_dir.filePath("stripped.csv");
+    QSignalSpy expSpy(ex, &QueryExecutor::exportFinished);
+    QVERIFY(ex->exportFull(7, "csv", QUrl::fromLocalFile(outPath), "t", "QSQLITE"));
+
+    QVERIFY(expSpy.wait(5000));
+    QCOMPARE(expSpy.first().at(0).toBool(), true);
+    QCOMPARE(expSpy.first().at(2).toInt(), 3);          // all three, not one or two
+    delete ex;
+}
+
+// A LIMIT the user typed carries no marker and is part of the query's meaning,
+// so the export must honour it.
+void TestExecutor::exportFull_keepsALimitTheUserWrote()
+{
+    QueryExecutor *ex = makeExecutor();
+    ex->setActiveTabId(8);
+    ex->setRowLimit(0);
+
+    QSignalSpy finSpy(ex, &QueryExecutor::executionFinished);
+    ex->execute(m_connName, "SELECT id, name FROM t ORDER BY id\nLIMIT 2");
+    QVERIFY(finSpy.wait(5000));
+
+    const QString outPath = m_dir.filePath("userlimit.csv");
+    QSignalSpy expSpy(ex, &QueryExecutor::exportFinished);
+    QVERIFY(ex->exportFull(8, "csv", QUrl::fromLocalFile(outPath), "t", "QSQLITE"));
+
+    QVERIFY(expSpy.wait(5000));
+    QCOMPARE(expSpy.first().at(0).toBool(), true);
+    QCOMPARE(expSpy.first().at(2).toInt(), 2);          // still two
     delete ex;
 }
 

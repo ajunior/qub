@@ -1,4 +1,5 @@
 #include "QueryExecutor.h"
+#include <QRegularExpression>
 #include "AdapterProvider.h"
 #include "LogManager.h"
 #include "ResultModel.h"
@@ -256,10 +257,19 @@ bool QueryExecutor::exportFull(int tabId, const QString &format, const QUrl &fil
     if (m_exportWatcher->isRunning())
         return false;
 
-    const QString sql  = m_tabLastSql.value(tabId);
+    QString       sql  = m_tabLastSql.value(tabId);
     const QString conn = m_tabLastConn.value(tabId);
     if (sql.isEmpty())
         return false;
+
+    // The remembered SQL carries the display limit the editor pushed down to
+    // the server, so re-running it "unlimited" would still stop at that clause.
+    // Strip it — the marker is what distinguishes our clause from a LIMIT the
+    // user wrote, which must be honoured.
+    static const QRegularExpression injectedLimit(
+        R"(\s*\bLIMIT\s+\d+\s*/\*\s*qub:limit\s*\*/\s*$)",
+        QRegularExpression::CaseInsensitiveOption);
+    sql.remove(injectedLimit);
 
     auto *adapter = m_connections->adapter(conn);
     if (!adapter)
