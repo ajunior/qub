@@ -154,7 +154,9 @@ Item {
         id: _editor
         anchors.fill:         parent
         lineNumbers:          true
-        language:             "SQL"
+        // No language badge: this editor only ever holds SQL, and the badge
+        // floats over the first line at the top right. The connection's
+        // dialect is in the status bar, where it does not sit on the text.
         fontFamily:           AppSettings.fontFamily
         fontSize:             AppSettings.fontSize
         fontWeight:           AppSettings.fontWeight
