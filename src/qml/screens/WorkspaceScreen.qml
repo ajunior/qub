@@ -109,6 +109,82 @@ Item {
     property bool   _showResults: true
     property bool   _showSidebar: true
     property bool   _showPreview: false  // rendered /* @md */ markdown preview
+
+    // ── Panel focus (solo) mode ───────────────────────────────────────────────
+    // Ctrl+Shift+N gives panel N the window to itself; the same key puts the
+    // layout back. That is why entering solo takes a snapshot: un-hiding the
+    // panels afterwards would land on the defaults, not on the arrangement the
+    // person had actually chosen before they zoomed in.
+    property string _soloed:  ""     // "" while the layout is the person's own
+    property var    _preSolo: null
+
+    readonly property var _panelNames: ({
+        schema:  "Schema",
+        query:   "Query editor",
+        results: "Results",
+        sidebar: "Sidebar",
+        preview: "Editor and preview"
+    })
+    readonly property var _panelKeys: ({
+        schema: "1", query: "2", results: "3", sidebar: "4", preview: "5"
+    })
+
+    function _setPanels(schema: bool, query: bool, results: bool,
+                        sidebar: bool, preview: bool): void {
+        root._showSchema  = schema
+        root._showQuery   = query
+        root._showResults = results
+        root._showSidebar = sidebar
+        root._showPreview = preview
+    }
+
+    function _soloPanel(name: string): void {
+        if (root._soloed === name) { root._restoreLayout(); return }
+
+        if (root._soloed === "")
+            root._preSolo = { schema:  root._showSchema,  query:   root._showQuery,
+                              results: root._showResults, sidebar: root._showSidebar,
+                              preview: root._showPreview }
+        root._soloed = name
+
+        // The markdown preview is not a panel in its own right — it shares the
+        // editor's split — so focusing it means editor and preview, nothing else.
+        root._setPanels(name === "schema",
+                        name === "query" || name === "preview",
+                        name === "results",
+                        name === "sidebar",
+                        name === "preview")
+
+        // The window has just emptied out. Say which key fills it again, so
+        // nobody has to guess what they pressed.
+        _toaster.show(root._panelNames[name] + " only — Ctrl+Shift+"
+                      + root._panelKeys[name] + " brings the rest back",
+                      Toaster.Type.Info, 2600)
+    }
+
+    function _restoreLayout(): void {
+        if (root._preSolo !== null)
+            root._setPanels(root._preSolo.schema,  root._preSolo.query,
+                            root._preSolo.results, root._preSolo.sidebar,
+                            root._preSolo.preview)
+        root._soloed  = ""
+        root._preSolo = null
+    }
+
+    // Every by-hand toggle — key, menu or palette — ends solo mode. The
+    // snapshot describes a layout the person has since moved on from, and
+    // restoring it later would undo the change they just made on purpose.
+    function _togglePanel(name: string): void {
+        root._soloed  = ""
+        root._preSolo = null
+        switch (name) {
+        case "schema":  root._showSchema  = !root._showSchema;  break
+        case "query":   root._showQuery   = !root._showQuery;   break
+        case "results": root._showResults = !root._showResults; break
+        case "sidebar": root._showSidebar = !root._showSidebar; break
+        case "preview": root._showPreview = !root._showPreview; break
+        }
+    }
     property int    _resultsPane: 0      // bottom pane: 0 = Results, 1 = Output console
 
     // Errors on the active connection that arrived while Output wasn't showing —
@@ -922,7 +998,13 @@ Item {
         { id: "toggleQuery",   label: "Toggle query editor",   shortcut: "Ctrl+2", group: "Panels", icon: Icons.code },
         { id: "toggleResults", label: "Toggle results panel",  shortcut: "Ctrl+3", group: "Panels", icon: Icons.table },
         { id: "toggleSidebar", label: "Toggle sidebar",        shortcut: "Ctrl+4", group: "Panels", icon: Icons.sidebarSimple },
-        { id: "togglePreview", label: "Toggle preview panel",  shortcut: "Ctrl+5", group: "Panels", icon: Icons.eye }
+        { id: "togglePreview", label: "Toggle preview panel",  shortcut: "Ctrl+5", group: "Panels", icon: Icons.eye },
+        { id: "focusSchema",   label: "Focus schema panel",    shortcut: "Ctrl+Shift+1", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusQuery",    label: "Focus query editor",    shortcut: "Ctrl+Shift+2", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusResults",  label: "Focus results panel",   shortcut: "Ctrl+Shift+3", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusSidebar",  label: "Focus sidebar",         shortcut: "Ctrl+Shift+4", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusPreview",  label: "Focus editor and preview", shortcut: "Ctrl+Shift+5", group: "Panels", icon: Icons.cornersOut },
+        { id: "restoreLayout", label: "Restore panel layout",  shortcut: "",             group: "Panels", icon: Icons.cornersIn }
     ]
 
     function _runCommand(id: string): void {
@@ -957,11 +1039,17 @@ Item {
             break
         case "logs":        root.toggleLogs(); break
         case "shortcuts":   _shortcutsPanel.show(); break
-        case "toggleSchema":  root._showSchema  = !root._showSchema;  break
-        case "toggleQuery":   root._showQuery   = !root._showQuery;   break
-        case "toggleResults": root._showResults = !root._showResults; break
-        case "toggleSidebar": root._showSidebar = !root._showSidebar; break
-        case "togglePreview": root._showPreview = !root._showPreview; break
+        case "toggleSchema":  root._togglePanel("schema");  break
+        case "toggleQuery":   root._togglePanel("query");   break
+        case "toggleResults": root._togglePanel("results"); break
+        case "toggleSidebar": root._togglePanel("sidebar"); break
+        case "togglePreview": root._togglePanel("preview"); break
+        case "focusSchema":   root._soloPanel("schema");    break
+        case "focusQuery":    root._soloPanel("query");     break
+        case "focusResults":  root._soloPanel("results");   break
+        case "focusSidebar":  root._soloPanel("sidebar");   break
+        case "focusPreview":  root._soloPanel("preview");   break
+        case "restoreLayout": root._restoreLayout();        break
         }
     }
 
@@ -1283,11 +1371,11 @@ Item {
                         { label: "Markdown preview", icon: Icons.article, shortcut: "Ctrl+5", checked: root._showPreview },
                     ]
                     onTriggered: (index) => {
-                        if (index === 0) root._showSchema  = !root._showSchema
-                        if (index === 1) root._showQuery   = !root._showQuery
-                        if (index === 2) root._showResults = !root._showResults
-                        if (index === 3) root._showSidebar = !root._showSidebar
-                        if (index === 4) root._showPreview = !root._showPreview
+                        if (index === 0) root._togglePanel("schema")
+                        if (index === 1) root._togglePanel("query")
+                        if (index === 2) root._togglePanel("results")
+                        if (index === 3) root._togglePanel("sidebar")
+                        if (index === 4) root._togglePanel("preview")
                     }
                 }
 
@@ -3193,6 +3281,11 @@ Item {
                 { keys: ["Ctrl", "3"], desc: "Toggle results" },
                 { keys: ["Ctrl", "4"], desc: "Toggle sidebar" },
                 { keys: ["Ctrl", "5"], desc: "Toggle markdown preview" },
+                { keys: ["Ctrl", "Shift", "1"], desc: "Focus schema panel (again to restore)" },
+                { keys: ["Ctrl", "Shift", "2"], desc: "Focus query editor" },
+                { keys: ["Ctrl", "Shift", "3"], desc: "Focus results" },
+                { keys: ["Ctrl", "Shift", "4"], desc: "Focus sidebar" },
+                { keys: ["Ctrl", "Shift", "5"], desc: "Focus editor and preview" },
             ]},
             { heading: "Navigation", shortcuts: [
                 { keys: ["Ctrl", "P"],      desc: "Command palette" },
@@ -3202,11 +3295,21 @@ Item {
         ]
     }
 
-    Shortcut { sequence: "Ctrl+1"; onActivated: root._showSchema  = !root._showSchema  }
-    Shortcut { sequence: "Ctrl+2"; onActivated: root._showQuery   = !root._showQuery   }
-    Shortcut { sequence: "Ctrl+3"; onActivated: root._showResults = !root._showResults }
-    Shortcut { sequence: "Ctrl+4"; onActivated: root._showSidebar = !root._showSidebar }
-    Shortcut { sequence: "Ctrl+5"; onActivated: root._showPreview = !root._showPreview }
+    Shortcut { sequence: "Ctrl+1"; onActivated: root._togglePanel("schema")  }
+    Shortcut { sequence: "Ctrl+2"; onActivated: root._togglePanel("query")   }
+    Shortcut { sequence: "Ctrl+3"; onActivated: root._togglePanel("results") }
+    Shortcut { sequence: "Ctrl+4"; onActivated: root._togglePanel("sidebar") }
+    Shortcut { sequence: "Ctrl+5"; onActivated: root._togglePanel("preview") }
+
+    // Focus one panel, and the same key again to get the layout back. The
+    // Ctrl+Alt alias is for macOS: Qt maps Ctrl to Command there, and the
+    // system claims Cmd+Shift+3 and Cmd+Shift+4 for screenshots before the
+    // application is ever asked.
+    Shortcut { sequences: ["Ctrl+Shift+1", "Ctrl+Alt+1"]; onActivated: root._soloPanel("schema")  }
+    Shortcut { sequences: ["Ctrl+Shift+2", "Ctrl+Alt+2"]; onActivated: root._soloPanel("query")   }
+    Shortcut { sequences: ["Ctrl+Shift+3", "Ctrl+Alt+3"]; onActivated: root._soloPanel("results") }
+    Shortcut { sequences: ["Ctrl+Shift+4", "Ctrl+Alt+4"]; onActivated: root._soloPanel("sidebar") }
+    Shortcut { sequences: ["Ctrl+Shift+5", "Ctrl+Alt+5"]; onActivated: root._soloPanel("preview") }
 
     Shortcut {
         sequence: "?"
