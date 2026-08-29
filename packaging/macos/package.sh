@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # package.sh — Bundle qub.app and create a DMG for macOS.
 # Run from the project root after cmake --build build.
+#
+# Signing and notarization are opt-in through DEVELOPER_ID and the NOTARY_*
+# variables; SIGNING.md, next to this script, is where they come from.
 set -euo pipefail
 
 # Portable on purpose: `grep -oP` is GNU-only and the BSD grep on macOS runners
