@@ -50,9 +50,9 @@ endif()
 FetchContent_Declare(
     mahina
     GIT_REPOSITORY https://github.com/ajunior/mahina.git
-    # Commit hash of v0.45.9 — pinned to a hash (not a branch or tag) so a
+    # Commit hash of v0.45.10 — pinned to a hash (not a branch or tag) so a
     # re-pointed ref upstream cannot silently change what we build.
-    GIT_TAG        a8fdb3610665a893aaeeea2f256c22e914330fc7
+    GIT_TAG        93ff6f0bff9e0ac9af598964fe9827e5ee4e91f6
 )
 FetchContent_MakeAvailable(mahina)
 
