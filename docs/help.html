@@ -470,6 +470,20 @@
       system stops you the first time you open it. That is expected — it says
       nothing about the download — and getting past it takes about thirty seconds.
     </p>
+    <p>
+      With no signature to lean on, every release also carries a
+      <code>SHA256SUMS.txt</code> beside the three files. Put it in the same
+      folder as your download and you can tell a good copy from a truncated or
+      tampered one:
+    </p>
+    <pre>sha256sum -c SHA256SUMS.txt --ignore-missing      # Linux
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS</pre>
+    <p>
+      <code>--ignore-missing</code> checks the file you actually downloaded and
+      stays quiet about the two you did not. On Windows,
+      <code>certutil -hashfile &lt;file&gt; SHA256</code> prints the hash to
+      compare against the line in the file.
+    </p>
 
     <h3>macOS &mdash; &ldquo;Apple could not verify&hellip;&rdquo;</h3>
     <p>
