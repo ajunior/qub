@@ -30,7 +30,11 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
     The row limit says so when it actually cut a result, rather than letting a
     partial answer read as the whole one. Exports go out as CSV, TSV, JSON,
     Excel, Markdown or SQL `INSERT`s, and are never truncated to what the grid
-    happens to be displaying.
+    happens to be displaying. Every statement also leaves a stamped line in the
+    connection's Output console — `84 rows retrieved in 1 m 10 s 542 ms
+    (execution: 1 m 9 s 980 ms, fetching: 530 ms)` — that copies out together
+    with the statement above it, which is what you paste back to whoever asked
+    you to run it.
   - **Around the database** — searchable history of everything you have run,
     with slow-query aggregation by fingerprint; named snippets; workspaces that
     restore their own tabs and restrict themselves to the connections you

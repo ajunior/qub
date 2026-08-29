@@ -52,6 +52,15 @@ public:
                                         const QUrl &fileUrl, const QString &tableName,
                                         const QString &driver);
 
+    // The line the Output console prints after every statement, in the shape a
+    // DBA pastes into a ticket: "84 rows retrieved in 1 m 10 s 542 ms
+    // (execution: 1 m 9 s 980 ms, fetching: 530 ms)". Pure and static so the
+    // wording is testable without running a query.
+    static QString formatDuration(qint64 ms);
+    static QString resultSummary(bool hasResultSet, int rowCount, int rowsAffected,
+                                 bool truncated, qint64 execMs, qint64 fetchMs,
+                                 qint64 totalMs);
+
 signals:
     void runningChanged();
     void activeTabIdChanged();

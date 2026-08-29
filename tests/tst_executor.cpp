@@ -10,6 +10,9 @@
 #include <QtTest>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QStandardPaths>
+
+#include "core/LogManager.h"
 
 #include "core/QueryExecutor.h"
 #include "core/AdapterProvider.h"
@@ -52,6 +55,11 @@ private slots:
 
     // Cancellation (best-effort, non-racy assertions only)
     void cancel_returnsToIdle();
+
+    // The Output console's summary line (pure, no query needed)
+    void formatDuration_growsUnitsOnlyAsNeeded();
+    void resultSummary_readsLikeAConsoleLine();
+    void execute_logsTheSummaryWithBothHalvesOfTheClock();
 
     // Full-result export
     void exportFull_guardsWhenNothingToReExport();
@@ -213,7 +221,102 @@ void TestExecutor::cancel_returnsToIdle()
     delete ex;
 }
 
+// The summary is only useful if the two halves of the clock actually reach it.
+// This runs a real SELECT through the worker and reads the entry the console
+// renders, rather than trusting that the plumbing lines up.
+void TestExecutor::execute_logsTheSummaryWithBothHalvesOfTheClock()
+{
+    QStandardPaths::setTestModeEnabled(true);   // keeps qub.db out of the real profile
+
+    LogManager     log;
+    QueryExecutor *ex = new QueryExecutor(m_provider, &log, this);
+    QSignalSpy     done(ex, &QueryExecutor::executionFinished);
+
+    ex->execute(m_connName, "SELECT * FROM t");
+    QVERIFY(done.wait(5000));
+
+    const QVariantList entries = log.entries();
+    QVERIFY(!entries.isEmpty());
+
+    const QVariantMap entry  = entries.last().toMap();
+    const QVariantMap detail = entry["detail"].toMap();
+
+    QCOMPARE(entry["category"].toString(), QString("QUERY"));
+    QCOMPARE(detail["rowCount"].toInt(), 3);
+    QVERIFY(detail.contains("execMs"));
+    QVERIFY(detail.contains("fetchMs"));
+
+    // Neither half may exceed the whole, whatever the machine's timer does.
+    const qint64 execMs  = detail["execMs"].toLongLong();
+    const qint64 fetchMs = detail["fetchMs"].toLongLong();
+    const qint64 total   = detail["elapsedMs"].toLongLong();
+    QVERIFY(execMs  >= 0);
+    QVERIFY(fetchMs >= 0);
+    QVERIFY(execMs + fetchMs <= total + 1);   // +1: the two clocks round apart
+
+    QVERIFY2(entry["message"].toString().startsWith("3 rows retrieved in "),
+             qPrintable(entry["message"].toString()));
+    QVERIFY(entry["message"].toString().contains("(execution: "));
+    QVERIFY(entry["message"].toString().contains(", fetching: "));
+
+    log.clear();
+    delete ex;
+}
+
 // ── Full-result export ───────────────────────────────────────────────────────────
+
+// The line a DBA pastes into a ticket. Both halves are pure functions, so the
+// wording is pinned here rather than left to whatever a live query happens to
+// produce.
+void TestExecutor::formatDuration_growsUnitsOnlyAsNeeded()
+{
+    QCOMPARE(QueryExecutor::formatDuration(0),       QString("0 ms"));
+    QCOMPARE(QueryExecutor::formatDuration(542),     QString("542 ms"));
+    QCOMPARE(QueryExecutor::formatDuration(1000),    QString("1 s 0 ms"));
+    QCOMPARE(QueryExecutor::formatDuration(10542),   QString("10 s 542 ms"));
+    QCOMPARE(QueryExecutor::formatDuration(70542),   QString("1 m 10 s 542 ms"));
+    QCOMPARE(QueryExecutor::formatDuration(3723004), QString("1 h 2 m 3 s 4 ms"));
+
+    // A minute boundary still prints the smaller units, so the shape of the
+    // string never depends on the value landing on a round number.
+    QCOMPARE(QueryExecutor::formatDuration(60000),   QString("1 m 0 s 0 ms"));
+
+    // A negative reading (a clock that went backwards) reads as zero rather
+    // than as a nonsense duration.
+    QCOMPARE(QueryExecutor::formatDuration(-5),      QString("0 ms"));
+}
+
+void TestExecutor::resultSummary_readsLikeAConsoleLine()
+{
+    // A SELECT: count, total, and the split that says which half was slow.
+    QCOMPARE(QueryExecutor::resultSummary(true, 84, 0, false, 69980, 530, 70542),
+             QString("84 rows retrieved in 1 m 10 s 542 ms "
+                     "(execution: 1 m 9 s 980 ms, fetching: 530 ms)"));
+
+    // One row is one row.
+    QCOMPARE(QueryExecutor::resultSummary(true, 1, 0, false, 10, 2, 12),
+             QString("1 row retrieved in 12 ms (execution: 10 ms, fetching: 2 ms)"));
+
+    // An empty result set is still a result set — it must not read as DDL.
+    QCOMPARE(QueryExecutor::resultSummary(true, 0, 0, false, 8, 0, 8),
+             QString("0 rows retrieved in 8 ms (execution: 8 ms, fetching: 0 ms)"));
+
+    // Hitting the row limit says so, so nobody pastes a partial count into a
+    // ticket believing it is the whole answer.
+    QCOMPARE(QueryExecutor::resultSummary(true, 1000, 0, true, 40, 60, 100),
+             QString("first 1000 rows retrieved in 100 ms "
+                     "(execution: 40 ms, fetching: 60 ms)"));
+
+    // DML has no fetch half; printing "fetching: 0 ms" there would be noise.
+    QCOMPARE(QueryExecutor::resultSummary(false, 0, 3, false, 25, 0, 25),
+             QString("3 rows affected in 25 ms"));
+    QCOMPARE(QueryExecutor::resultSummary(false, 0, 1, false, 25, 0, 25),
+             QString("1 row affected in 25 ms"));
+
+    // DDL, or DML that matched nothing: no count worth printing.
+    QCOMPARE(QueryExecutor::resultSummary(false, 0, 0, false, 3, 0, 3),
+             QString("completed in 3 ms"));
+}
 
 void TestExecutor::exportFull_guardsWhenNothingToReExport()
 {

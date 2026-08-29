@@ -49,6 +49,21 @@ Rectangle {
             readonly property string _sqlOneLine:
                 (modelData.detail?.sql ?? "").replace(/\s+/g, " ").trim()
 
+            // What lands on the clipboard: the statement as written, then the
+            // stamped outcome, then the error if there was one — the block you
+            // paste back to whoever asked you to run the query, character for
+            // character what the row above shows.
+            function copyBlock(): string {
+                const sql   = _row.modelData.detail?.sql   ?? ""
+                const err   = _row.modelData.detail?.error ?? ""
+                const stamp = _row.modelData.timestamp ?? ""
+                let out = ""
+                if (sql.trim() !== "") out += sql.trim() + "\n"
+                out += "[" + stamp + "] " + (_row.modelData.message ?? "")
+                if (err !== "") out += "\n" + err
+                return out
+            }
+
             width:  _lv.width
             height: _lines.implicitHeight + 6
 
@@ -69,45 +84,9 @@ Rectangle {
                 }
                 spacing: 1
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Theme.sp2
-
-                    Text {
-                        text:  _row.modelData.timestamp ?? ""
-                        color: Theme.textDisabled
-                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text:  _row.modelData.message ?? ""
-                        color: root._levelColor(_row.modelData.level ?? "info")
-                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textSm }
-                        elide: Text.ElideRight
-                    }
-
-                    // Hover actions: copy the SQL (or the message when no SQL)
-                    Tooltip {
-                        text: _row._sqlOneLine !== "" ? "Copy SQL" : "Copy message"
-                        visible: _rowH.hovered
-                        Button {
-                            iconOnly: true
-                            iconName: Icons.copy
-                            size:     Button.Size.Sm
-                            variant:  Button.Variant.Ghost
-                            onClicked: {
-                                _clip.text = _row._sqlOneLine !== ""
-                                             ? (_row.modelData.detail?.sql ?? "")
-                                             : (_row.modelData.message ?? "")
-                                _clip.selectAll()
-                                _clip.copy()
-                                _clip.text = ""
-                            }
-                        }
-                    }
-                }
-
-                // Echo of the executed statement, collapsed to one line
+                // Echo of the executed statement, collapsed to one line. It
+                // comes first because the outcome below is a sentence *about*
+                // it — the same order DataGrip's console uses.
                 Text {
                     Layout.fillWidth: true
                     visible: _row._sqlOneLine !== ""
@@ -115,6 +94,45 @@ Rectangle {
                     color:   Theme.textSecondary
                     font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
                     elide:   Text.ElideRight
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: Theme.sp2
+
+                    Text {
+                        Layout.alignment: Qt.AlignTop
+                        text:  _row.modelData.timestamp ?? ""
+                        color: Theme.textDisabled
+                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        // Wraps rather than elides: the timing breakdown is the
+                        // point of the line, and it sits at the end of it.
+                        text:     _row.modelData.message ?? ""
+                        color:    root._levelColor(_row.modelData.level ?? "info")
+                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textSm }
+                        wrapMode: Text.Wrap
+                    }
+
+                    Tooltip {
+                        text: _row._sqlOneLine !== "" ? "Copy statement and result"
+                                                      : "Copy message"
+                        visible: _rowH.hovered
+                        Button {
+                            iconOnly: true
+                            iconName: Icons.copy
+                            size:     Button.Size.Sm
+                            variant:  Button.Variant.Ghost
+                            onClicked: {
+                                _clip.text = _row.copyBlock()
+                                _clip.selectAll()
+                                _clip.copy()
+                                _clip.text = ""
+                            }
+                        }
+                    }
                 }
 
                 // Full error text, wrapped — errors deserve the space
