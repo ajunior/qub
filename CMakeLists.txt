@@ -290,7 +290,7 @@ if(APPLE)
         MACOSX_BUNDLE_BUNDLE_NAME        "qub"
         MACOSX_BUNDLE_BUNDLE_VERSION     "${PROJECT_VERSION}"
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
-        MACOSX_BUNDLE_GUI_IDENTIFIER     "org.ajunior.qub"
+        MACOSX_BUNDLE_GUI_IDENTIFIER     "dev.ajunior.qub"
         MACOSX_BUNDLE_ICON_FILE          "qub.icns"
     )
 endif()
