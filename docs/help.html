@@ -1800,6 +1800,15 @@ grouped by country, sorted by count descending
   <section id="shortcuts">
     <h2>Keyboard shortcuts</h2>
 
+    <div class="callout note">
+      <span class="icon">⌘</span>
+      <p>The tables below are written the way a PC keyboard is labelled. On macOS
+      <kbd>Ctrl</kbd> is Command (<kbd>⌘</kbd>) and <kbd>Alt</kbd> is Option
+      (<kbd>⌥</kbd>) &mdash; qub itself prints the shortcuts with the Mac symbols
+      when it runs there, so the panel behind <kbd>?</kbd> always matches the
+      keyboard in front of you.</p>
+    </div>
+
     <h3>Query editor</h3>
     <table>
       <tr><th>Action</th><th>Shortcut</th></tr>
@@ -1831,10 +1840,11 @@ grouped by country, sorted by count descending
     <h3>Files</h3>
     <table>
       <tr><th>Action</th><th>Shortcut</th></tr>
-      <tr><td>Save selection as snippet</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
-      <tr><td>Save to file</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
+      <tr><td>Save query to a <code>.sql</code> file</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
+      <tr><td>Save selection as a snippet</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
       <tr><td>Open file</td><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td></tr>
       <tr><td>Export as CSV</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td></tr>
+      <tr><td>View selected row</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td></tr>
     </table>
 
     <h3>Panels</h3>
@@ -1849,6 +1859,40 @@ grouped by country, sorted by count descending
       <tr><td>Command palette</td><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td></tr>
       <tr><td>Show keyboard shortcuts</td><td><kbd>?</kbd></td></tr>
     </table>
+
+    <h3>One panel at a time</h3>
+    <p>
+      Adding <kbd>Shift</kbd> to a panel number gives that panel the whole
+      window: everything else is hidden. The same keystroke brings the layout
+      back &mdash; the one you had, not the default, because qub takes a
+      snapshot of the arrangement on the way in. Toggling any panel by hand
+      afterwards ends focus mode, since the snapshot then describes a layout
+      you have moved on from.
+    </p>
+    <table>
+      <tr><th>Action</th><th>Shortcut</th><th>macOS</th></tr>
+      <tr><td>Focus schema panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>1</kbd></td></tr>
+      <tr><td>Focus query editor</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>2</kbd></td></tr>
+      <tr><td>Focus results panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>3</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>3</kbd></td></tr>
+      <tr><td>Focus sidebar</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>4</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>4</kbd></td></tr>
+      <tr><td>Focus editor and preview</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>5</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>5</kbd></td></tr>
+    </table>
+    <div class="callout note">
+      <span class="icon">◆</span>
+      <p>macOS keeps <kbd>⌘</kbd><kbd>⇧</kbd><kbd>3</kbd> and
+      <kbd>⌘</kbd><kbd>⇧</kbd><kbd>4</kbd> for its own screenshots, and takes
+      them before any application is asked. That is why focus mode also answers
+      to Option in place of Shift, and why the Mac column above is the one qub
+      shows you there. Both spellings work on every platform.</p>
+    </div>
+
+    <p>
+      The markdown preview is not a panel of its own &mdash; it shares the
+      editor's split &mdash; so focusing it leaves the editor and the preview
+      up together. There is also a <em>Restore panel layout</em> entry in the
+      command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>) for getting out without
+      remembering which panel you zoomed into.
+    </p>
   </section>
 
 </main>
