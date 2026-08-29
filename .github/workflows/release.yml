@@ -195,12 +195,36 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      # The download page has always promised checksums and the release has
+      # never carried any. Nothing here is code-signed yet, so this file is the
+      # only way somebody can tell a good download from a truncated or tampered
+      # one. Written from inside the directory so each line names the file
+      # alone, which is the form `sha256sum -c` expects; the glob is expanded
+      # before the redirection creates the file, so it cannot list itself.
+      - name: Checksums
+        working-directory: artifacts
+        run: |
+          sha256sum qub-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: artifacts/*
           draft: true
           generate_release_notes: true
+          # Prepended to the generated notes.
+          body: |
+            ### Verify your download
+
+            ```sh
+            sha256sum -c SHA256SUMS.txt --ignore-missing   # Linux
+            shasum -a 256 -c SHA256SUMS.txt --ignore-missing   # macOS
+            ```
+
+            `--ignore-missing` checks the file you actually downloaded and stays
+            quiet about the two you did not.
+
           # A tag carrying a pre-release suffix (v0.44.9-rc.1, -beta.2, …) is
           # published as a pre-release, so test builds can go out through the
           # same pipeline without being offered as the current version.
