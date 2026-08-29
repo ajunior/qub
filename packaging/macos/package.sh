@@ -158,13 +158,37 @@ for required in libqsqlite.dylib libqsqlpsql.dylib libqsqlodbc.dylib; do
     fi
 done
 
-# ── Code-sign (ad-hoc when no Developer ID is available) ─────────────────────
+# ── Code-sign ─────────────────────────────────────────────────────────────────
+# With DEVELOPER_ID set this is a real Developer ID signature: hardened runtime,
+# which notarization refuses to proceed without, and a secure timestamp, which
+# is what keeps builds already in people's hands valid after the certificate
+# behind them expires. Without it, an ad-hoc signature — enough for macOS to run
+# the app on the machine that built it, not enough for anyone else's.
+#
+# Signed inside out rather than with --deep. Apple has discouraged --deep for
+# years: it hands the same options to everything it finds and is documented as a
+# way to repair a bundle rather than to sign one. macdeployqt leaves dozens of
+# dylibs and a stack of Qt frameworks in here, and each has to be signed before
+# whatever contains it — a bundle's signature seals what is inside it, so
+# signing the outside first only invalidates it on the next inner change.
 if [ -n "${DEVELOPER_ID:-}" ]; then
-    codesign --deep --force --verify --verbose \
-        --sign "$DEVELOPER_ID" \
-        --options runtime \
-        --entitlements packaging/macos/entitlements.plist \
-        "$APP"
+    sign() { codesign --force --timestamp --options runtime --sign "$DEVELOPER_ID" "$@"; }
+
+    echo "Signing with: $DEVELOPER_ID"
+
+    # Loose libraries and plugins first. Qt's own framework binaries carry no
+    # extension, so this matches the deployed dylibs without reaching into them.
+    while IFS= read -r -d '' f; do sign "$f"; done < <(
+        find "$APP/Contents" -type f \( -name '*.dylib' -o -name '*.so' \) -print0)
+
+    # Then each framework bundle as a whole.
+    while IFS= read -r -d '' f; do sign "$f"; done < <(
+        find "$APP/Contents/Frameworks" -maxdepth 1 -name '*.framework' -print0)
+
+    # Then the app, which is the only part that carries entitlements.
+    sign --entitlements packaging/macos/entitlements.plist "$APP"
+
+    codesign --verify --deep --strict --verbose=2 "$APP"
 else
     codesign --deep --force --sign - "$APP"
 fi
@@ -181,3 +205,35 @@ hdiutil create \
 
 rm -rf "$STAGE_DIR"
 echo "DMG created: $DIST/$DMG_NAME"
+
+# ── Sign, notarize and staple the DMG ─────────────────────────────────────────
+# The app inside is signed already; the disk image around it is a separate file
+# and needs its own signature. Notarization then sends the whole thing to Apple,
+# which scans it and issues a ticket, and stapling writes that ticket into the
+# DMG so a Mac that has never been online can still verify it. Skipping any of
+# the three leaves the download exactly as blocked as an unsigned one.
+if [ -n "${DEVELOPER_ID:-}" ]; then
+    codesign --force --timestamp --sign "$DEVELOPER_ID" "$DIST/$DMG_NAME"
+
+    # Two doors, because two things run this script. A developer on their own
+    # Mac stores credentials once with `xcrun notarytool store-credentials` and
+    # names the profile here; CI has no keychain to keep a profile in and passes
+    # an App Store Connect API key instead, which can be revoked on its own and
+    # is not tied to anybody's Apple ID password.
+    if [ -n "${NOTARY_PROFILE:-}" ]; then
+        xcrun notarytool submit "$DIST/$DMG_NAME" \
+            --keychain-profile "$NOTARY_PROFILE" --wait
+    elif [ -n "${NOTARY_KEY:-}" ]; then
+        xcrun notarytool submit "$DIST/$DMG_NAME" \
+            --key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER" --wait
+    fi
+
+    if [ -n "${NOTARY_PROFILE:-}${NOTARY_KEY:-}" ]; then
+        xcrun stapler staple "$DIST/$DMG_NAME"
+        xcrun stapler validate "$DIST/$DMG_NAME"
+        echo "DMG signed, notarized and stapled."
+    else
+        echo "warning: signed but NOT notarized — no NOTARY_PROFILE or NOTARY_KEY" >&2
+        echo "         set. Gatekeeper blocks this DMG on any other Mac." >&2
+    fi
+fi

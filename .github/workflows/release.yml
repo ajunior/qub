@@ -167,8 +167,50 @@ jobs:
       - name: Build
         run: cmake --build build --parallel
 
+      # Signing is opt-in through repository secrets, and every step below is a
+      # no-op without them: a checkout that has none still produces an ad-hoc
+      # signed DMG instead of failing. The six that turn it on are
+      # MACOS_CERT_P12 (the Developer ID .p12, base64), MACOS_CERT_PASSWORD,
+      # MACOS_DEVELOPER_ID (the certificate's common name), and for
+      # notarization MACOS_NOTARY_KEY (an App Store Connect .p8, base64),
+      # MACOS_NOTARY_KEY_ID and MACOS_NOTARY_ISSUER.
+      - name: Import signing certificate
+        env:
+          CERT_P12:      ${{ secrets.MACOS_CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$CERT_P12" ]; then
+            echo "No MACOS_CERT_P12 secret — the DMG will be signed ad-hoc."
+            exit 0
+          fi
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+              -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
+          # Without this, codesign stops on a GUI prompt for the key that no one
+          # is there to answer, and the job hangs until it times out.
+          security set-key-partition-list -S apple-tool:,apple: \
+              -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" > /dev/null
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+
       - name: Package DMG
-        run: bash packaging/macos/package.sh
+        env:
+          DEVELOPER_ID:   ${{ secrets.MACOS_DEVELOPER_ID }}
+          NOTARY_KEY_B64: ${{ secrets.MACOS_NOTARY_KEY }}
+          NOTARY_KEY_ID:  ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          NOTARY_ISSUER:  ${{ secrets.MACOS_NOTARY_ISSUER }}
+        run: |
+          trap 'rm -f "$RUNNER_TEMP/notary.p8"' EXIT
+          if [ -n "$NOTARY_KEY_B64" ]; then
+            printf '%s' "$NOTARY_KEY_B64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+            export NOTARY_KEY="$RUNNER_TEMP/notary.p8"
+          fi
+          bash packaging/macos/package.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
