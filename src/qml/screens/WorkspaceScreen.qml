@@ -2543,6 +2543,17 @@ Item {
             const m = Object.assign({}, root._tabStateMap)
             m[tabId] = Object.assign({}, m[tabId] ?? {}, { error: "" })
             root._tabStateMap = m
+
+            // Gutter: a spinner where the check mark or the red X will land, on
+            // the same line, so the run is marked from the moment it starts
+            // rather than only once it is over. Hung here rather than in
+            // _runQuery because every path into execution — the confirm dialog,
+            // the parameters dialog, an inline cell edit — arrives through this
+            // signal and none of them can skip it.
+            root._setGutterDecs(tabId, [{ line: root._execStartLine,
+                                          icon:  Icons.spinner,
+                                          color: Theme.primary,
+                                          spin:  true }])
         }
         function onExecutionError(message: string): void {
             const isConnErr = /connect|network|lost|gone|closed|refused|timeout|broken pipe/i.test(message)
