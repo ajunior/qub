@@ -129,6 +129,14 @@ Item {
         schema: "1", query: "2", results: "3", sidebar: "4", preview: "5"
     })
 
+    // Both Ctrl+Shift+N and Ctrl+Alt+N focus a panel, but only one of them is
+    // worth telling a person about. On macOS the system takes Cmd+Shift+3 and
+    // Cmd+Shift+4 for its screenshots before the application is ever asked, so
+    // there the alias is the shortcut — printing Shift would name a key
+    // combination that cannot reach qub. Mahina prints Ctrl as ⌘ and Alt as ⌥
+    // from here, so what the panel shows is ⌘⌥3.
+    readonly property string _focusMod: Qt.platform.os === "osx" ? "Alt" : "Shift"
+
     function _setPanels(schema: bool, query: bool, results: bool,
                         sidebar: bool, preview: bool): void {
         root._showSchema  = schema
@@ -157,8 +165,10 @@ Item {
 
         // The window has just emptied out. Say which key fills it again, so
         // nobody has to guess what they pressed.
-        _toaster.show(root._panelNames[name] + " only — Ctrl+Shift+"
-                      + root._panelKeys[name] + " brings the rest back",
+        _toaster.show(root._panelNames[name] + " only — "
+                      + KeyLabels.sequence("Ctrl+" + root._focusMod + "+"
+                                           + root._panelKeys[name])
+                      + " brings the rest back",
                       Toaster.Type.Info, 2600)
     }
 
@@ -980,8 +990,8 @@ Item {
     // { label, icon, shortcut, group }; the custom `id` rides along and comes
     // back through triggered(item) for _runCommand() to dispatch on.
     readonly property var _commands: [
-        { id: "run",        label: "Run query (or selection)", shortcut: "Ctrl+↵",       group: "Query",  icon: Icons.play },
-        { id: "runAi",      label: "Run AI block",             shortcut: "Ctrl+Shift+↵", group: "Query",  icon: Icons.sparkle },
+        { id: "run",        label: "Run query (or selection)", shortcut: "Ctrl+Enter",   group: "Query",  icon: Icons.play },
+        { id: "runAi",      label: "Run AI block",             shortcut: "Ctrl+Shift+Enter", group: "Query",  icon: Icons.sparkle },
         { id: "explain",    label: "Explain query",            shortcut: "Ctrl+E",       group: "Query",  icon: Icons.listMagnifyingGlass },
         { id: "format",     label: "Format SQL",               shortcut: "Ctrl+Shift+F", group: "Editor", icon: Icons.textAlignLeft },
         { id: "ai",         label: "Ask AI…",                  shortcut: "Ctrl+K",       group: "Query",  icon: Icons.sparkle },
@@ -999,11 +1009,11 @@ Item {
         { id: "toggleResults", label: "Toggle results panel",  shortcut: "Ctrl+3", group: "Panels", icon: Icons.table },
         { id: "toggleSidebar", label: "Toggle sidebar",        shortcut: "Ctrl+4", group: "Panels", icon: Icons.sidebarSimple },
         { id: "togglePreview", label: "Toggle preview panel",  shortcut: "Ctrl+5", group: "Panels", icon: Icons.eye },
-        { id: "focusSchema",   label: "Focus schema panel",    shortcut: "Ctrl+Shift+1", group: "Panels", icon: Icons.cornersOut },
-        { id: "focusQuery",    label: "Focus query editor",    shortcut: "Ctrl+Shift+2", group: "Panels", icon: Icons.cornersOut },
-        { id: "focusResults",  label: "Focus results panel",   shortcut: "Ctrl+Shift+3", group: "Panels", icon: Icons.cornersOut },
-        { id: "focusSidebar",  label: "Focus sidebar",         shortcut: "Ctrl+Shift+4", group: "Panels", icon: Icons.cornersOut },
-        { id: "focusPreview",  label: "Focus editor and preview", shortcut: "Ctrl+Shift+5", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusSchema",   label: "Focus schema panel",    shortcut: "Ctrl+" + root._focusMod + "+1", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusQuery",    label: "Focus query editor",    shortcut: "Ctrl+" + root._focusMod + "+2", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusResults",  label: "Focus results panel",   shortcut: "Ctrl+" + root._focusMod + "+3", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusSidebar",  label: "Focus sidebar",         shortcut: "Ctrl+" + root._focusMod + "+4", group: "Panels", icon: Icons.cornersOut },
+        { id: "focusPreview",  label: "Focus editor and preview", shortcut: "Ctrl+" + root._focusMod + "+5", group: "Panels", icon: Icons.cornersOut },
         { id: "restoreLayout", label: "Restore panel layout",  shortcut: "",             group: "Panels", icon: Icons.cornersIn }
     ]
 
@@ -3254,7 +3264,7 @@ Item {
         id: _shortcutsPanel
         sections: [
             { heading: "Query", shortcuts: [
-                { keys: ["Ctrl", "↵"],          desc: "Run query (or selection)" },
+                { keys: ["Ctrl", "Enter"],       desc: "Run query (or selection)" },
                 { keys: ["Ctrl", "E"],           desc: "EXPLAIN query" },
                 { keys: ["Ctrl", "Shift", "F"],  desc: "Format SQL" },
                 { keys: ["Ctrl", "O"],           desc: "Open .sql file" },
@@ -3281,11 +3291,11 @@ Item {
                 { keys: ["Ctrl", "3"], desc: "Toggle results" },
                 { keys: ["Ctrl", "4"], desc: "Toggle sidebar" },
                 { keys: ["Ctrl", "5"], desc: "Toggle markdown preview" },
-                { keys: ["Ctrl", "Shift", "1"], desc: "Focus schema panel (again to restore)" },
-                { keys: ["Ctrl", "Shift", "2"], desc: "Focus query editor" },
-                { keys: ["Ctrl", "Shift", "3"], desc: "Focus results" },
-                { keys: ["Ctrl", "Shift", "4"], desc: "Focus sidebar" },
-                { keys: ["Ctrl", "Shift", "5"], desc: "Focus editor and preview" },
+                { keys: ["Ctrl", root._focusMod, "1"], desc: "Focus schema panel (again to restore)" },
+                { keys: ["Ctrl", root._focusMod, "2"], desc: "Focus query editor" },
+                { keys: ["Ctrl", root._focusMod, "3"], desc: "Focus results" },
+                { keys: ["Ctrl", root._focusMod, "4"], desc: "Focus sidebar" },
+                { keys: ["Ctrl", root._focusMod, "5"], desc: "Focus editor and preview" },
             ]},
             { heading: "Navigation", shortcuts: [
                 { keys: ["Ctrl", "P"],      desc: "Command palette" },
