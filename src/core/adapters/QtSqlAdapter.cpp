@@ -192,6 +192,16 @@ QVariantList QtSqlAdapter::columns(const QString &table) const
     return result;
 }
 
+QStringList QtSqlAdapter::primaryKeys(const QString &table) const
+{
+    const QSqlIndex pk = m_db.primaryIndex(table);
+    QStringList names;
+    names.reserve(pk.count());
+    for (int i = 0; i < pk.count(); ++i)
+        names << pk.fieldName(i);
+    return names;
+}
+
 static QString toSqlTypeName(const QMetaType &mt)
 {
     switch (mt.id()) {

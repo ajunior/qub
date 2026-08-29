@@ -11,6 +11,7 @@
 #include <QtTest>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <algorithm>
 
 #include "core/adapters/QtSqlAdapter.h"
 #include "core/Types.h"
@@ -31,6 +32,9 @@ private slots:
     void execute_dmlReportsRowsAffectedNoColumns();
     void execute_truncatesAtRowLimit();
     void execute_onClosedConnectionFails();
+
+    // ── Schema introspection ──────────────────────────────────────────────────
+    void primaryKeys_onlyTouchTheTableAsked();
 
 private:
     // Build params for an in-memory SQLite connection.
@@ -179,6 +183,39 @@ void TestQuery::execute_onClosedConnectionFails()
     // adapter must still surface an actionable message rather than a blank one.
     QVERIFY(!r.error.isEmpty());
     QVERIFY(r.error.contains("not open", Qt::CaseInsensitive));
+}
+
+// ── Schema introspection ────────────────────────────────────────────────────────
+
+void TestQuery::primaryKeys_onlyTouchTheTableAsked()
+{
+    QtSqlAdapter adapter;
+    QVERIFY(adapter.open(memParams()));
+
+    QVERIFY(adapter.execute("CREATE TABLE one (id INTEGER PRIMARY KEY, a TEXT)").success);
+    QVERIFY(adapter.execute("CREATE TABLE two (a TEXT, b TEXT, PRIMARY KEY (a, b))").success);
+    QVERIFY(adapter.execute("CREATE TABLE none (a TEXT)").success);
+
+    QCOMPARE(adapter.primaryKeys("one"), QStringList({ "id" }));
+    // Composite keys come back in key order, which is what an inline edit needs
+    // to build its WHERE clause.
+    QCOMPARE(adapter.primaryKeys("two"), QStringList({ "a", "b" }));
+    QCOMPARE(adapter.primaryKeys("none"), QStringList());
+    // An unknown table is a question with an empty answer, not an error.
+    QCOMPARE(adapter.primaryKeys("nope"), QStringList());
+
+    // The same answer schema() gives, without asking the database about every
+    // other table to get it — which is the whole reason this exists.
+    const QVariantList all = adapter.schema();
+    const auto entry = std::find_if(all.begin(), all.end(), [](const QVariant &v) {
+        return v.toMap().value("name").toString() == "two";
+    });
+    QVERIFY(entry != all.end());
+    QStringList fromSchema;
+    for (const QVariant &c : entry->toMap().value("columns").toList())
+        if (c.toMap().value("pk").toBool())
+            fromSchema << c.toMap().value("name").toString();
+    QCOMPARE(fromSchema, adapter.primaryKeys("two"));
 }
 
 QTEST_MAIN(TestQuery)

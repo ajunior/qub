@@ -245,7 +245,16 @@ Item {
     readonly property string _aiDialect:
         root._activeTabUsable ? Drivers.label(root._activeConn?.driver ?? "") : ""
 
-    readonly property string _aiSchema: {
+    // A function, not a binding: the sweep behind it costs two round-trips per
+    // table and runs on the GUI thread, so it happens when the AI is actually
+    // asked to generate — not every time the active tab changes.
+    function _openAiPalette(): void {
+        root._aiMode      = "palette"
+        _aiPalette.schema = root._aiSchema()
+        _aiPalette.open()
+    }
+
+    function _aiSchema(): string {
         // Never leak an out-of-workspace connection's schema into AI prompts.
         if (!root._activeTabUsable) return ""
         const tables = ConnectionManager.schema(root.activeConnection)
@@ -292,7 +301,7 @@ Item {
         }
         root._aiBlockText = hit[0]
         root._aiMode = "inline"
-        AiClient.generate(prompt, root._aiSchema, root._aiDialect)
+        AiClient.generate(prompt, root._aiSchema(), root._aiDialect)
     }
 
     Connections {
@@ -388,13 +397,15 @@ Item {
     property var _tabDecorationMap:  ({})   // { [tabId]: [{line, icon, color}] }
     property int _execStartLine:     1      // gutter line for the currently-running SQL
 
-    // PK column names for the active tab's table (from schema)
+    // PK column names for the active tab's table. This re-evaluates every time
+    // a query runs (_runQuery rewrites _tabTableMap) and on every tab switch,
+    // so it has to be cheap: one primary-index lookup for the one table. It
+    // used to dump the whole database's schema, which costs two round-trips
+    // per table and view and blocked the GUI thread for the whole sweep.
     readonly property var _currentPkCols: {
         const tbl = _tabTableMap[_currentTabId] ?? ""
         if (!tbl || !root.activeConnection) return []
-        const schema = ConnectionManager.schema(root.activeConnection)
-        const entry  = schema.find(t => t.name === tbl)
-        return entry ? entry.columns.filter(c => c.pk).map(c => c.name) : []
+        return ConnectionManager.primaryKeys(root.activeConnection, tbl)
     }
 
     // True when results are from a single-table SELECT and PKs are known
@@ -898,10 +909,7 @@ Item {
 
     Shortcut {
         sequence: "Ctrl+K"
-        onActivated: {
-            root._aiMode = "palette"
-            _aiPalette.open()
-        }
+        onActivated: root._openAiPalette()
     }
 
     Shortcut {
@@ -1023,7 +1031,7 @@ Item {
         case "runAi":       root._runAiBlock(); break
         case "explain":     root._runExplain(false); break
         case "format":      queryEditor.setSql(Fmt.format(queryEditor.sql)); break
-        case "ai":          root._aiMode = "palette"; _aiPalette.open(); break
+        case "ai":          root._openAiPalette(); break
         case "newTab":      root._newQueryTab(); break
         case "closeTab":    root._closeQueryTab(root._activeQueryTabIdx); break
         case "openFile":    _sqlOpenDialog.open(); break
@@ -1945,7 +1953,7 @@ Item {
                                         size:     Button.Size.Sm
                                         variant:  Button.Variant.Ghost
                                         enabled:  root._activeTabUsable && AppSettings.aiProvider !== ""
-                                        onClicked: { root._aiMode = "palette"; _aiPalette.open() }
+                                        onClicked: root._openAiPalette()
                                     }
                                 }
                             }
@@ -3221,7 +3229,6 @@ Item {
     AiCommandPalette {
         id:      _aiPalette
         anchors.fill: parent
-        schema:  root._aiSchema
         dialect: root._aiDialect
         onPromptSubmitted: (payload) => {
             root._aiMode = ""

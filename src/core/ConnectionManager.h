@@ -49,6 +49,7 @@ public:
     Q_INVOKABLE QVariantMap importConnections(const QUrl &fileUrl);
     Q_INVOKABLE QStringList  tables(const QString &connectionName) const;
     Q_INVOKABLE QVariantList columns(const QString &connectionName, const QString &table) const;
+    Q_INVOKABLE QStringList  primaryKeys(const QString &connectionName, const QString &table) const;
     Q_INVOKABLE QVariantList schema(const QString &connectionName) const;
     Q_INVOKABLE QVariantList schemas(const QString &connectionName) const;
 

@@ -533,6 +533,13 @@ QVariantList ConnectionManager::columns(const QString &connectionName, const QSt
     return a ? a->columns(table) : QVariantList{};
 }
 
+QStringList ConnectionManager::primaryKeys(const QString &connectionName,
+                                           const QString &table) const
+{
+    auto *a = m_adapters.value(connectionName, nullptr);
+    return a ? a->primaryKeys(table) : QStringList{};
+}
+
 QVariantList ConnectionManager::schema(const QString &connectionName) const
 {
     auto *a = m_adapters.value(connectionName, nullptr);
