@@ -9,6 +9,7 @@ import Mahina
 import "../guard.js"   as Guard
 import "../drivers.js" as Drivers
 import "../format.js"  as Fmt
+import "../params.js"  as Params
 import Qub
 
 Item {
@@ -566,26 +567,7 @@ Item {
     }
 
     function _extractParams(sql: string): var {
-        const params = []
-        const seen   = new Set()
-        // Named :param (skip ::cast and :// URLs)
-        const namedRe = /:([a-zA-Z_]\w*)(?!:)/g
-        let m
-        while ((m = namedRe.exec(sql)) !== null) {
-            if (!seen.has(m[1])) { seen.add(m[1]); params.push({ name: m[1], positional: false }) }
-        }
-        // Positional $1 … $99 (not inside string literals — best-effort)
-        if (params.length === 0) {
-            const posRe = /\$(\d+)/g
-            const nums  = []
-            while ((m = posRe.exec(sql)) !== null) {
-                const n = parseInt(m[1], 10)
-                if (!seen.has(String(n))) { seen.add(String(n)); nums.push(n) }
-            }
-            nums.sort((a, b) => a - b)
-            for (const n of nums) params.push({ name: String(n), positional: true })
-        }
-        return params
+        return Params.extractParams(sql)
     }
 
     function _cancelQuery(): void {

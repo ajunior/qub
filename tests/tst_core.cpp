@@ -71,6 +71,10 @@ private slots:
     // ── Driver list (drivers.js) ──────────────────────────────────────────────
     void drivers_onlyAvailableOffered();
 
+    // ── Query parameters (params.js) ──────────────────────────────────────────
+    void params_namedAndPositional();
+    void params_ignoreCommentsAndLiterals();
+
     // CSV / TSV export
     void export_csvNeutralizesFormulas();
     void export_csvQuoting();
@@ -183,6 +187,15 @@ void TestCore::initTestCase()
     const QJSValue dres = m_js.evaluate(dsrc, QStringLiteral("drivers.js"));
     QVERIFY2(!dres.isError(), qPrintable(dres.toString()));
     QVERIFY(m_js.globalObject().property("availableLabels").isCallable());
+
+    // Load params.js into the same engine (function names don't collide).
+    QFile pf(QStringLiteral(PARAMS_JS_PATH));
+    QVERIFY2(pf.open(QIODevice::ReadOnly | QIODevice::Text), "params.js not found");
+    QString psrc = QString::fromUtf8(pf.readAll());
+    psrc.remove(QRegularExpression(QStringLiteral("^\\.pragma[^\n]*\n")));
+    const QJSValue pres = m_js.evaluate(psrc, QStringLiteral("params.js"));
+    QVERIFY2(!pres.isError(), qPrintable(pres.toString()));
+    QVERIFY(m_js.globalObject().property("extractParams").isCallable());
 }
 
 QJSValue TestCore::runGuard(const QString &statementsJson, const QString &profileJson)
@@ -612,6 +625,53 @@ void TestCore::drivers_onlyAvailableOffered()
              QStringLiteral("QMARIADB"));
     QCOMPARE(m_js.evaluate(QStringLiteral("label('QMIMER')")).toString(),
              QStringLiteral("QMIMER"));   // unmapped keys pass through
+}
+
+// ── Query parameters (params.js) ─────────────────────────────────────────────
+
+void TestCore::params_namedAndPositional()
+{
+    auto names = [&](const QString &sql) {
+        return m_js.evaluate(
+                    QStringLiteral("extractParams(%1).map(p => "
+                                   "(p.positional ? '$' : ':') + p.name).join('|')")
+                        .arg(sql)).toString();
+    };
+
+    QCOMPARE(names(R"("SELECT * FROM t WHERE id = :id AND region = :region")"),
+             QStringLiteral(":id|:region"));
+
+    // Repeats collapse: one prompt per distinct name.
+    QCOMPARE(names(R"("SELECT :a, :a, :b")"), QStringLiteral(":a|:b"));
+
+    // Positional placeholders come back in numeric order, not the order met.
+    QCOMPARE(names(R"("SELECT * FROM t WHERE a = $2 AND b = $1")"),
+             QStringLiteral("$1|$2"));
+
+    // A Postgres ::cast is not a parameter, and neither is a :// URL.
+    QCOMPARE(names(R"("SELECT id::text FROM t WHERE url = 'http://x'")"), QString());
+
+    QCOMPARE(names(R"("SELECT 1")"), QString());
+}
+
+void TestCore::params_ignoreCommentsAndLiterals()
+{
+    auto count = [&](const QString &sql) {
+        return m_js.evaluate(QStringLiteral("extractParams(%1).length").arg(sql)).toInt();
+    };
+
+    // The regression this module exists for: _applyLimit appends its own
+    // "/* qub:limit */" marker, which read as a :limit parameter, so every
+    // SELECT without a LIMIT of its own opened the parameter dialog instead of
+    // running.
+    QCOMPARE(count(R"("SELECT * FROM t LIMIT 1001 /* qub:limit */")"), 0);
+
+    // Comments and string literals in general are not where parameters live.
+    QCOMPARE(count(R"("SELECT 1 -- and :nope")"), 0);
+    QCOMPARE(count(R"("SELECT 'a :nope b' FROM t")"), 0);
+
+    // But a real parameter alongside a decoy still comes back.
+    QCOMPARE(count(R"("SELECT * FROM t WHERE id = :id /* :nope */")"), 1);
 }
 
 // ── CSV / TSV export ──────────────────────────────────────────────────────────

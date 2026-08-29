@@ -121,6 +121,7 @@ qt_add_qml_module(qub
         src/qml/complete.js
         src/qml/fk.js
         src/qml/cellview.js
+        src/qml/params.js
         src/qml/Main.qml
         src/qml/screens/WorkspaceScreen.qml
         src/qml/screens/HomeScreen.qml
@@ -214,7 +215,8 @@ target_compile_definitions(qub_tests PRIVATE
     COMPLETE_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/complete.js"
     FK_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/fk.js"
     CELLVIEW_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/cellview.js"
-    DRIVERS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/drivers.js")
+    DRIVERS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/drivers.js"
+    PARAMS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/params.js")
 target_link_libraries(qub_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql)
 add_test(NAME qub_tests COMMAND qub_tests)
 
