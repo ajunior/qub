@@ -18,6 +18,7 @@ public:
     QString      connectionId() const               override { return m_connectionId; }
     QStringList  tables() const                      override;
     QVariantList columns(const QString &table) const override;
+    QStringList  primaryKeys(const QString &table) const override;
     QVariantList schema() const                      override;
     QVariantList schemas() const                     override;
 

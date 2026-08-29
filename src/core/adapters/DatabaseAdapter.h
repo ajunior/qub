@@ -18,6 +18,10 @@ public:
     virtual QString      connectionId() const               = 0;
     virtual QStringList  tables() const                      = 0;
     virtual QVariantList columns(const QString &table) const = 0;
+    // Primary-key column names for one table. Separate from schema() because
+    // asking the whole database about every table is the expensive way to
+    // learn one table's key.
+    virtual QStringList  primaryKeys(const QString &table) const = 0;
     virtual QVariantList schema() const                      = 0;
     virtual QVariantList schemas() const                     = 0;
 
