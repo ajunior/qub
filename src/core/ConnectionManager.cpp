@@ -45,6 +45,34 @@ struct TunnelResult {
     QString    keyLines;
 };
 
+// The outcome of one connection test, carried back from the worker thread.
+struct TestOutcome {
+    bool    ok = false;
+    QString message;
+};
+
+// Runs on the worker thread. Opening a connection blocks for as long as the
+// driver takes to give up on a host that never answers — the connect timeout,
+// which defaults to thirty seconds. On the GUI thread that froze the whole
+// window, so the Test button could not even repaint: it looked like the click
+// had done nothing until the result appeared.
+//
+// The adapter is created and destroyed here, in this thread, on purpose: a
+// QSqlDatabase belongs to the thread that made it, and QtSqlAdapter names its
+// connection with a fresh UUID, so it cannot collide with anything the GUI
+// thread holds open.
+TestOutcome openChecked(const ConnectionParams &p)
+{
+    QString errorMsg;
+    QtSqlAdapter adapter;
+    QObject::connect(&adapter, &DatabaseAdapter::errorOccurred, &adapter,
+                     [&errorMsg](const QString &msg) { errorMsg = msg; });
+
+    const bool ok = adapter.open(p);
+    adapter.close();
+    return { ok, ok ? QStringLiteral("Connection successful.") : errorMsg };
+}
+
 // Runs on the worker thread. Returns a hostKeyUnknown result (or a scan error)
 // for hosts missing from known_hosts; otherwise opens the tunnel.
 TunnelResult openTunnelChecked(const QVariantMap &sshCfg,
@@ -294,6 +322,13 @@ void ConnectionManager::testConnection(const QVariantMap &params)
 {
     ConnectionParams p = paramsFromMap(params);
 
+    // Announced before the credential lookup, which is itself asynchronous:
+    // the button has to change the moment it is clicked, not once the keychain
+    // answers. Every way out of this function lowers it again — finishTest()
+    // for a result, explicitly for the host-key prompt, which hands control to
+    // a dialog and comes back through here when the user confirms.
+    emit testPending(true);
+
     m_credentials->retrieve(p.name, [this, p, params](const QString &password, const QString &) mutable {
         // A password typed in the dialog wins over the stored one — the user
         // is likely testing a credential change.
@@ -303,7 +338,7 @@ void ConnectionManager::testConnection(const QVariantMap &params)
         if (!p.sshConfigId.isEmpty() && m_ssh) {
             const QVariantMap sshCfg = m_ssh->configById(p.sshConfigId);
             if (sshCfg.isEmpty()) {
-                emit testResult(false, "SSH config not found.");
+                finishTest(false, "SSH config not found.");
                 return;
             }
             const QString remoteHost = p.host;
@@ -321,13 +356,17 @@ void ConnectionManager::testConnection(const QVariantMap &params)
                     pending.keyLines   = r.keyLines;
                     pending.isTest     = true;
                     m_pendingHostKeys.insert(p.name, pending);
+                    // The test is not over, but it is waiting on a person now.
+                    // A spinner through a modal dialog would be claiming work
+                    // that is not happening.
+                    emit testPending(false);
                     emit hostKeyConfirmationRequired(p.name, r.sshEndpoint, r.fingerprints);
                     return;
                 }
 
                 if (r.port < 0) {
                     if (r.tunnel) delete r.tunnel;
-                    emit testResult(false, "SSH tunnel failed: " + r.error);
+                    finishTest(false, "SSH tunnel failed: " + r.error);
                     return;
                 }
 
@@ -335,19 +374,23 @@ void ConnectionManager::testConnection(const QVariantMap &params)
                 tp.host = "127.0.0.1";
                 tp.port = r.port;
 
-                QString errorMsg;
-                auto *adapter = new QtSqlAdapter(this);
-                connect(adapter, &DatabaseAdapter::errorOccurred, this,
-                        [&errorMsg](const QString &msg) { errorMsg = msg; });
+                // The open goes to a worker for the same reason as the direct
+                // branch below. The tunnel is still torn down here, on the GUI
+                // thread that has always torn it down — only the open moved.
+                auto *openWatcher = new QFutureWatcher<TestOutcome>(this);
+                connect(openWatcher, &QFutureWatcher<TestOutcome>::finished, this,
+                        [this, openWatcher, tunnel = r.tunnel]() {
+                    const TestOutcome o = openWatcher->result();
+                    openWatcher->deleteLater();
 
-                const bool ok = adapter->open(tp);
-                adapter->close();
-                delete adapter;
+                    tunnel->stop();
+                    delete tunnel;
 
-                r.tunnel->stop();
-                delete r.tunnel;
-
-                emit testResult(ok, ok ? "Connection successful." : errorMsg);
+                    finishTest(o.ok, o.message);
+                });
+                openWatcher->setFuture(QtConcurrent::run([tp]() -> TestOutcome {
+                    return openChecked(tp);
+                }));
             });
 
             watcher->setFuture(QtConcurrent::run([sshCfg, remoteHost, remotePort]() -> TunnelResult {
@@ -355,18 +398,26 @@ void ConnectionManager::testConnection(const QVariantMap &params)
             }));
 
         } else {
-            QString errorMsg;
-            auto *adapter = new QtSqlAdapter(this);
-            connect(adapter, &DatabaseAdapter::errorOccurred, this,
-                    [&errorMsg](const QString &msg) { errorMsg = msg; });
-
-            const bool ok = adapter->open(p);
-            adapter->close();
-            delete adapter;
-
-            emit testResult(ok, ok ? "Connection successful." : errorMsg);
+            auto *watcher = new QFutureWatcher<TestOutcome>(this);
+            connect(watcher, &QFutureWatcher<TestOutcome>::finished, this,
+                    [this, watcher]() {
+                const TestOutcome o = watcher->result();
+                watcher->deleteLater();
+                finishTest(o.ok, o.message);
+            });
+            watcher->setFuture(QtConcurrent::run([p]() -> TestOutcome {
+                return openChecked(p);
+            }));
         }
     });
+}
+
+// One exit for every finished test, so the button can never be left spinning
+// on a path someone forgot about.
+void ConnectionManager::finishTest(bool ok, const QString &message)
+{
+    emit testPending(false);
+    emit testResult(ok, message);
 }
 
 bool ConnectionManager::isConnected(const QString &name) const
@@ -703,7 +754,7 @@ void ConnectionManager::acceptHostKey(const QString &connectionName)
 
     if (!SshTunnel::trustHostKey(pending.keyLines)) {
         const QString msg = "Could not save the host key to ~/.ssh/known_hosts.";
-        if (pending.isTest) emit testResult(false, msg);
+        if (pending.isTest) finishTest(false, msg);
         else                emit connectionError(connectionName, msg);
         return;
     }
@@ -723,7 +774,7 @@ void ConnectionManager::rejectHostKey(const QString &connectionName)
 
     const QString msg = "SSH host key was not trusted — connection cancelled.";
     if (m_log) m_log->post("warn", "SSH", connectionName, msg);
-    if (pending.isTest) emit testResult(false, msg);
+    if (pending.isTest) finishTest(false, msg);
     else                emit connectionError(connectionName, msg);
 }
 

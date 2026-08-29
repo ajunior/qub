@@ -78,12 +78,16 @@ signals:
     void connectionRemoved(const QString &name);
     void connectionPending(const QString &name, bool pending);
     void connectionError(const QString &name, const QString &error);
+    void testPending(bool pending);                 // a test is in flight
     void testResult(bool success, const QString &message);
     void hostKeyConfirmationRequired(const QString &connectionName,
                                      const QString &host,
                                      const QString &fingerprints);
 
 private:
+    // Every finished test leaves through here: lowers testPending, then reports.
+    void finishTest(bool ok, const QString &message);
+
     struct PendingHostKey {
         ConnectionParams params;      // reconnect flow
         QVariantMap      testParams;  // test flow (re-runs testConnection)
