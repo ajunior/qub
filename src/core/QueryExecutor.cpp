@@ -194,13 +194,19 @@ void QueryExecutor::execute(const QString &connectionName, const QString &sql)
     m_pendingConnName = connectionName;
     tabResultModel(m_pendingTabId)->clear();
     emit executionStarted(connectionName, sql);
-    emit runningChanged();
 
     auto flag  = m_cancelFlag;
     const int limit = m_rowLimit;
     m_watcher->setFuture(QtConcurrent::run([sourceConnId, sql, limit, flag]() {
         return runQuery(sourceConnId, sql, limit, flag);
     }));
+
+    // After setFuture, never before: `running` reads the watcher, and a watcher
+    // with no future yet is not running. Emitted first, the notification told
+    // QML to re-read a value that was still false and then never fired again,
+    // so `running` was observably false for the entire query — the Run button
+    // never became Stop, and the cancel it offers was unreachable.
+    emit runningChanged();
 }
 
 void QueryExecutor::setRowLimit(int limit)

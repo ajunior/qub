@@ -55,6 +55,7 @@ private slots:
 
     // Cancellation (best-effort, non-racy assertions only)
     void cancel_returnsToIdle();
+    void running_isTrueWhenTheChangeIsAnnounced();
 
     // The Output console's summary line (pure, no query needed)
     void formatDuration_growsUnitsOnlyAsNeeded();
@@ -468,6 +469,32 @@ void TestExecutor::execute_announcesSchemaChangeOnlyForWrites()
     QVERIFY(finSpy.wait(5000));
     QCOMPARE(schemaSpy.count(), 1);
     QCOMPARE(schemaSpy.first().at(0).toString(), m_connName);
+    delete ex;
+}
+
+// The Run button reads `running` off this notification. Emitted before the
+// watcher has a future, it announced a change to a value that was still false
+// and never fired again, so the button never became Stop and the cancel it
+// offers could not be reached.
+void TestExecutor::running_isTrueWhenTheChangeIsAnnounced()
+{
+    QueryExecutor *ex = makeExecutor();
+    ex->setActiveTabId(11);
+
+    QList<bool> seen;
+    connect(ex, &QueryExecutor::runningChanged, ex, [ex, &seen]() {
+        seen << ex->isRunning();
+    });
+
+    QSignalSpy finSpy(ex, &QueryExecutor::executionFinished);
+    ex->execute(m_connName, "SELECT id FROM t");
+
+    QVERIFY(ex->isRunning());               // …and true the moment execute returns
+    QVERIFY(!seen.isEmpty());
+    QCOMPARE(seen.first(), true);           // the first announcement says so
+
+    QVERIFY(finSpy.wait(5000));
+    QCOMPARE(seen.last(), false);           // and the last one says it stopped
     delete ex;
 }
 
