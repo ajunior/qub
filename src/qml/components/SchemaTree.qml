@@ -26,10 +26,13 @@ Item {
         function onConnectionsChanged() { Qt.callLater(root._reload) }
     }
 
+    // Only when the database's structure may have moved. Re-reading it after
+    // every finished SELECT meant a full schema walk on the GUI thread for a
+    // query that could not have changed anything.
     Connections {
         target: QueryExecutor
-        function onExecutionFinished(success: bool): void {
-            if (success) Qt.callLater(root._reload)
+        function onSchemaMayHaveChanged(connectionName: string): void {
+            if (connectionName === root.connectionName) Qt.callLater(root._reload)
         }
     }
 

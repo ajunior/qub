@@ -215,6 +215,43 @@ void QueryExecutor::cancel()
     m_cancelFlag->store(true, std::memory_order_relaxed);
 }
 
+bool QueryExecutor::mayChangeSchema(const QString &sql)
+{
+    // Comments and string literals are not statements: "-- drop table users"
+    // and 'CREATE' must not read as writes.
+    static const QRegularExpression literals(QStringLiteral("'(?:''|\\\\.|[^'])*'"));
+    static const QRegularExpression lineComment(QStringLiteral("--[^\n]*"));
+    static const QRegularExpression blockComment(QStringLiteral("/\\*[\\s\\S]*?\\*/"));
+
+    QString code = sql;
+    code.remove(literals);
+    code.remove(lineComment);
+    code.replace(blockComment, QStringLiteral(" "));
+
+    // A write keyword anywhere is enough — a data-modifying CTE hides one in
+    // the middle of a statement that opens with WITH.
+    static const QRegularExpression writeWord(
+        QStringLiteral("\\b(INSERT|UPDATE|DELETE|MERGE|REPLACE|DROP|TRUNCATE|ALTER"
+                       "|CREATE|GRANT|REVOKE|RENAME|COMMENT|COPY|IMPORT|VACUUM"
+                       "|ANALYZE|REINDEX|ATTACH|DETACH)\\b"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (writeWord.match(code).hasMatch())
+        return true;
+
+    // …and every statement in the script has to open as a read.
+    static const QRegularExpression leadingRead(
+        QStringLiteral("^\\s*(SELECT|WITH|SHOW|EXPLAIN|DESCRIBE|DESC|PRAGMA|VALUES|TABLE)\\b"),
+        QRegularExpression::CaseInsensitiveOption);
+    const QStringList parts = code.split(u';');
+    for (const QString &part : parts) {
+        if (part.trimmed().isEmpty())
+            continue;
+        if (!leadingRead.match(part).hasMatch())
+            return true;
+    }
+    return false;
+}
+
 QString QueryExecutor::formatDuration(qint64 ms)
 {
     if (ms < 0) ms = 0;
@@ -302,6 +339,14 @@ void QueryExecutor::onFinished()
                          {"elapsedMs", result.elapsedMs},
                          {"execMs", result.execMs}, {"fetchMs", result.fetchMs}});
         emit executionError(result.error);
+    }
+
+    // Anything that was not a plain read may have moved the ground under the
+    // memoised introspection — drop it before the schema views react below.
+    if (mayChangeSchema(m_pendingSql)) {
+        if (m_connections)
+            m_connections->invalidateMetadata(m_pendingConnName);
+        emit schemaMayHaveChanged(m_pendingConnName);
     }
 
     emit executionFinished(result.success, result.elapsedMs,

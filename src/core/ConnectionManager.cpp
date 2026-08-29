@@ -185,6 +185,7 @@ void ConnectionManager::addConnection(const QVariantMap &params)
 
 void ConnectionManager::closeAllConnections()
 {
+    invalidateMetadata({});
     for (auto *adapter : std::as_const(m_adapters))
         adapter->close();
     emit connectionsChanged();
@@ -192,6 +193,7 @@ void ConnectionManager::closeAllConnections()
 
 void ConnectionManager::closeConnection(const QString &name)
 {
+    invalidateMetadata(name);
     auto *adapter = m_adapters.take(name);
     const bool wasPending = m_pendingNames.remove(name);
     if (!adapter && !wasPending)
@@ -209,6 +211,7 @@ void ConnectionManager::closeConnection(const QString &name)
 
 void ConnectionManager::removeConnection(const QString &name)
 {
+    invalidateMetadata(name);
     if (auto *adapter = m_adapters.take(name)) {
         adapter->close();
         delete adapter;
@@ -242,6 +245,7 @@ void ConnectionManager::reconnect(const QString &name)
                            [&name](const ConnectionParams &p) { return p.name == name; });
     if (it == m_params.cend()) return;
 
+    invalidateMetadata(name);
     if (auto *old = m_adapters.take(name)) {
         old->close();
         delete old;
@@ -273,6 +277,7 @@ void ConnectionManager::updateConnection(const QString &oldName, const QVariantM
         }
     }
 
+    invalidateMetadata(oldName);
     if (auto *old = m_adapters.take(oldName)) {
         old->close();
         delete old;
@@ -524,37 +529,80 @@ QVariantMap ConnectionManager::importConnections(const QUrl &fileUrl)
 QStringList ConnectionManager::tables(const QString &connectionName) const
 {
     auto *a = m_adapters.value(connectionName, nullptr);
-    return a ? a->tables() : QStringList{};
+    if (!a) return {};
+
+    Metadata &md = m_metadata[connectionName];
+    if (!md.tablesValid) {
+        md.tables      = a->tables();
+        md.tablesValid = true;
+    }
+    return md.tables;
 }
 
 QVariantList ConnectionManager::columns(const QString &connectionName, const QString &table) const
 {
     auto *a = m_adapters.value(connectionName, nullptr);
-    return a ? a->columns(table) : QVariantList{};
+    if (!a) return {};
+
+    Metadata &md = m_metadata[connectionName];
+    const auto it = md.columns.constFind(table);
+    if (it != md.columns.constEnd()) return *it;
+
+    if (md.columns.size() >= kMaxTableEntries) md.columns.clear();
+    return *md.columns.insert(table, a->columns(table));
 }
 
 QStringList ConnectionManager::primaryKeys(const QString &connectionName,
                                            const QString &table) const
 {
     auto *a = m_adapters.value(connectionName, nullptr);
-    return a ? a->primaryKeys(table) : QStringList{};
+    if (!a) return {};
+
+    Metadata &md = m_metadata[connectionName];
+    const auto it = md.primaryKeys.constFind(table);
+    if (it != md.primaryKeys.constEnd()) return *it;
+
+    if (md.primaryKeys.size() >= kMaxTableEntries) md.primaryKeys.clear();
+    return *md.primaryKeys.insert(table, a->primaryKeys(table));
 }
 
 QVariantList ConnectionManager::schema(const QString &connectionName) const
 {
     auto *a = m_adapters.value(connectionName, nullptr);
-    return a ? a->schema() : QVariantList{};
+    if (!a) return {};
+
+    Metadata &md = m_metadata[connectionName];
+    if (!md.schemaValid) {
+        md.schema      = a->schema();
+        md.schemaValid = true;
+    }
+    return md.schema;
 }
 
 QVariantList ConnectionManager::schemas(const QString &connectionName) const
 {
     auto *a = m_adapters.value(connectionName, nullptr);
-    return a ? a->schemas() : QVariantList{};
+    if (!a) return {};
+
+    Metadata &md = m_metadata[connectionName];
+    if (!md.schemasValid) {
+        md.schemas      = a->schemas();
+        md.schemasValid = true;
+    }
+    return md.schemas;
+}
+
+void ConnectionManager::invalidateMetadata(const QString &connectionName)
+{
+    if (connectionName.isEmpty()) m_metadata.clear();
+    else                          m_metadata.remove(connectionName);
 }
 
 void ConnectionManager::refreshSchema(const QString &connectionName)
 {
-    Q_UNUSED(connectionName)   // schema views reload for whichever connection they show
+    // The point of a refresh is to go back to the database, so the memoised
+    // answers go first — the views reload on connectionsChanged() below.
+    invalidateMetadata(connectionName);
     emit connectionsChanged();
 }
 
@@ -583,6 +631,7 @@ void ConnectionManager::openAdapter(const ConnectionParams &p)
             });
 
     if (adapter->open(p)) {
+        invalidateMetadata(p.name);
         m_adapters.insert(p.name, adapter);
         if (m_log) m_log->post("info", "CONN", p.name,
                                "Connected · " + p.driver + " · " + p.database,
