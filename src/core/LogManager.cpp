@@ -19,8 +19,10 @@ static QVariantMap entryFromParts(qint64 id, qint64 epoch,
     QVariantMap entry;
     entry["id"]         = id;
     entry["epoch"]      = epoch;
-    entry["timestamp"]  = dt.toString("HH:mm:ss.zzz");             // row display
-    entry["datetime"]   = dt.toString("yyyy-MM-dd HH:mm:ss.zzz");  // exports / detail
+    // One stamp, carrying the date. A console line is read long after the day
+    // it was written — the log keeps a week — and it gets pasted into tickets,
+    // where "13:33:31" answers nothing on its own.
+    entry["timestamp"]  = dt.toString("yyyy-MM-dd HH:mm:ss.zzz");
     entry["level"]      = level;
     entry["category"]   = category;
     entry["connection"] = connection;
@@ -197,9 +199,9 @@ QString LogManager::exportCsv() const
         return QStringLiteral("\"") + v.replace('"', QStringLiteral("\"\"")) + QStringLiteral("\"");
     };
 
-    QString out = QStringLiteral("datetime,level,category,connection,summary\n");
+    QString out = QStringLiteral("timestamp,level,category,connection,summary\n");
     for (const auto &e : m_entries) {
-        out += q(e["datetime"].toString())  + ','
+        out += q(e["timestamp"].toString()) + ','
              + q(e["level"].toString())     + ','
              + q(e["category"].toString())  + ','
              + q(e["connection"].toString())+ ','

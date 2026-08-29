@@ -50,13 +50,13 @@ Rectangle {
                 (modelData.detail?.sql ?? "").replace(/\s+/g, " ").trim()
 
             // What lands on the clipboard: the statement as written, then the
-            // stamped outcome, then the error if there was one. That is the
-            // block you paste back to whoever asked you to run the query, so
-            // it carries the full date rather than the row's clock time.
+            // stamped outcome, then the error if there was one — the block you
+            // paste back to whoever asked you to run the query, character for
+            // character what the row above shows.
             function copyBlock(): string {
                 const sql   = _row.modelData.detail?.sql   ?? ""
                 const err   = _row.modelData.detail?.error ?? ""
-                const stamp = _row.modelData.datetime ?? _row.modelData.timestamp ?? ""
+                const stamp = _row.modelData.timestamp ?? ""
                 let out = ""
                 if (sql.trim() !== "") out += sql.trim() + "\n"
                 out += "[" + stamp + "] " + (_row.modelData.message ?? "")

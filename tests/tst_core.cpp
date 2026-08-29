@@ -1768,8 +1768,12 @@ void TestCore::log_persistsAcrossRestart()
     const auto e = lm2.entries().first().toMap();
     QCOMPARE(e["message"].toString(), QStringLiteral("boom"));
     QCOMPARE(e["detail"].toMap()["sql"].toString(), QStringLiteral("SELECT 1"));
-    // Full date-time survives ("yyyy-MM-dd HH:mm:ss.zzz").
-    QCOMPARE(e["datetime"].toString().length(), 23);
+    // The stamp carries the date, not just the clock. Checked against the
+    // entry's own epoch rather than against "today", so the assertion cannot
+    // fail for having run across midnight.
+    QCOMPARE(e["timestamp"].toString(),
+             QDateTime::fromMSecsSinceEpoch(e["epoch"].toLongLong())
+                 .toString("yyyy-MM-dd HH:mm:ss.zzz"));
     QVERIFY(e["epoch"].toLongLong() > 0);
 
     // New entries continue with unique ids after reload.
