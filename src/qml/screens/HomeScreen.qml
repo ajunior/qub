@@ -879,7 +879,11 @@ Item {
                                                 Layout.fillWidth: true
                                                 spacing: 8
                                                 Button {
+                                                    // Same spinner as the data-source Test
+                                                    // button: the label alone changed too
+                                                    // quietly to read as progress.
                                                     text:    _sshSection._testing ? "Testing…" : "Test"
+                                                    loading: _sshSection._testing
                                                     variant: Button.Variant.Outlined
                                                     enabled: !_sshSection._testing
                                                              && _sHost.text.trim() !== ""

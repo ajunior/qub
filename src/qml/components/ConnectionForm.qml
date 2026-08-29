@@ -29,6 +29,11 @@ ColumnLayout {
     // Suppresses the driver-change port autofill while loadNew/loadEdit run.
     property bool _loading: false
 
+    // A connection test is in flight. Driven by ConnectionManager, not by the
+    // click, so it also covers the second attempt after a host-key prompt and
+    // lowers itself on every path the test can end on.
+    property bool _testing: false
+
     // Drivers the connection form offers. Only what Qt can actually load here:
     // a driver with no plugin behind it produces a connection that fails with
     // "driver could not be loaded" and nothing the user can do about it, and
@@ -121,6 +126,10 @@ ColumnLayout {
 
     function loadNew(): void {
         _loading = true
+        // A test left running by the form we are replacing is not this form's,
+        // so it must not arrive here already spinning. Its testPending(false)
+        // still lands harmlessly.
+        _testing = false
         editingName              = ""
         _unusableDriver          = ""
         _nameInput.text          = ""
@@ -214,6 +223,11 @@ ColumnLayout {
         _timeoutInput.text       = (conn.timeout || 30).toString()
         _schemaInput.text        = conn.schema || ""
         _loading = false
+    }
+
+    Connections {
+        target: ConnectionManager
+        function onTestPending(pending: bool): void { root._testing = pending }
     }
 
     function showTestResult(ok: var, msg: var): void {
@@ -662,7 +676,12 @@ ColumnLayout {
         Button {
             // Importing a CSV has nothing to test until it's saved.
             visible: !root._isCsvMode
-            text: "Test"
+            // Opening a connection can take the whole connect timeout, and
+            // until it answers there was nothing on screen to say the click
+            // landed. loading spins an icon beside the label and disables the
+            // button, so a second click cannot queue a second test.
+            text:    root._testing ? "Testing…" : "Test"
+            loading: root._testing
             variant: Button.Variant.Outlined
             onClicked: ConnectionManager.testConnection(root._buildParams())
         }
