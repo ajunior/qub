@@ -60,13 +60,21 @@ static QueryResult runQuery(const QString &sourceConnId,
                 return result;
             }
 
+            // Two clocks, because the interesting question when a query is
+            // slow is *which half* was slow: the server planning and running
+            // it, or the rows crossing the wire back to us.
+            QElapsedTimer phase;
+            phase.start();
+
             QSqlQuery query(workerDb);
             query.setForwardOnly(true);
             if (!query.exec(stmt)) {
                 result.error     = query.lastError().text();
+                result.execMs   += phase.elapsed();
                 result.elapsedMs = timer.elapsed();
                 return result;
             }
+            result.execMs += phase.restart();
 
             const QSqlRecord rec      = query.record();
             const int        colCount = rec.count();
@@ -83,6 +91,7 @@ static QueryResult runQuery(const QString &sourceConnId,
                 while (query.next() && fetched < cap + 1) {
                     if (cancelFlag->load(std::memory_order_relaxed)) {
                         result.error     = "Query cancelled.";
+                        result.fetchMs  += phase.elapsed();
                         result.elapsedMs = timer.elapsed();
                         return result;
                     }
@@ -97,6 +106,7 @@ static QueryResult runQuery(const QString &sourceConnId,
                     result.rows.removeLast();
                     result.truncated = true;
                 }
+                result.fetchMs += phase.elapsed();
             } else {
                 // DML / DDL — accumulate affected rows
                 const int affected = query.numRowsAffected();
@@ -205,6 +215,51 @@ void QueryExecutor::cancel()
     m_cancelFlag->store(true, std::memory_order_relaxed);
 }
 
+QString QueryExecutor::formatDuration(qint64 ms)
+{
+    if (ms < 0) ms = 0;
+
+    const qint64 h = ms / 3600000;
+    const qint64 m = (ms / 60000) % 60;
+    const qint64 s = (ms / 1000)  % 60;
+
+    // Units appear only once one above them does, so a fast query reads
+    // "542 ms" and a slow one reads "1 m 10 s 542 ms".
+    QStringList parts;
+    if (h)           parts << QString::number(h) + " h";
+    if (h || m)      parts << QString::number(m) + " m";
+    if (h || m || s) parts << QString::number(s) + " s";
+    parts << QString::number(ms % 1000) + " ms";
+    return parts.join(u' ');
+}
+
+QString QueryExecutor::resultSummary(bool hasResultSet, int rowCount, int rowsAffected,
+                                     bool truncated, qint64 execMs, qint64 fetchMs,
+                                     qint64 totalMs)
+{
+    QString head;
+    if (hasResultSet) {
+        head = truncated
+             ? QString("first %1 rows retrieved").arg(rowCount)
+             : QString("%1 row%2 retrieved").arg(rowCount).arg(rowCount == 1 ? "" : "s");
+    } else if (rowsAffected > 0) {
+        head = QString("%1 row%2 affected").arg(rowsAffected).arg(rowsAffected == 1 ? "" : "s");
+    } else {
+        // DDL, or DML that matched nothing: there is no count worth printing.
+        head = QStringLiteral("completed");
+    }
+
+    QString line = head + " in " + formatDuration(totalMs);
+
+    // The split is only meaningful when rows came back; for DML the fetch half
+    // is structurally zero and printing it would just be noise.
+    if (hasResultSet)
+        line += " (execution: " + formatDuration(execMs)
+              + ", fetching: "  + formatDuration(fetchMs) + ")";
+
+    return line;
+}
+
 void QueryExecutor::onFinished()
 {
     const QueryResult result = m_watcher->result();
@@ -226,22 +281,26 @@ void QueryExecutor::onFinished()
         }
 
         if (m_log) {
-            const int rows = static_cast<int>(result.rows.size());
-            if (rows > 0) {
-                m_log->post("info", "QUERY", m_pendingConnName,
-                            QString("SELECT · %1 rows · %2ms").arg(rows).arg(result.elapsedMs),
-                            {{"sql", m_pendingSql}, {"elapsedMs", result.elapsedMs}, {"rowCount", rows}});
-            } else {
-                m_log->post("info", "QUERY", m_pendingConnName,
-                            QString("DML · %1 affected · %2ms").arg(result.rowsAffected).arg(result.elapsedMs),
-                            {{"sql", m_pendingSql}, {"elapsedMs", result.elapsedMs}, {"rowsAffected", result.rowsAffected}});
-            }
+            const int  rows         = static_cast<int>(result.rows.size());
+            const bool hasResultSet = !result.columns.isEmpty();
+            m_log->post("info", "QUERY", m_pendingConnName,
+                        resultSummary(hasResultSet, rows, result.rowsAffected,
+                                      result.truncated, result.execMs, result.fetchMs,
+                                      result.elapsedMs),
+                        {{"sql", m_pendingSql},
+                         {"elapsedMs", result.elapsedMs},
+                         {"execMs", result.execMs},
+                         {"fetchMs", result.fetchMs},
+                         {"rowCount", rows},
+                         {"rowsAffected", result.rowsAffected}});
         }
     } else {
         if (m_log)
             m_log->post("error", "QUERY", m_pendingConnName,
-                        "Error: " + result.error,
-                        {{"sql", m_pendingSql}, {"error", result.error}, {"elapsedMs", result.elapsedMs}});
+                        "failed after " + formatDuration(result.elapsedMs),
+                        {{"sql", m_pendingSql}, {"error", result.error},
+                         {"elapsedMs", result.elapsedMs},
+                         {"execMs", result.execMs}, {"fetchMs", result.fetchMs}});
         emit executionError(result.error);
     }
 

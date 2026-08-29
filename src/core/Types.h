@@ -31,7 +31,9 @@ struct QueryResult {
     QStringList       columns;
     QList<QVariantList> rows;
     int               rowsAffected = 0;
-    qint64            elapsedMs    = 0;
+    qint64            elapsedMs    = 0;      // execMs + fetchMs, wall clock
+    qint64            execMs       = 0;      // time inside QSqlQuery::exec()
+    qint64            fetchMs      = 0;      // time spent pulling rows back
     bool              truncated    = false;  // true when row limit was hit
 };
 
