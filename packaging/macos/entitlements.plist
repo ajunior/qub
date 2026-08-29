@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Entitlements for the hardened runtime, which Developer ID signing requires
+    and notarization refuses to proceed without.
+
+    Deliberately almost empty. qub is not sandboxed, so the entitlements that
+    open up network access, file access and the keychain are not needed here —
+    those gate the App Sandbox, and outside it the app already has them. Every
+    dylib and plugin in the bundle is signed with the same identity as the app,
+    so library validation has nothing to complain about either.
+
+    allow-jit is the exception. The QML engine compiles hot bindings at runtime
+    and asks the kernel for MAP_JIT memory to do it; under the hardened runtime
+    that request is denied without this entitlement, and the app dies on the
+    generated code rather than on startup. It is the narrow form: it does not
+    permit unsigned executable memory in general, only pages the app maps
+    through the JIT interface. If a build is ever produced with the QML JIT
+    compiled out, this can go.
+  -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+</dict>
+</plist>
