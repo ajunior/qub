@@ -56,6 +56,15 @@ public:
     // DBA pastes into a ticket: "84 rows retrieved in 1 m 10 s 542 ms
     // (execution: 1 m 9 s 980 ms, fetching: 530 ms)". Pure and static so the
     // wording is testable without running a query.
+    // True unless every statement in `sql` is one that cannot change what qub
+    // knows about the database. An allowlist, like the read-only guard: what is
+    // not recognised as a plain read is assumed to change things, because a
+    // cache that misses an invalidation serves a wrong schema, while one that
+    // drops too often costs a round-trip. USE and SET are deliberately *not*
+    // reads here — they move the current database or the search path, which
+    // changes what an unqualified table name resolves to.
+    static bool mayChangeSchema(const QString &sql);
+
     static QString formatDuration(qint64 ms);
     static QString resultSummary(bool hasResultSet, int rowCount, int rowsAffected,
                                  bool truncated, qint64 execMs, qint64 fetchMs,
@@ -68,6 +77,10 @@ signals:
     void executionStarted(const QString &connectionName, const QString &sql);
     void executionFinished(bool success, qint64 elapsedMs, int rowCount, int rowsAffected);
     void executionError(const QString &message);
+    // A statement ran that may have changed `connectionName`'s schema. Schema
+    // views listen to this rather than to every finished query, so a plain
+    // SELECT no longer costs a full re-read of the database's structure.
+    void schemaMayHaveChanged(const QString &connectionName);
     void resultsReady(const QStringList &columns, const QVariantList &rows, bool truncated);
     // Full-result export outcome. `truncated` = the full re-run itself still hit
     // the 500k safety ceiling.

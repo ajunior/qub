@@ -61,6 +61,11 @@ private slots:
     void resultSummary_readsLikeAConsoleLine();
     void execute_logsTheSummaryWithBothHalvesOfTheClock();
 
+    // Schema-cache invalidation (pure classifier + the signal it drives)
+    void mayChangeSchema_readsAreNotWrites();
+    void mayChangeSchema_assumesTheWorstOtherwise();
+    void execute_announcesSchemaChangeOnlyForWrites();
+
     // Full-result export
     void exportFull_guardsWhenNothingToReExport();
     void exportFull_writesFileForRememberedSelect();
@@ -399,6 +404,70 @@ void TestExecutor::exportFull_keepsALimitTheUserWrote()
     QVERIFY(expSpy.wait(5000));
     QCOMPARE(expSpy.first().at(0).toBool(), true);
     QCOMPARE(expSpy.first().at(2).toInt(), 2);          // still two
+    delete ex;
+}
+
+// ── Schema-cache invalidation ────────────────────────────────────────────────
+// Getting this wrong in one direction costs a round-trip; in the other it
+// serves a schema that no longer exists. So the reads are enumerated, and
+// everything else is a write.
+
+void TestExecutor::mayChangeSchema_readsAreNotWrites()
+{
+    const char *reads[] = {
+        "SELECT 1",
+        "select id from t",
+        "  \n\t SELECT id FROM t",
+        "WITH x AS (SELECT 1) SELECT * FROM x",
+        "SHOW TABLES",
+        "EXPLAIN SELECT 1",
+        "PRAGMA table_info(t)",
+        "VALUES (1), (2)",
+        "TABLE t",                                   // Postgres shorthand
+        "SELECT id FROM t; SELECT name FROM t;",     // every statement is a read
+        "-- DROP TABLE t\nSELECT 1",                 // a comment is not a statement
+        "/* CREATE TABLE x */ SELECT 1",
+        "SELECT 'INSERT INTO t VALUES (1)' AS sql",  // nor is a string literal
+    };
+    for (const char *sql : reads)
+        QVERIFY2(!QueryExecutor::mayChangeSchema(QString::fromUtf8(sql)), sql);
+}
+
+void TestExecutor::mayChangeSchema_assumesTheWorstOtherwise()
+{
+    const char *writes[] = {
+        "CREATE TABLE t (id INT)",
+        "DROP TABLE t",
+        "ALTER TABLE t ADD COLUMN c TEXT",
+        "INSERT INTO t VALUES (1)",
+        "TRUNCATE t",
+        "SELECT 1; DROP TABLE t",                    // the write is not first
+        "WITH d AS (DELETE FROM t RETURNING *) SELECT * FROM d",
+        "USE otherdb",                               // moves what a bare name means
+        "SET search_path TO other",                  // so does this
+        "CALL do_something()",                       // unrecognised: assume it did
+        "VACUUM",
+    };
+    for (const char *sql : writes)
+        QVERIFY2(QueryExecutor::mayChangeSchema(QString::fromUtf8(sql)), sql);
+}
+
+void TestExecutor::execute_announcesSchemaChangeOnlyForWrites()
+{
+    QueryExecutor *ex = makeExecutor();
+    ex->setActiveTabId(9);
+
+    QSignalSpy schemaSpy(ex, &QueryExecutor::schemaMayHaveChanged);
+    QSignalSpy finSpy(ex, &QueryExecutor::executionFinished);
+
+    ex->execute(m_connName, "SELECT id FROM t");
+    QVERIFY(finSpy.wait(5000));
+    QCOMPARE(schemaSpy.count(), 0);      // a read costs no schema re-read
+
+    ex->execute(m_connName, "CREATE TABLE tst_sig (id INTEGER PRIMARY KEY)");
+    QVERIFY(finSpy.wait(5000));
+    QCOMPARE(schemaSpy.count(), 1);
+    QCOMPARE(schemaSpy.first().at(0).toString(), m_connName);
     delete ex;
 }
 

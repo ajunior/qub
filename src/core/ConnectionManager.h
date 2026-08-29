@@ -6,6 +6,7 @@
 #include <QVariantMap>
 #include <QMap>
 #include <QSet>
+#include <QHash>
 #include <QUrl>
 #include "Types.h"
 #include "AdapterProvider.h"
@@ -58,6 +59,10 @@ public:
     // other schema views reload on connectionsChanged().
     Q_INVOKABLE void refreshSchema(const QString &connectionName);
 
+    // Drop memoised introspection for one connection, or for all of them when
+    // `connectionName` is empty.
+    void invalidateMetadata(const QString &connectionName) override;
+
     // True when the connection's database file was created by qub (a CSV import
     // living under the app's imports dir), so removeConnection will delete it —
     // lets the UI warn that deletion destroys the data, not just the entry.
@@ -95,6 +100,33 @@ private:
         QString          keyLines;
         bool             isTest = false;
     };
+
+    // Introspection is a synchronous round-trip on the GUI thread, and
+    // autocomplete asks for it on every keystroke — 145 round-trips to type a
+    // two-table join, which on a remote database is the editor freezing under
+    // your fingers. So the answers are memoised per connection and thrown away
+    // whenever anything could have changed them: a statement that is not a
+    // plain read runs, the connection opens or closes, or the user refreshes.
+    // Only another client's DDL can outrun it, and the schema view's refresh
+    // is the answer to that.
+    struct Metadata {
+        bool                          tablesValid  = false;
+        QStringList                   tables;
+        bool                          schemaValid  = false;
+        QVariantList                  schema;
+        bool                          schemasValid = false;
+        QVariantList                  schemas;
+        // Keyed by table name, and populated with the empty answer too: while
+        // you type "events" the half-words are looked up as tables, and a miss
+        // that is not remembered is a round-trip per keystroke.
+        QHash<QString, QVariantList>  columns;
+        QHash<QString, QStringList>   primaryKeys;
+    };
+    // Half-typed table names accumulate; drop the per-table maps rather than
+    // let a long session grow one entry per prefix ever typed.
+    static constexpr int kMaxTableEntries = 512;
+
+    mutable QHash<QString, Metadata>   m_metadata;
 
     CredentialStore                   *m_credentials;
     SshManager                        *m_ssh = nullptr;
