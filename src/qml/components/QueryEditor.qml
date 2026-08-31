@@ -168,14 +168,25 @@ Item {
         insertSpacesForTab:   AppSettings.insertSpacesForTab
     }
 
+    // The five semantic colours are tuned to carry a button fill or an accent on
+    // chrome, where they sit against a surface rather than a page, and on a light
+    // theme that leaves every one of them between 2.4:1 and 3.2:1 against the
+    // editor background — below the 4.5:1 that body text needs, and a fifth of
+    // the contrast the surrounding identifiers have. Keywords used to be bold,
+    // which hid it for that one token and for no other. Darkening them on light
+    // themes lifts the set to roughly 4:1–5:1; on a dark theme they already clear
+    // it, so they are passed through untouched. Derived rather than hard-coded so
+    // an imported theme gets the same treatment.
     SqlHighlighter {
         document:      _editor.textDocument
-        keywordColor:  Theme.primary
-        functionColor: Theme.info
-        stringColor:   Theme.success
-        commentColor:  Theme.textDisabled
-        numberColor:   Theme.warning
+        keywordColor:  root._ink(Theme.primary)
+        functionColor: root._ink(Theme.info)
+        stringColor:   root._ink(Theme.success)
+        commentColor:  root._ink(Theme.textDisabled)
+        numberColor:   root._ink(Theme.warning)
     }
+
+    function _ink(c: color): color { return Theme.dark ? c : Qt.darker(c, 1.3) }
 
     // ── Completion popup ──────────────────────────────────────────────────────
     Rectangle {

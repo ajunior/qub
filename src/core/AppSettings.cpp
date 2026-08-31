@@ -1,5 +1,6 @@
 #include "AppSettings.h"
 #include <QFile>
+#include <QFont>
 
 AppSettings::AppSettings(QObject *parent)
     : QObject(parent)
@@ -9,7 +10,16 @@ AppSettings::AppSettings(QObject *parent)
 bool    AppSettings::darkTheme() const    { return m_settings.value("darkTheme", false).toBool(); }
 int     AppSettings::fontSize() const     { return m_settings.value("fontSize", 13).toInt(); }
 QString AppSettings::fontFamily() const   { return m_settings.value("fontFamily", "JetBrains Mono").toString(); }
-int     AppSettings::fontWeight() const   { return m_settings.value("fontWeight", 50).toInt(); } // 50 = Font.Normal
+// Qt 6 moved font weights onto the CSS scale, where Font.Normal is 400 and the
+// old QFont::Weight value of 50 lands below Font.Thin: the editor shipped in the
+// thinnest face the family has. The picker in Settings writes Font.* constants
+// and so was always on the new scale, which is why touching it once fixed the
+// editor and never touching it did not. Anything under Font.Thin cannot have
+// come from the picker, so it is read as unset rather than clamped to hairline.
+int     AppSettings::fontWeight() const {
+    const int w = m_settings.value("fontWeight", QFont::Normal).toInt();
+    return w < QFont::Thin ? QFont::Normal : w;
+}
 int     AppSettings::historyLimit() const { return m_settings.value("historyLimit", 500).toInt(); }
 bool AppSettings::autoCloseOnLeave()  const { return m_settings.value("autoCloseOnLeave", false).toBool(); }
 
