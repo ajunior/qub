@@ -147,8 +147,11 @@ SqlHighlighter::SqlHighlighter(QObject *parent)
 
     m_numRe = QRegularExpression("\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b");
 
-    // Keywords bold so they visually anchor the query structure
-    m_keywordFmt.setFontWeight(QFont::Bold);
+    // Deliberately no weight of its own. Highlighting here is a matter of
+    // colour alone: the editor's weight is a setting the reader picked, and
+    // bolding keywords overrode it on a few words per line, so a query came
+    // out with a texture that changed from token to token. Every format below
+    // sets a foreground and nothing else.
 }
 
 // ── Document property ────────────────────────────────────────────────────────
