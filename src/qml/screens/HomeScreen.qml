@@ -8,6 +8,7 @@ import QtQuick.Controls.Basic as QQC
 import Mahina
 import "../drivers.js" as Drivers
 import "../guard.js" as Guard
+import "../listsort.js" as ListSort
 import Qub
 
 Item {
@@ -483,6 +484,26 @@ Item {
                                             }
                                         }
 
+                                        // A data source is looked for by what it
+                                        // connects to as often as by what it is
+                                        // called, so the host and the database
+                                        // are searched alongside the name.
+                                        ListToolbar {
+                                            id: _connTools
+                                            visible: !_connSection._showForm
+                                                     && ConnectionManager.connections.length > 1
+                                            Layout.fillWidth: true
+                                            placeholder: "Search data sources…"
+                                            sortKeys: [{ key: "name",   label: "Name"   },
+                                                       { key: "driver", label: "Driver" },
+                                                       { key: "host",   label: "Host"   }]
+                                            sortKey:   AppSettings.connectionsSortKey
+                                            ascending: AppSettings.connectionsSortAsc
+                                            onSortKeyPicked: (k) => AppSettings.connectionsSortKey = k
+                                            onDirectionToggled: AppSettings.connectionsSortAsc =
+                                                                    !AppSettings.connectionsSortAsc
+                                        }
+
                                         Text {
                                             visible: ConnectionManager.connections.length === 0
                                                      && !_connSection._showForm
@@ -493,8 +514,22 @@ Item {
                                             Layout.fillWidth: true
                                         }
 
+                                        Text {
+                                            visible: _connTools.visible && _connRepeater.count === 0
+                                            text: "No data source matches \u201C" + _connTools.query + "\u201D."
+                                            color: Theme.textSecondary
+                                            font.family:    Theme.fontFamily
+                                            font.pixelSize: Theme.textSm
+                                            Layout.fillWidth: true
+                                        }
+
                                         Repeater {
-                                            model: ConnectionManager.connections
+                                            id: _connRepeater
+                                            model: ListSort.arrange(ConnectionManager.connections,
+                                                                    _connTools.query,
+                                                                    ["name", "host", "database"],
+                                                                    AppSettings.connectionsSortKey,
+                                                                    AppSettings.connectionsSortAsc)
                                             delegate: ListRow {
                                                 required property var modelData
                                                 id: _connRow
@@ -715,6 +750,21 @@ Item {
                                             }
                                         }
 
+                                        ListToolbar {
+                                            id: _sshTools
+                                            visible: !_sshSection._showForm
+                                                     && SshManager.configs.length > 1
+                                            Layout.fillWidth: true
+                                            placeholder: "Search SSH connections…"
+                                            sortKeys: [{ key: "name", label: "Name" },
+                                                       { key: "host", label: "Host" },
+                                                       { key: "user", label: "User" }]
+                                            sortKey:   AppSettings.sshSortKey
+                                            ascending: AppSettings.sshSortAsc
+                                            onSortKeyPicked: (k) => AppSettings.sshSortKey = k
+                                            onDirectionToggled: AppSettings.sshSortAsc = !AppSettings.sshSortAsc
+                                        }
+
                                         // Empty state
                                         Text {
                                             visible:        SshManager.configs.length === 0 && !_sshSection._showForm
@@ -725,9 +775,23 @@ Item {
                                             Layout.fillWidth: true
                                         }
 
+                                        Text {
+                                            visible: _sshTools.visible && _sshRepeater.count === 0
+                                            text: "No SSH connection matches \u201C" + _sshTools.query + "\u201D."
+                                            color:          Theme.textSecondary
+                                            font.family:    Theme.fontFamily
+                                            font.pixelSize: Theme.textSm
+                                            Layout.fillWidth: true
+                                        }
+
                                         // SSH list
                                         Repeater {
-                                            model:   SshManager.configs
+                                            id: _sshRepeater
+                                            model:   ListSort.arrange(SshManager.configs,
+                                                                      _sshTools.query,
+                                                                      ["name", "host", "user"],
+                                                                      AppSettings.sshSortKey,
+                                                                      AppSettings.sshSortAsc)
                                             visible: !_sshSection._showForm
                                             delegate: ListRow {
                                                 required property var modelData
@@ -954,11 +1018,45 @@ Item {
 
                                         Item { Layout.preferredHeight: 8 }
 
+                                        // Defaults to most recently opened first,
+                                        // which is the order this list already had:
+                                        // it is read to get back to what you were
+                                        // doing, not to look a name up alphabetically.
+                                        ListToolbar {
+                                            id: _wsTools
+                                            visible: WorkspaceManager.workspaces.length > 1
+                                            Layout.fillWidth: true
+                                            placeholder: "Search workspaces…"
+                                            sortKeys: [{ key: "lastOpenedAt", label: "Last opened" },
+                                                       { key: "name",         label: "Name"        },
+                                                       { key: "tabCount",     label: "Tabs"        }]
+                                            sortKey:   AppSettings.workspacesSortKey
+                                            ascending: AppSettings.workspacesSortAsc
+                                            onSortKeyPicked: (k) => AppSettings.workspacesSortKey = k
+                                            onDirectionToggled: AppSettings.workspacesSortAsc =
+                                                                    !AppSettings.workspacesSortAsc
+                                        }
+
+                                        Text {
+                                            visible: _wsTools.visible && _wsRepeater.count === 0
+                                            text: "No workspace matches \u201C" + _wsTools.query + "\u201D."
+                                            color:          Theme.textSecondary
+                                            font.family:    Theme.fontFamily
+                                            font.pixelSize: Theme.textSm
+                                            Layout.fillWidth: true
+                                        }
+
                                         // Live: WorkspaceManager.workspaces is a
                                         // NOTIFYing property (create/rename/delete/save).
                                         Repeater {
+                                            id: _wsRepeater
                                             model: root._selectedCard === "workspaces"
-                                                   ? WorkspaceManager.workspaces : []
+                                                   ? ListSort.arrange(WorkspaceManager.workspaces,
+                                                                      _wsTools.query,
+                                                                      ["name"],
+                                                                      AppSettings.workspacesSortKey,
+                                                                      AppSettings.workspacesSortAsc)
+                                                   : []
                                             delegate: ListRow {
                                                 id: delegateItem3
                                                 required property var modelData
@@ -1129,15 +1227,49 @@ Item {
                                             Layout.fillWidth: true
                                         }
 
+                                        // Sorting here reorders the folders and the
+                                        // snippets inside them, but does not dissolve
+                                        // the grouping: a snippet is found under its
+                                        // folder, and a flat list would lose that.
+                                        ListToolbar {
+                                            id: _snipTools
+                                            visible: !_snipSection._showForm
+                                                     && SnippetManager.snippets.length > 1
+                                            Layout.fillWidth: true
+                                            placeholder: "Search snippets…"
+                                            sortKeys: [{ key: "name", label: "Name" }]
+                                            sortKey:   AppSettings.snippetsSortKey
+                                            ascending: AppSettings.snippetsSortAsc
+                                            onSortKeyPicked: (k) => AppSettings.snippetsSortKey = k
+                                            onDirectionToggled: AppSettings.snippetsSortAsc =
+                                                                    !AppSettings.snippetsSortAsc
+                                        }
+
+                                        Text {
+                                            visible: _snipTools.visible && _snipRepeater.count === 0
+                                            text: "No snippet matches \u201C" + _snipTools.query + "\u201D."
+                                            color:          Theme.textSecondary
+                                            font.family:    Theme.fontFamily
+                                            font.pixelSize: Theme.textSm
+                                            Layout.fillWidth: true
+                                        }
+
                                         // Rows grouped under folder headers; unfoldered
-                                        // snippets first (manager orders by folder, name).
+                                        // snippets first (see listsort.js).
                                         Repeater {
+                                            id: _snipRepeater
                                             model: {
                                                 if (root._selectedCard !== "snippets" || _snipSection._showForm)
                                                     return []
                                                 const rows = []
                                                 let current = null
-                                                for (const s of SnippetManager.snippets) {
+                                                const arranged = ListSort.arrangeGrouped(
+                                                        SnippetManager.snippets,
+                                                        _snipTools.query,
+                                                        ["name", "folder", "sql"],
+                                                        AppSettings.snippetsSortKey,
+                                                        AppSettings.snippetsSortAsc)
+                                                for (const s of arranged) {
                                                     if (s.folder !== "" && s.folder !== current)
                                                         rows.push({ kind: "folder", folder: s.folder })
                                                     current = s.folder

@@ -68,6 +68,15 @@ private slots:
     // ── Cell value inspector (cellview.js) ────────────────────────────────────
     void cellview_classifies();
 
+    // ── Saved-list ordering (listsort.js) ─────────────────────────────────────
+    void listsort_sortsByNameBothWays();
+    void listsort_foldsCaseAndAccents();
+    void listsort_breaksTiesOnName();
+    void listsort_sortsDatesAndNumbers();
+    void listsort_filtersAcrossFields();
+    void listsort_blankQueryKeepsEverything();
+    void listsort_groupsSnippetsByFolder();
+
     // ── Driver list (drivers.js) ──────────────────────────────────────────────
     void drivers_onlyAvailableOffered();
 
@@ -178,6 +187,15 @@ void TestCore::initTestCase()
     const QJSValue vres = m_js.evaluate(vsrc, QStringLiteral("cellview.js"));
     QVERIFY2(!vres.isError(), qPrintable(vres.toString()));
     QVERIFY(m_js.globalObject().property("inspect").isCallable());
+
+    // Load listsort.js into the same engine (function names don't collide).
+    QFile lf(QStringLiteral(LISTSORT_JS_PATH));
+    QVERIFY2(lf.open(QIODevice::ReadOnly | QIODevice::Text), "listsort.js not found");
+    QString lsrc = QString::fromUtf8(lf.readAll());
+    lsrc.remove(QRegularExpression(QStringLiteral("^\\.pragma[^\n]*\n")));
+    const QJSValue lres = m_js.evaluate(lsrc, QStringLiteral("listsort.js"));
+    QVERIFY2(!lres.isError(), qPrintable(lres.toString()));
+    QVERIFY(m_js.globalObject().property("arrange").isCallable());
 
     // Load drivers.js into the same engine (function names don't collide).
     QFile df(QStringLiteral(DRIVERS_JS_PATH));
@@ -1941,6 +1959,132 @@ void TestCore::docker_ignoresGarbageJson()
     QVERIFY(DockerDiscovery::parseContainers("not json").isEmpty());
     QVERIFY(DockerDiscovery::parseContainers("{}").isEmpty());   // object, not array
     QVERIFY(DockerDiscovery::parseContainers("[]").isEmpty());
+}
+
+// ── Saved-list ordering (listsort.js) ───────────────────────────────────────────
+
+// Returns the "name" of every row, in order, as a comma-joined string — which
+// is the only thing these tests care about and reads far better in a failure
+// message than a nested QVariantList dump.
+static QString namesOf(QJSEngine &js, const QString &expr)
+{
+    return js.evaluate(QStringLiteral("(%1).map(function(x){return x.name}).join(',')")
+                       .arg(expr)).toString();
+}
+
+void TestCore::listsort_sortsByNameBothWays()
+{
+    const QString items = QStringLiteral(
+        "[{name:'staging'},{name:'analytics'},{name:'prod'}]");
+
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'name',true)").arg(items)),
+             QStringLiteral("analytics,prod,staging"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'name',false)").arg(items)),
+             QStringLiteral("staging,prod,analytics"));
+}
+
+void TestCore::listsort_foldsCaseAndAccents()
+{
+    // A list of connection names as someone here would actually type them:
+    // mixed case, and accents that must not exile a name to the end.
+    const QString items = QStringLiteral(
+        "[{name:'Zebra'},{name:'analytics'},{name:'Produção'},{name:'producao_2'}]");
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'name',true)").arg(items)),
+             QStringLiteral("analytics,Produção,producao_2,Zebra"));
+
+    // And the same folding drives the filter, so the accented name is reachable
+    // from an unaccented keyboard.
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'producao',['name'])").arg(items)),
+             QStringLiteral("Produção,producao_2"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'PRODUÇÃO',['name'])").arg(items)),
+             QStringLiteral("Produção,producao_2"));
+}
+
+void TestCore::listsort_breaksTiesOnName()
+{
+    // Two workspaces opened in the same minute. Without a tiebreak their order
+    // would depend on the sort's stability and could change between reloads.
+    const QString items = QStringLiteral(
+        "[{name:'beta',tabCount:3},{name:'alpha',tabCount:3},{name:'gamma',tabCount:1}]");
+
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'tabCount',false)").arg(items)),
+             QStringLiteral("alpha,beta,gamma"));
+    // The tiebreak stays ascending even when the sort is descending, so the tied
+    // pair does not reshuffle when the direction flips.
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'tabCount',true)").arg(items)),
+             QStringLiteral("gamma,alpha,beta"));
+}
+
+void TestCore::listsort_sortsDatesAndNumbers()
+{
+    const QString items = QStringLiteral(
+        "[{name:'old',t:new Date(2020,0,1)},"
+        " {name:'new',t:new Date(2026,0,1)},"
+        " {name:'mid',t:new Date(2023,0,1)}]");
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'t',false)").arg(items)),
+             QStringLiteral("new,mid,old"));
+
+    // Numbers must not compare as text, or 10 would sort before 9.
+    const QString nums = QStringLiteral("[{name:'a',n:9},{name:'b',n:10},{name:'c',n:1}]");
+    QCOMPARE(namesOf(m_js, QStringLiteral("sortItems(%1,'n',true)").arg(nums)),
+             QStringLiteral("c,a,b"));
+}
+
+void TestCore::listsort_filtersAcrossFields()
+{
+    // A data source is findable by what it connects to, not only by what it is
+    // called — typing the host or the database name has to reach it.
+    const QString items = QStringLiteral(
+        "[{name:'reports',host:'db1.internal',database:'analytics'},"
+        " {name:'billing',host:'db2.internal',database:'invoices'}]");
+    const QString fields = QStringLiteral("['name','host','database']");
+
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'db2',%2)").arg(items, fields)),
+             QStringLiteral("billing"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'analytics',%2)").arg(items, fields)),
+             QStringLiteral("reports"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'internal',%2)").arg(items, fields)),
+             QStringLiteral("reports,billing"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'nothing',%2)").arg(items, fields)),
+             QString());
+}
+
+void TestCore::listsort_blankQueryKeepsEverything()
+{
+    // A cleared search box must restore the list, not empty it.
+    const QString items = QStringLiteral("[{name:'a'},{name:'b'}]");
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'',['name'])").arg(items)),
+             QStringLiteral("a,b"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("filterItems(%1,'   ',['name'])").arg(items)),
+             QStringLiteral("a,b"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("arrange(%1,'',['name'],'name',true)").arg(items)),
+             QStringLiteral("a,b"));
+
+    // A missing list is empty, not a crash.
+    QCOMPARE(m_js.evaluate(QStringLiteral("arrange(null,'',['name'],'name',true).length")).toInt(), 0);
+}
+
+void TestCore::listsort_groupsSnippetsByFolder()
+{
+    const QString items = QStringLiteral(
+        "[{name:'zed',folder:''},"
+        " {name:'ratio',folder:'metrics'},"
+        " {name:'churn',folder:'metrics'},"
+        " {name:'vacuum',folder:'admin'},"
+        " {name:'apex',folder:''}]");
+    const QString f = QStringLiteral("['name','folder']");
+
+    // Unfoldered snippets stay at the top in both directions; folders and their
+    // contents both follow the chosen direction.
+    QCOMPARE(namesOf(m_js, QStringLiteral("arrangeGrouped(%1,'',%2,'name',true)").arg(items, f)),
+             QStringLiteral("apex,zed,vacuum,churn,ratio"));
+    QCOMPARE(namesOf(m_js, QStringLiteral("arrangeGrouped(%1,'',%2,'name',false)").arg(items, f)),
+             QStringLiteral("zed,apex,ratio,churn,vacuum"));
+
+    // Filtering runs before grouping, so a folder with no surviving member
+    // disappears entirely rather than leaving an empty header behind.
+    QCOMPARE(namesOf(m_js, QStringLiteral("arrangeGrouped(%1,'metrics',%2,'name',true)").arg(items, f)),
+             QStringLiteral("churn,ratio"));
 }
 
 QTEST_GUILESS_MAIN(TestCore)

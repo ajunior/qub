@@ -41,4 +41,6 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
     allow; live database metrics with threshold alerts; schema snapshots and
     schema-to-schema comparison; a token-protected link that streams a live
     result set to any browser on your network; and four themes with a fully
-    editable palette.
+    editable palette. Every one of those saved lists — connections, SSH
+    configurations, workspaces, snippets — searches and sorts, each remembering
+    the key and direction you left it on.
