@@ -22,7 +22,8 @@ the result is still not distributable.
 
 ## Getting the identity
 
-Membership in the Apple Developer Program, then:
+Membership in the Apple Developer Program, then, on a Mac — for the same thing
+from Linux, skip to the next section:
 
 1. **Keychain Access → Certificate Assistant → Request a Certificate From a
    Certificate Authority**, saved to disk. The private key stays on the Mac;
@@ -47,6 +48,71 @@ The notarization key comes from `appstoreconnect.apple.com` → *Users and
 Access* → *Integrations* → *App Store Connect API*. **The `.p8` downloads
 exactly once**; a lost key has to be revoked and replaced.
 
+## Getting the identity without a Mac
+
+Every step above except `security find-identity` is a browser form or an
+`openssl` call, so the certificate can be created from Linux. Only the
+*signing* needs macOS, and in this project that happens on the CI runner.
+
+1. **Private key and CSR.** The key never leaves this machine; Apple only sees
+   the request.
+
+   ```sh
+   openssl req -new -newkey rsa:2048 -nodes \
+       -keyout devid.key -out devid.csr \
+       -subj "/emailAddress=you@example.com/CN=Your Name/C=BR"
+   ```
+
+   Apple takes the identity from the account rather than from the subject, so
+   these fields only have to be well-formed.
+
+2. **Upload `devid.csr`** at `developer.apple.com/account` → *Certificates,
+   Identifiers & Profiles* → **+** → **Developer ID Application**, and download
+   the `developerID_application.cer` it returns. That file is DER, and it holds
+   only the certificate — the private key is still the one from step 1.
+
+3. **The intermediate.** A `.p12` that carries only the leaf leaves the runner
+   unable to build a chain to the Apple root, and `codesign` refuses it.
+
+   ```sh
+   curl -O https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+   ```
+
+4. **Convert both to PEM and assemble the `.p12`.**
+
+   ```sh
+   openssl x509 -inform DER -in developerID_application.cer -out cert.pem
+   openssl x509 -inform DER -in DeveloperIDG2CA.cer         -out interm.pem
+
+   openssl pkcs12 -export -legacy \
+       -inkey devid.key -in cert.pem -certfile interm.pem \
+       -name "Developer ID Application" -out cert.p12
+   ```
+
+   **`-legacy` is not optional.** OpenSSL 3 defaults to PBES2/PBKDF2 with
+   AES-256-CBC, which macOS `security import` cannot read: the CI step fails
+   at import, before anything is signed. With `-legacy` the file comes out as
+   `pbeWithSHA1And40BitRC2-CBC`, which is what macOS expects. `openssl pkcs12
+   -info -nokeys` prints which one you got — and needs `-legacy` itself to read
+   a legacy file back, so an error about `RC2-40-CBC : 0` being unsupported
+   means the export worked, not that it failed.
+
+5. **Read the identity string.** This is `DEVELOPER_ID`, and
+   `MACOS_DEVELOPER_ID` in CI — the common name, parentheses included, without
+   the `CN=`.
+
+   ```sh
+   openssl x509 -in cert.pem -noout -subject -nameopt multiline | grep commonName
+   ```
+
+The notarization key needs no Mac either: the `.p8` downloads from
+`appstoreconnect.apple.com` in any browser.
+
+What genuinely cannot be done here is verifying the result — `codesign`,
+`spctl` and `stapler` are macOS tools. The first signed build is therefore the
+first proof that the certificate is usable, which is a reason to cut a release
+candidate for it rather than finding out on the release itself.
+
 ## Building a signed DMG
 
 ```sh
@@ -70,13 +136,22 @@ they are absent.
 | `MACOS_NOTARY_KEY_ID` | the key's ID |
 | `MACOS_NOTARY_ISSUER` | the issuer ID |
 
-Export the `.p12` from Keychain Access → **My Certificates** — only that
-category lists certificates with the private key attached. Then:
+On a Mac, export the `.p12` from Keychain Access → **My Certificates** — only
+that category lists certificates with the private key attached. Built from
+Linux by the section above, it is already a file. Either way the secrets hold
+base64, on one line:
 
 ```sh
-base64 -i cert.p12 | pbcopy
+base64 -w0 cert.p12                 # Linux
+base64 -w0 AuthKey_XXXXXXXX.p8
+
+base64 -i cert.p12 | pbcopy         # macOS
 base64 -i AuthKey_XXXXXXXX.p8 | pbcopy
 ```
+
+Paste them through the repository's *Settings → Secrets* page rather than
+`gh secret set` with the value on a command line, where it lands in shell
+history.
 
 Keep the `.p12`, its password and the `.p8` in a password manager. A GitHub
 secret cannot be read back, so it is not a backup.
