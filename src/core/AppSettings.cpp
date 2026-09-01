@@ -210,3 +210,69 @@ bool AppSettings::writeFile(const QUrl &url, const QString &content) const
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) return false;
     return f.write(content.toUtf8()) >= 0;
 }
+
+// ── Saved-list ordering ──────────────────────────────────────────────────────
+//
+// Four lists, four defaults, on purpose. Connections and SSH configs used to
+// come back in whatever order they had been written to disk, so name ascending
+// is a fix rather than a preference. Workspaces default to most recently opened
+// first, which is the order the list already had and the one that matches why
+// the list is read at all: to get back to what you were doing. Snippets keep
+// their folder grouping and sort by name inside it.
+
+QString AppSettings::connectionsSortKey() const { return m_settings.value("sort/connectionsKey", "name").toString(); }
+bool    AppSettings::connectionsSortAsc() const { return m_settings.value("sort/connectionsAsc", true).toBool(); }
+QString AppSettings::sshSortKey()         const { return m_settings.value("sort/sshKey", "name").toString(); }
+bool    AppSettings::sshSortAsc()         const { return m_settings.value("sort/sshAsc", true).toBool(); }
+QString AppSettings::workspacesSortKey()  const { return m_settings.value("sort/workspacesKey", "lastOpenedAt").toString(); }
+bool    AppSettings::workspacesSortAsc()  const { return m_settings.value("sort/workspacesAsc", false).toBool(); }
+QString AppSettings::snippetsSortKey()    const { return m_settings.value("sort/snippetsKey", "name").toString(); }
+bool    AppSettings::snippetsSortAsc()    const { return m_settings.value("sort/snippetsAsc", true).toBool(); }
+
+void AppSettings::setConnectionsSortKey(const QString &value) {
+    if (connectionsSortKey() == value) return;
+    m_settings.setValue("sort/connectionsKey", value);
+    emit connectionsSortChanged();
+}
+
+void AppSettings::setConnectionsSortAsc(bool value) {
+    if (connectionsSortAsc() == value) return;
+    m_settings.setValue("sort/connectionsAsc", value);
+    emit connectionsSortChanged();
+}
+
+void AppSettings::setSshSortKey(const QString &value) {
+    if (sshSortKey() == value) return;
+    m_settings.setValue("sort/sshKey", value);
+    emit sshSortChanged();
+}
+
+void AppSettings::setSshSortAsc(bool value) {
+    if (sshSortAsc() == value) return;
+    m_settings.setValue("sort/sshAsc", value);
+    emit sshSortChanged();
+}
+
+void AppSettings::setWorkspacesSortKey(const QString &value) {
+    if (workspacesSortKey() == value) return;
+    m_settings.setValue("sort/workspacesKey", value);
+    emit workspacesSortChanged();
+}
+
+void AppSettings::setWorkspacesSortAsc(bool value) {
+    if (workspacesSortAsc() == value) return;
+    m_settings.setValue("sort/workspacesAsc", value);
+    emit workspacesSortChanged();
+}
+
+void AppSettings::setSnippetsSortKey(const QString &value) {
+    if (snippetsSortKey() == value) return;
+    m_settings.setValue("sort/snippetsKey", value);
+    emit snippetsSortChanged();
+}
+
+void AppSettings::setSnippetsSortAsc(bool value) {
+    if (snippetsSortAsc() == value) return;
+    m_settings.setValue("sort/snippetsAsc", value);
+    emit snippetsSortChanged();
+}

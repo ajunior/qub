@@ -122,6 +122,7 @@ qt_add_qml_module(qub
         src/qml/fk.js
         src/qml/cellview.js
         src/qml/params.js
+        src/qml/listsort.js
         src/qml/Main.qml
         src/qml/screens/WorkspaceScreen.qml
         src/qml/screens/HomeScreen.qml
@@ -141,6 +142,7 @@ qt_add_qml_module(qub
         src/qml/components/AiCommandPalette.qml
         src/qml/components/LogWindow.qml
         src/qml/components/LogView.qml
+        src/qml/components/ListToolbar.qml
         src/qml/components/SlowQueriesView.qml
         src/qml/components/WorkspaceFormDialog.qml
         src/qml/components/MarkdownPreview.qml
@@ -216,7 +218,8 @@ target_compile_definitions(qub_tests PRIVATE
     FK_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/fk.js"
     CELLVIEW_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/cellview.js"
     DRIVERS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/drivers.js"
-    PARAMS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/params.js")
+    PARAMS_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/params.js"
+    LISTSORT_JS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/src/qml/listsort.js")
 target_link_libraries(qub_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql)
 add_test(NAME qub_tests COMMAND qub_tests)
 

@@ -28,6 +28,18 @@ public:
     Q_PROPERTY(QString liveShareKeyPath    READ liveShareKeyPath    WRITE setLiveShareKeyPath    NOTIFY liveShareKeyPathChanged)
     Q_PROPERTY(bool    liveShareAllowDownload READ liveShareAllowDownload WRITE setLiveShareAllowDownload NOTIFY liveShareAllowDownloadChanged)
     Q_PROPERTY(bool    liveShareLanVisible  READ liveShareLanVisible  WRITE setLiveShareLanVisible  NOTIFY liveShareLanVisibleChanged)
+
+    // Ordering of the four saved-item lists on the Home screen. Each keeps its
+    // own key and direction: they are read side by side but wanted in different
+    // orders — a workspace by when it was last opened, a connection by name.
+    Q_PROPERTY(QString connectionsSortKey READ connectionsSortKey WRITE setConnectionsSortKey NOTIFY connectionsSortChanged)
+    Q_PROPERTY(bool    connectionsSortAsc READ connectionsSortAsc WRITE setConnectionsSortAsc NOTIFY connectionsSortChanged)
+    Q_PROPERTY(QString sshSortKey         READ sshSortKey         WRITE setSshSortKey         NOTIFY sshSortChanged)
+    Q_PROPERTY(bool    sshSortAsc         READ sshSortAsc         WRITE setSshSortAsc         NOTIFY sshSortChanged)
+    Q_PROPERTY(QString workspacesSortKey  READ workspacesSortKey  WRITE setWorkspacesSortKey  NOTIFY workspacesSortChanged)
+    Q_PROPERTY(bool    workspacesSortAsc  READ workspacesSortAsc  WRITE setWorkspacesSortAsc  NOTIFY workspacesSortChanged)
+    Q_PROPERTY(QString snippetsSortKey    READ snippetsSortKey    WRITE setSnippetsSortKey    NOTIFY snippetsSortChanged)
+    Q_PROPERTY(bool    snippetsSortAsc    READ snippetsSortAsc    WRITE setSnippetsSortAsc    NOTIFY snippetsSortChanged)
     Q_PROPERTY(int    queryLimit               READ queryLimit               WRITE setQueryLimit               NOTIFY queryLimitChanged)
     Q_PROPERTY(bool   highlightCurrentLine     READ highlightCurrentLine     WRITE setHighlightCurrentLine     NOTIFY highlightCurrentLineChanged)
     Q_PROPERTY(double lineHeight               READ lineHeight               WRITE setLineHeight               NOTIFY lineHeightChanged)
@@ -101,6 +113,24 @@ public:
     void setAiModel(const QString &value);
     void setAiOllamaUrl(const QString &value);
 
+    QString connectionsSortKey() const;
+    bool    connectionsSortAsc() const;
+    QString sshSortKey()         const;
+    bool    sshSortAsc()         const;
+    QString workspacesSortKey()  const;
+    bool    workspacesSortAsc()  const;
+    QString snippetsSortKey()    const;
+    bool    snippetsSortAsc()    const;
+
+    void setConnectionsSortKey(const QString &value);
+    void setConnectionsSortAsc(bool value);
+    void setSshSortKey(const QString &value);
+    void setSshSortAsc(bool value);
+    void setWorkspacesSortKey(const QString &value);
+    void setWorkspacesSortAsc(bool value);
+    void setSnippetsSortKey(const QString &value);
+    void setSnippetsSortAsc(bool value);
+
 signals:
     void darkThemeChanged();
     void fontSizeChanged();
@@ -115,6 +145,10 @@ signals:
     void autoReconnectChanged();
     void liveShareWarnOnStartChanged();
     void liveShareWarnOnStopChanged();
+    void connectionsSortChanged();
+    void sshSortChanged();
+    void workspacesSortChanged();
+    void snippetsSortChanged();
     void liveShareUseTlsChanged();
     void liveShareCertPathChanged();
     void liveShareKeyPathChanged();
