@@ -44,6 +44,8 @@ Item {
 
     SchemaBrowser {
         anchors.fill: parent
+        // Same as the editor: inside a SplitPane the divider is the seam.
+        framed:       false
         schemas:          root._schemas
         showBrowseAction: AppSettings.schemaQuickBrowse
         onTableSelected:             (name)          => root.tableSelected(name)

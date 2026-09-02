@@ -30,7 +30,10 @@ Rectangle {
     signal navigateRequested(string sql, string title)
 
     color: Theme.surface
-    border.color: Theme.border
+    // No frame: this fills a pane whose seams are already drawn — the
+    // SplitPane divider on three sides, the results header's rule on top.
+    // Rectangle's border.width defaults to 1, so it has to be said.
+    border.width: 0
 
     // Hidden clipboard helper
     TextEdit { id: _clip; visible: false; text: "" }

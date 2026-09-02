@@ -1612,7 +1612,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 36
-                        color:  Theme.surface
+                        color:  Theme.panel
 
                         Rectangle {
                             anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
@@ -2049,7 +2049,7 @@ Item {
                             Rectangle {
                                 Layout.fillWidth: true
                                 height: 36
-                                color:  Theme.surface
+                                color:  Theme.panel
 
                                 Rectangle {
                                     anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
@@ -2260,7 +2260,7 @@ Item {
                     Rectangle {
                         Layout.fillWidth: true
                         height: 36
-                        color:  Theme.surface
+                        color:  Theme.panel
 
                         Rectangle {
                             anchors { bottom: parent.bottom; left: parent.left; right: parent.right }
@@ -2321,9 +2321,12 @@ Item {
                     }
 
                     // ── Sidebar content area ───────────────────────────────────
-                    Item {
+                    Rectangle {
                         Layout.fillWidth:  true
                         Layout.fillHeight: true
+                        // Was transparent, which let Theme.background show through
+                        // and gave the sidebar a ground no other panel used.
+                        color: Theme.surface
 
                         // History
                         ListView {
