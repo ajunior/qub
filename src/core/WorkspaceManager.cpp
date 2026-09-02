@@ -63,7 +63,8 @@ void WorkspaceManager::initDb(const QString &dbPath)
             sql             TEXT    NOT NULL DEFAULT '',
             cursor_position INTEGER NOT NULL DEFAULT 0,
             title           TEXT    NOT NULL DEFAULT '',
-            is_active       INTEGER NOT NULL DEFAULT 0
+            is_active       INTEGER NOT NULL DEFAULT 0,
+            file_path       TEXT    NOT NULL DEFAULT ''
         )
     )");
     q.exec("CREATE INDEX IF NOT EXISTS idx_workspace_tabs_ws ON workspace_tabs(workspace_id)");
@@ -314,7 +315,7 @@ QVariantMap WorkspaceManager::workspace(int id) const
     ws["name"]              = q.value(0);
     ws["connections"] = connections(id);
 
-    q.prepare("SELECT connection_name, sql, cursor_position, title, is_active "
+    q.prepare("SELECT connection_name, sql, cursor_position, title, is_active, file_path "
               "FROM workspace_tabs WHERE workspace_id = ? ORDER BY tab_order");
     q.addBindValue(id);
     q.exec();
@@ -327,6 +328,7 @@ QVariantMap WorkspaceManager::workspace(int id) const
         tab["cursorPosition"] = q.value(2);
         tab["title"]          = q.value(3);
         tab["isActive"]       = q.value(4).toInt() == 1;
+        tab["filePath"]       = q.value(5);
         tabs << tab;
     }
     ws["tabs"] = tabs;
@@ -345,19 +347,28 @@ void WorkspaceManager::saveTabs(int id, const QVariantList &tabs)
     q.prepare("DELETE FROM workspace_tabs WHERE workspace_id = ?");
     q.addBindValue(id);
     q.exec();
+    // QVariant::toString() on a key the caller omitted yields a *null* QString,
+    // which binds as SQL NULL — and every text column here is NOT NULL, so an
+    // absent key failed the insert and dropped the tab instead of taking the
+    // column default.
+    const auto text = [](const QVariantMap &m, const char *key) {
+        const QString v = m.value(QLatin1String(key)).toString();
+        return v.isNull() ? QString::fromLatin1("") : v;
+    };
     for (int i = 0; i < tabs.size(); ++i) {
         const QVariantMap tab = tabs.at(i).toMap();
         q.prepare(R"(
-            INSERT INTO workspace_tabs (workspace_id, tab_order, connection_name, sql, cursor_position, title, is_active)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO workspace_tabs (workspace_id, tab_order, connection_name, sql, cursor_position, title, is_active, file_path)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         )");
         q.addBindValue(id);
         q.addBindValue(i);
-        q.addBindValue(tab.value("connectionName").toString());
-        q.addBindValue(tab.value("sql").toString());
+        q.addBindValue(text(tab, "connectionName"));
+        q.addBindValue(text(tab, "sql"));
         q.addBindValue(tab.value("cursorPosition").toInt());
-        q.addBindValue(tab.value("title").toString());
+        q.addBindValue(text(tab, "title"));
         q.addBindValue(tab.value("isActive").toBool() ? 1 : 0);
+        q.addBindValue(text(tab, "filePath"));
         q.exec();
     }
     m_db.commit();

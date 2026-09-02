@@ -356,6 +356,13 @@ Item {
     on_UsableConnectionsChanged: _syncDefaultConnection()
     property var  _tabSqlMap:         ({})   // { tabId: sqlString } — only written on tab switch
     property var  _tabCursorMap:      ({})   // { tabId: cursorPosition }
+
+    // The .sql file a tab was opened from or last saved to, and the text as it
+    // went to disk. Both halves are needed: the path is what Ctrl+S overwrites
+    // without asking, and the text is the only thing that makes the divergence
+    // marker beside the tab label checkable rather than decorative.
+    // { tabId: { path: fileUrlString, savedSql: string } }
+    property var  _tabFileMap:        ({})
     property bool _tabSwitching:      false
 
     // Set whenever editor content / tabs change; drives the crash-safety autosave.
@@ -716,6 +723,66 @@ Item {
 
     function _setActiveTabConnection(name: string): void { _setTabConnection(_activeQueryTabIdx, name) }
 
+    // ── Tab ↔ file binding ───────────────────────────────────────────────────
+    function _tabFile(tabId: int): var { return _tabFileMap[tabId] ?? null }
+
+    // The text a tab currently holds. The active tab's lives in the editor;
+    // every other one was written to _tabSqlMap when it lost focus.
+    function _tabSql(tabId: int): string {
+        return tabId === _currentTabId ? currentSql : (_tabSqlMap[tabId] ?? "")
+    }
+
+    // A tab opened from a file answers to the file's name — "Query 7" tells you
+    // nothing once the tab is bound. Only on open: a later save-as leaves a
+    // label the person may well have chosen by hand.
+    function _nameTabAfterFile(tabId: int, url: var): void {
+        const base = decodeURIComponent(url.toString().split("/").pop() ?? "")
+        const name = base.replace(/\.sql$/i, "").slice(0, 32)
+        const idx  = _queryTabs.findIndex(t => t.id === tabId)
+        if (!name || idx < 0) return
+        if (_queryTabs.some((t, i) => i !== idx && t.label === name)) return
+        const tabs = _queryTabs.slice()
+        tabs[idx]  = { id: tabs[idx].id, label: name, connectionName: tabs[idx].connectionName }
+        _queryTabs = tabs
+    }
+
+    function _bindTabFile(tabId: int, url: var, sql: string): void {
+        const m = Object.assign({}, _tabFileMap)
+        m[tabId] = { path: url.toString(), savedSql: sql }
+        _tabFileMap   = m
+        _sessionDirty = true
+    }
+
+    function _unbindTabFile(tabId: int): void {
+        if (_tabFileMap[tabId] === undefined) return
+        const m = Object.assign({}, _tabFileMap)
+        delete m[tabId]
+        _tabFileMap = m
+    }
+
+    // Write the active tab to a path and bind it there. Shared by Ctrl+S on an
+    // already-bound tab and by whatever the Save dialog comes back with.
+    function _writeTabFile(url: var): void {
+        const tabId = _currentTabId
+        const sql   = currentSql
+        if (tabId < 0) return
+        if (!AppSettings.writeFile(url, sql)) {
+            _toaster.show("Could not write file.", Toaster.Type.Error)
+            return
+        }
+        _bindTabFile(tabId, url, sql)
+        _toaster.show("File saved.", Toaster.Type.Success)
+    }
+
+    // Ctrl+S. A bound tab overwrites its file with no dialog — that is the whole
+    // point of the binding; an unbound one falls back to asking where to put it.
+    function _saveTabFile(): void {
+        if (currentSql.trim() === "") return
+        const f = _tabFile(_currentTabId)
+        if (f) _writeTabFile(f.path)
+        else   _sqlSaveFileDialog.open()
+    }
+
     // Snapshot the flat tab strip for the workspace payload.
     function _collectSessionTabs(): var {
         _saveActiveEditorState()
@@ -724,7 +791,8 @@ Item {
             sql:            _tabSqlMap[t.id] ?? "",
             cursorPosition: _tabCursorMap[t.id] ?? 0,
             title:          t.label,
-            isActive:       i === _activeQueryTabIdx
+            isActive:       i === _activeQueryTabIdx,
+            filePath:       (_tabFileMap[t.id]?.path) ?? ""
         }))
     }
 
@@ -741,6 +809,7 @@ Item {
         const tabs      = []
         const sqlMap    = {}
         const cursorMap = {}
+        const fileMap   = {}
         let   nextId    = 1
         let   activeIdx = 0
         ;(tabsIn ?? []).forEach(t => {
@@ -749,6 +818,10 @@ Item {
             tabs.push({ id: tabId, label, connectionName: t.connectionName || "" })
             sqlMap[tabId]    = t.sql || ""
             cursorMap[tabId] = t.cursorPosition || 0
+            // Restored clean: the marker means "diverged since qub last wrote
+            // it", which is the only divergence qub can vouch for. A file edited
+            // outside qub between sessions reads as clean until you touch it.
+            if (t.filePath) fileMap[tabId] = { path: t.filePath, savedSql: sqlMap[tabId] }
             if (t.isActive) activeIdx = tabs.length - 1
         })
         if (tabs.length === 0) {
@@ -760,6 +833,7 @@ Item {
         _nextTabId         = nextId
         _tabSqlMap         = sqlMap
         _tabCursorMap      = cursorMap
+        _tabFileMap        = fileMap
         _queryTabs         = tabs
         _activeQueryTabIdx = activeIdx
         const at = tabs[activeIdx]
@@ -867,6 +941,7 @@ Item {
         const closedId = _queryTabs[idx].id
         delete _tabSqlMap[closedId]
         delete _tabCursorMap[closedId]
+        _unbindTabFile(closedId)
         const sm = Object.assign({}, root._tabStateMap)
         delete sm[closedId]
         root._tabStateMap = sm
@@ -932,13 +1007,12 @@ Item {
     }
 
     // Ctrl+S follows the universal "save my file" convention; snippet save
-    // lives on the shifted variant.
+    // lives on the shifted variant. Save-as has no shortcut of its own because
+    // Ctrl+Shift+S is already the snippet, and a snippet is the thing people
+    // reach for far more often here than a second copy of a file.
     Shortcut {
         sequence: "Ctrl+S"
-        onActivated: {
-            if (root.currentSql.trim() !== "")
-                _sqlSaveFileDialog.open()
-        }
+        onActivated: root._saveTabFile()
     }
 
     Shortcut {
@@ -999,7 +1073,8 @@ Item {
         { id: "newTab",     label: "New query tab",            shortcut: "Ctrl+T",       group: "Tabs",   icon: Icons.plus },
         { id: "closeTab",   label: "Close query tab",          shortcut: "Ctrl+W",       group: "Tabs",   icon: Icons.x },
         { id: "openFile",   label: "Open SQL file…",           shortcut: "Ctrl+O",       group: "Editor", icon: Icons.folderOpen },
-        { id: "saveFile",   label: "Save SQL to file…",        shortcut: "Ctrl+S",       group: "Editor", icon: Icons.floppyDisk },
+        { id: "saveFile",   label: "Save SQL to file",         shortcut: "Ctrl+S",       group: "Editor", icon: Icons.floppyDisk },
+        { id: "saveFileAs", label: "Save SQL to file as…",                               group: "Editor", icon: Icons.floppyDisk },
         { id: "saveSnippet",label: "Save as snippet…",         shortcut: "Ctrl+Shift+S", group: "Editor", icon: Icons.bookmarkSimple },
         { id: "exportCsv",  label: "Export results as CSV…",   shortcut: "Ctrl+Shift+E", group: "Results",icon: Icons.downloadSimple },
         { id: "viewRow",    label: "View selected row…",       shortcut: "Ctrl+Shift+R", group: "Results",icon: Icons.rows },
@@ -1028,7 +1103,8 @@ Item {
         case "newTab":      root._newQueryTab(""); break
         case "closeTab":    root._closeQueryTab(root._activeQueryTabIdx); break
         case "openFile":    _sqlOpenDialog.open(); break
-        case "saveFile":
+        case "saveFile":    root._saveTabFile(); break
+        case "saveFileAs":
             if (root.currentSql.trim() !== "") _sqlSaveFileDialog.open()
             break
         case "saveSnippet": {
@@ -1648,9 +1724,24 @@ Item {
                                             required property int index
                                             readonly property bool _active: _qtab.index === root._activeQueryTabIdx
                                             property bool _editing: false
+
+                                            // The tab is bound to a .sql file, and what it holds
+                                            // is no longer what went to disk. Reads _tabFileMap
+                                            // and the live editor text, so it re-evaluates as you
+                                            // type — which is what makes it a marker and not a
+                                            // stamp left over from the last save.
+                                            readonly property var  _file:  root._tabFileMap[_qtab.modelData.id] ?? null
+                                            readonly property bool _dirty: _qtab._file !== null
+                                                && root._tabSql(_qtab.modelData.id) !== _qtab._file.savedSql
+
+                                            function _nameOf(path: string): string {
+                                                return decodeURIComponent(path.split("/").pop() ?? "")
+                                            }
+
                                             height: 36
                                             width:  Math.max(112, _qtabLabel.implicitWidth
-                                                    + (root._queryTabs.length > 1 ? 68 : 46))
+                                                    + (root._queryTabs.length > 1 ? 68 : 46)
+                                                    + (_qtab._file ? 14 : 0))
 
                                             // Tab-click area; double-click starts rename
                                             MouseArea {
@@ -1763,6 +1854,28 @@ Item {
                                                     Keys.onReturnPressed: _commit()
                                                     Keys.onEscapePressed: { _qtab._editing = false }
                                                     onActiveFocusChanged: { if (!activeFocus) _commit() }
+                                                }
+
+                                                // Unsaved-changes marker. Only a bound tab can
+                                                // show it: an unbound tab has no file to diverge
+                                                // from, and its text is already safe in the
+                                                // workspace, so a dot there would mean nothing.
+                                                Tooltip {
+                                                    visible: _qtab._file !== null
+                                                    Layout.alignment: Qt.AlignVCenter
+                                                    // Guarded: `visible` does not stop a binding
+                                                    // from evaluating, and an unbound tab has no
+                                                    // path to read.
+                                                    text: _qtab._file === null ? ""
+                                                        : _qtab._dirty
+                                                        ? "Unsaved changes — " + _qtab._nameOf(_qtab._file.path)
+                                                        : _qtab._nameOf(_qtab._file.path)
+
+                                                    Text {
+                                                        text:  _qtab._dirty ? "●" : "○"
+                                                        color: _qtab._dirty ? Theme.warning : Theme.textDisabled
+                                                        font.pixelSize: 9
+                                                    }
                                                 }
 
                                                 Rectangle {
@@ -1978,6 +2091,7 @@ Item {
                                         { label: "Open .sql file",  icon: Icons.folderOpen,     shortcut: "Ctrl+O" },
                                         { label: "Save as snippet", icon: Icons.code,           shortcut: "Ctrl+Shift+S" },
                                         { label: "Save to file",    icon: Icons.downloadSimple, shortcut: "Ctrl+S" },
+                                        { label: "Save to file as…", icon: Icons.downloadSimple },
                                         { label: "Export as Markdown…", icon: Icons.article },
                                         { label: "Export as Markdown + results…", icon: Icons.article },
                                         null,
@@ -1989,10 +2103,11 @@ Item {
                                         if (index === 3) _saveDialog.openFor(
                                             queryEditor.selectedText.trim() !== ""
                                             ? queryEditor.selectedText : root.currentSql)
-                                        if (index === 4) _sqlSaveFileDialog.open()
-                                        if (index === 5) { _mdExportDialog.includeResults = false; _mdExportDialog.openSuggested() }
-                                        if (index === 6) { _mdExportDialog.includeResults = true;  _mdExportDialog.openSuggested() }
-                                        if (index === 8) _shareMenu.open()
+                                        if (index === 4) root._saveTabFile()
+                                        if (index === 5) _sqlSaveFileDialog.open()
+                                        if (index === 6) { _mdExportDialog.includeResults = false; _mdExportDialog.openSuggested() }
+                                        if (index === 7) { _mdExportDialog.includeResults = true;  _mdExportDialog.openSuggested() }
+                                        if (index === 9) _shareMenu.open()
                                     }
                                 }
                                 }
@@ -2751,12 +2866,14 @@ Item {
         nameFilters: ["SQL files (*.sql)", "All files (*)"]
         onAccepted: {
             const text = AppSettings.readFile(selectedFile)
-            if (text !== "") {
-                _newQueryTab("")
-                queryEditor.setSql(text)
-            } else {
+            if (text === "") {
                 _toaster.show("Could not read file.", Toaster.Type.Error)
+                return
             }
+            _newQueryTab("")
+            queryEditor.setSql(text)
+            root._nameTabAfterFile(root._currentTabId, selectedFile)
+            root._bindTabFile(root._currentTabId, selectedFile, text)
         }
     }
 
@@ -2766,13 +2883,7 @@ Item {
         fileMode:      FileDialog.SaveFile
         defaultSuffix: "sql"
         nameFilters:   ["SQL files (*.sql)", "All files (*)"]
-        onAccepted: {
-            const ok = AppSettings.writeFile(selectedFile, root.currentSql)
-            _toaster.show(
-                ok ? "File saved." : "Could not write file.",
-                ok ? Toaster.Type.Success : Toaster.Type.Error
-            )
-        }
+        onAccepted: root._writeTabFile(selectedFile)
     }
 
     FileDialog {
