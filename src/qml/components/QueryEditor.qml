@@ -153,6 +153,9 @@ Item {
     CodeEditor {
         id: _editor
         anchors.fill:         parent
+        // The SplitPane divider draws the seam on every side that has
+        // one; a frame here would double it to 2px.
+        framed:               false
         lineNumbers:          true
         // No language badge: this editor only ever holds SQL, and the badge
         // floats over the first line at the top right. The connection's
@@ -160,7 +163,6 @@ Item {
         fontFamily:           AppSettings.fontFamily
         fontSize:             AppSettings.fontSize
         fontWeight:           AppSettings.fontWeight
-        backgroundColor:      Theme.surface
         lineDecorations:      root.lineDecorations
         highlightCurrentLine: AppSettings.highlightCurrentLine
         lineHeight:           AppSettings.lineHeight
