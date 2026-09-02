@@ -41,6 +41,14 @@ trap cleanup_mysql_driver EXIT
 
 if [ -z "${SKIP_MYSQL_DRIVER:-}" ]; then
     echo "── Building the MySQL driver plugin"
+    # The plugin has to be built for the architectures of the application it
+    # gets loaded into, and that is not the same thing as the architectures Qt
+    # was built for: Qt's macOS binaries are universal, while plain cmake built
+    # qub for this machine and nothing else. Asking the binary costs one command
+    # and cannot drift.
+    SQLDRIVER_ARCHS="$(lipo -archs "$APP/Contents/MacOS/qub" | tr ' ' ';')"
+    export SQLDRIVER_ARCHS
+    echo "  architectures: $SQLDRIVER_ARCHS"
     built="$(bash packaging/macos/build-sqldriver-mysql.sh)"
     cp "$built" "$QT_SQL_PLUGINS/libqsqlmysql.dylib"
     MYSQL_DRIVER_INSTALLED=1
