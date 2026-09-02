@@ -435,6 +435,31 @@ Item {
                                             _showForm = false
                                         }
 
+                                        // The driver badge is a column of a table, so it gets a
+                                        // column's width: the widest label any driver can produce,
+                                        // measured off real Badges rather than guessed at in
+                                        // pixels. Without it the badge — and the status dot beside
+                                        // it — sits wherever the label happens to end, so a list
+                                        // holding both SQLite and PostgreSQL has two ragged edges
+                                        // where it should have one.
+                                        Item {
+                                            visible: false
+                                            Repeater {
+                                                id: _driverBadgeProbe
+                                                model: Drivers.ORDER
+                                                delegate: Badge {
+                                                    required property string modelData
+                                                    text: Drivers.label(modelData)
+                                                }
+                                            }
+                                        }
+                                        readonly property real _driverBadgeW: {
+                                            var w = 0
+                                            for (var i = 0; i < _driverBadgeProbe.count; i++)
+                                                w = Math.max(w, _driverBadgeProbe.itemAt(i).implicitWidth)
+                                            return w
+                                        }
+
                                         RowLayout {
                                             Layout.fillWidth: true
                                             spacing: 4
@@ -557,6 +582,16 @@ Item {
                                                 }
                                                 onClicked: _openMenu.open()
 
+                                                // Every trailing control occupies a slot of the
+                                                // same size whether or not it applies to this row.
+                                                // Disconnect belongs to a connection that is open
+                                                // and CSV import to SQLite alone, so a run of
+                                                // buttons that simply drops the ones that do not
+                                                // apply leaves each row's badge at a different x.
+                                                // The slots stay; only what is in them changes.
+                                                readonly property real _slotW: _editBtn.implicitWidth
+                                                readonly property real _slotH: _editBtn.implicitHeight
+
                                                 ConnectionStatus {
                                                     anchors.verticalCenter: parent.verticalCenter
                                                     showLabel: false
@@ -566,6 +601,7 @@ Item {
 
                                                 Badge {
                                                     text:              Drivers.label(_connRow.modelData.driver)
+                                                    width:             _connSection._driverBadgeW
                                                     colorScheme:       Badge.Color.Default
                                                     backgroundOpacity: _connRow.hovered ? 0.0 : 1.0
                                                     Behavior on backgroundOpacity { NumberAnimation { duration: Theme.durationFast } }
@@ -626,10 +662,18 @@ Item {
                                                 // connection at once, so it is where a socket or a tunnel gets
                                                 // let go. To connect, open the row.
                                                 Tooltip {
-                                                    text: "Disconnect"
-                                                    visible: _connRow.modelData.connected || _connRow.modelData.pending
+                                                    id: _plugSlot
+                                                    readonly property bool _applies:
+                                                        _connRow.modelData.connected || _connRow.modelData.pending
+                                                    // Blank rather than absent: an empty slot must
+                                                    // not answer a hover with a tooltip for a
+                                                    // button that is not there.
+                                                    text:   _applies ? "Disconnect" : ""
+                                                    width:  _connRow._slotW
+                                                    height: _connRow._slotH
 
                                                     Button {
+                                                        visible:   _plugSlot._applies
                                                         iconOnly:  true
                                                         iconName:  Icons.plugs
                                                         variant:   Button.Variant.Ghost
@@ -638,10 +682,15 @@ Item {
                                                     }
                                                 }
                                                 Tooltip {
-                                                    text: "Import CSV as table"
-                                                    visible: _connRow.modelData.driver === "QSQLITE"
+                                                    id: _csvSlot
+                                                    readonly property bool _applies:
+                                                        _connRow.modelData.driver === "QSQLITE"
+                                                    text:   _applies ? "Import CSV as table" : ""
+                                                    width:  _connRow._slotW
+                                                    height: _connRow._slotH
 
                                                     Button {
+                                                        visible:   _csvSlot._applies
                                                         iconOnly:  true
                                                         iconName:  Icons.fileCsv
                                                         variant:   Button.Variant.Ghost
@@ -656,6 +705,7 @@ Item {
                                                     text: "Edit connection"
 
                                                     Button {
+                                                        id:        _editBtn
                                                         iconOnly:  true
                                                         iconName:  Icons.pencilSimple
                                                         variant:   Button.Variant.Ghost
@@ -2683,6 +2733,15 @@ Item {
                                         Layout.fillWidth: true
                                         spacing: 10
 
+                                        // Same slot rule as the data source list: activating
+                                        // applies only to a theme that is not already active,
+                                        // editing and deleting only to one that is not built in,
+                                        // and a run of buttons that drops what does not apply
+                                        // leaves every row ending somewhere different. The slots
+                                        // stay; only what is in them changes.
+                                        readonly property real _slotW: _themeExportBtn.implicitWidth
+                                        readonly property real _slotH: _themeExportBtn.implicitHeight
+
                                         Rectangle {
                                             width: 10; height: 10; radius: 5
                                             color: delegateItem12.modelData.primary || Theme.border
@@ -2697,7 +2756,11 @@ Item {
                                         }
 
                                         Text {
-                                            visible: delegateItem12.modelData.id === ThemeManager.activeThemeId
+                                            // Opacity, not visibility: the word is the same width
+                                            // in every row, so keeping its space keeps the buttons
+                                            // beside it in one column.
+                                            opacity: delegateItem12.modelData.id === ThemeManager.activeThemeId
+                                                     ? 1.0 : 0.0
                                             text: "active"
                                             color: Theme.primary
                                             font.family:    Theme.fontFamily
@@ -2706,10 +2769,15 @@ Item {
                                         }
 
                                         Tooltip {
-                                            visible: delegateItem12.modelData.id !== ThemeManager.activeThemeId
-                                            text: "Activate"
+                                            id: _activateSlot
+                                            readonly property bool _applies:
+                                                delegateItem12.modelData.id !== ThemeManager.activeThemeId
+                                            text: _applies ? "Activate" : ""
+                                            Layout.preferredWidth:  delegateItem12._slotW
+                                            Layout.preferredHeight: delegateItem12._slotH
 
                                             Button {
+                                                visible:  _activateSlot._applies
                                                 iconOnly: true
                                                 iconName: Icons.checkCircle
                                                 variant: Button.Variant.Ghost
@@ -2721,6 +2789,7 @@ Item {
                                             text: "Export theme"
 
                                             Button {
+                                                id:       _themeExportBtn
                                                 iconOnly: true
                                                 iconName: Icons.uploadSimple
                                                 variant: Button.Variant.Ghost
@@ -2737,10 +2806,14 @@ Item {
                                         }
 
                                         Tooltip {
-                                            text: "Edit theme"
-                                            visible: !delegateItem12.modelData.builtin
+                                            id: _themeEditSlot
+                                            readonly property bool _applies: !delegateItem12.modelData.builtin
+                                            text: _applies ? "Edit theme" : ""
+                                            Layout.preferredWidth:  delegateItem12._slotW
+                                            Layout.preferredHeight: delegateItem12._slotH
 
                                             Button {
+                                                visible:  _themeEditSlot._applies
                                                 iconOnly: true
                                                 iconName: Icons.pencilSimple
                                                 variant: Button.Variant.Ghost
@@ -2749,10 +2822,14 @@ Item {
                                         }
 
                                         Tooltip {
-                                            text: "Delete theme"
-                                            visible: !delegateItem12.modelData.builtin
+                                            id: _themeDeleteSlot
+                                            readonly property bool _applies: !delegateItem12.modelData.builtin
+                                            text: _applies ? "Delete theme" : ""
+                                            Layout.preferredWidth:  delegateItem12._slotW
+                                            Layout.preferredHeight: delegateItem12._slotH
 
                                             Button {
+                                                visible:  _themeDeleteSlot._applies
                                                 iconOnly: true
                                                 iconName: Icons.trash
                                                 variant: Button.Variant.Ghost
