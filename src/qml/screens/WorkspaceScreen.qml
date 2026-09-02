@@ -805,8 +805,14 @@ Item {
     // Bring a connection into this workspace (adding it if needed) and give
     // it a tab. Used by the Home screen's connection cards and new-connection
     // flow — an explicit act, so the implicit add is the low-friction choice.
-    function openConnection(name: string): void {
-        if (!name || workspaceId < 0) return
+    // wsId is the workspace to open it in; -1 means the one already loaded.
+    // Membership follows the choice: picking a workspace that does not hold this
+    // connection is what adds it, which is why the picker on the home screen
+    // shows which workspaces already do.
+    function openConnection(name: string, wsId: int): void {
+        if (!name) return
+        if (wsId >= 0 && wsId !== workspaceId) loadWorkspace(wsId)
+        if (workspaceId < 0) return
         if (!_inWorkspace(name)) {
             WorkspaceManager.addConnection(workspaceId, name)
             workspaceConnections = WorkspaceManager.connections(workspaceId)
@@ -1195,7 +1201,7 @@ Item {
                     }
                     onTriggered: (index, item) => {
                         if (item._wsId !== undefined) { root.loadWorkspace(item._wsId); return }
-                        if (item._act === "new")      _wsFormDialog.openCreate()
+                        if (item._act === "new")      _wsFormDialog.openCreate([])
                         if (item._act === "rename")   _wsFormDialog.openRename(root.workspaceId)
                         if (item._act === "conns")     _wsFormDialog.openConnections(root.workspaceId)
                         if (item._act === "delete") {
@@ -2490,8 +2496,9 @@ Item {
         target: ConnectionManager
         function onConnectionAdded(name: string): void {
             // A genuinely new connection created from inside this workspace:
-            // add it to the workspace (an explicit act) and give it a tab.
-            root.openConnection(name)
+            // add it to the workspace (an explicit act) and give it a tab. This
+            // one already names its destination by being raised here.
+            root.openConnection(name, -1)
         }
         // The auto-reconnect retry belongs here rather than on connectionAdded,
         // which fires when a connection is *saved*. reconnect() reopens one that
