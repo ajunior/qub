@@ -145,6 +145,10 @@ jobs:
       # sqldrivers plugins reference libpq.5.dylib and libiodbc.2.dylib by the
       # absolute path they had on Qt's own build machine, and package.sh can
       # only repoint them at a copy it can actually find here.
+      #
+      # mariadb-connector-c is a build dependency rather than a repair one: Qt
+      # ships no MySQL plugin for macOS at all, so package.sh compiles one, and
+      # this is what it compiles against.
       - name: Install dependencies
         run: brew install postgresql libpq libiodbc mariadb-connector-c
 

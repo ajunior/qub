@@ -16,6 +16,37 @@ STAGE_DIR="$(mktemp -d)/qub-dmg"
 
 mkdir -p "$DIST" "$STAGE_DIR"
 
+# ── The MySQL / MariaDB driver ────────────────────────────────────────────────
+# Qt's macOS binaries carry no qsqlmysql plugin, so one is built here (see
+# build-sqldriver-mysql.sh for why, and for what it is linked against) and put
+# where macdeployqt will find it: the Qt installation's own sqldrivers
+# directory. Deploying it by hand afterwards would leave its @rpath references
+# to the Qt frameworks pointing outside the bundle, which is the one thing
+# macdeployqt is for. Removed again on the way out, because this runs against a
+# real Qt installation on a developer's Mac as readily as on a throwaway runner
+# — the same courtesy build-appimage.sh extends on Linux.
+#
+# SKIP_MYSQL_DRIVER=1 turns it off, for a local package where the extra two
+# minutes are not worth it. A release must not take that door: below, the driver
+# is required to have survived unless it was never built.
+QT_SQL_PLUGINS="$(qmake -query QT_INSTALL_PLUGINS)/sqldrivers"
+MYSQL_DRIVER_INSTALLED=""
+
+cleanup_mysql_driver() {
+    if [ -n "$MYSQL_DRIVER_INSTALLED" ]; then
+        rm -f "$QT_SQL_PLUGINS/libqsqlmysql.dylib"
+    fi
+}
+trap cleanup_mysql_driver EXIT
+
+if [ -z "${SKIP_MYSQL_DRIVER:-}" ]; then
+    echo "── Building the MySQL driver plugin"
+    built="$(bash packaging/macos/build-sqldriver-mysql.sh)"
+    cp "$built" "$QT_SQL_PLUGINS/libqsqlmysql.dylib"
+    MYSQL_DRIVER_INSTALLED=1
+    echo "  installed $built into $QT_SQL_PLUGINS"
+fi
+
 # ── macdeployqt ───────────────────────────────────────────────────────────────
 macdeployqt "$APP" \
     -qmldir=src/qml \
@@ -58,7 +89,7 @@ mkdir -p "$FRAMEWORKS"
 # into a loop that returns early, every lookup that hit on the first directory
 # killed the pipe and printed "echo: write error: Broken pipe".
 SEARCH_DIRS=""
-for f in libpq libiodbc unixodbc openssl@3 krb5; do
+for f in libpq libiodbc unixodbc openssl@3 krb5 mariadb-connector-c; do
     d="$(brew --prefix "$f" 2>/dev/null || true)"
     if [ -n "$d" ]; then SEARCH_DIRS="$SEARCH_DIRS $d/lib"; fi
 done
@@ -152,9 +183,15 @@ for plugin in "$DRIVER_DST"/*.dylib; do
     fi
 done
 
-# SQLite, PostgreSQL and ODBC are what qub claims to support out of the box on
-# macOS. Losing one of those is a broken release, not a degraded one.
-for required in libqsqlite.dylib libqsqlpsql.dylib libqsqlodbc.dylib; do
+# SQLite, PostgreSQL, ODBC and MySQL are what qub claims to support out of the
+# box on macOS. Losing one of those is a broken release, not a degraded one —
+# and the MySQL plugin has a client library to lose exactly like the rest, so
+# building it above is not on its own proof that it shipped.
+REQUIRED_DRIVERS="libqsqlite.dylib libqsqlpsql.dylib libqsqlodbc.dylib"
+if [ -n "$MYSQL_DRIVER_INSTALLED" ]; then
+    REQUIRED_DRIVERS="$REQUIRED_DRIVERS libqsqlmysql.dylib"
+fi
+for required in $REQUIRED_DRIVERS; do
     if [ ! -f "$DRIVER_DST/$required" ]; then
         echo "error: $required is not in the bundle (removed:$BROKEN_DRIVERS)" >&2
         exit 1
