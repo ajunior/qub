@@ -506,6 +506,34 @@
       color: var(--text-sec);
       font-family: var(--mono);
     }
+    .driver-matrix-wrap { margin-top: 28px; overflow-x: auto; }
+    .driver-matrix {
+      border-collapse: collapse;
+      font-size: 13px;
+      min-width: 520px;
+    }
+    .driver-matrix th, .driver-matrix td {
+      border-bottom: 1px solid var(--border);
+      padding: 9px 18px 9px 0;
+      text-align: left;
+      white-space: nowrap;
+    }
+    .driver-matrix th {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--text-sec);
+    }
+    .driver-matrix td:first-child { font-family: var(--mono); }
+    .driver-matrix .no { color: var(--text-sec); font-style: italic; }
+    .driver-note {
+      font-size: 13.5px;
+      color: var(--text-sec);
+      line-height: 1.7;
+      max-width: 720px;
+      margin-top: 18px;
+    }
 
     /* ── Story ─────────────────────────────────────────────────────────── */
     .story-body {
@@ -771,7 +799,8 @@
 <div class="section-wrap">
   <div class="section-eyebrow">Databases</div>
   <h2 class="section-title">Connects to what you already use</h2>
-  <p class="section-sub">Built on Qt's SQL module, qub supports any database that Qt can talk to out of the box.</p>
+  <p class="section-sub">Built on Qt&rsquo;s SQL module, qub speaks to seven databases &mdash; though which
+    of them a given download can load is decided by Qt, not by qub.</p>
   <div class="drivers">
     <div class="driver-tag">PostgreSQL</div>
     <div class="driver-tag">MySQL / MariaDB</div>
@@ -780,6 +809,30 @@
     <div class="driver-tag">Oracle (OCI)</div>
     <div class="driver-tag">Firebird</div>
   </div>
+
+  <div class="driver-matrix-wrap">
+    <table class="driver-matrix">
+      <tr>
+        <th>Driver</th>
+        <th>Linux &middot; AppImage</th>
+        <th>macOS &middot; DMG</th>
+        <th>Windows &middot; installer</th>
+      </tr>
+      <tr><td>SQLite</td>          <td>bundled</td> <td>bundled</td>              <td>bundled</td></tr>
+      <tr><td>PostgreSQL</td>      <td>bundled</td> <td>bundled</td>              <td>bundled</td></tr>
+      <tr><td>ODBC</td>            <td>bundled</td> <td>bundled</td>              <td>system</td></tr>
+      <tr><td>MySQL / MariaDB</td> <td>bundled</td> <td class="no">no plugin</td> <td class="no">no plugin</td></tr>
+      <tr><td>Firebird</td>        <td>bundled</td> <td class="no">no plugin</td> <td>bring <code>fbclient.dll</code></td></tr>
+      <tr><td>Oracle (OCI)</td>    <td class="no">not bundled</td> <td class="no">no plugin</td> <td>bring Instant Client</td></tr>
+    </table>
+  </div>
+
+  <p class="driver-note">Qt&rsquo;s official macOS and Windows binaries carry no MySQL driver at all, and the
+    macOS ones none for Oracle or Firebird &mdash; <em>no plugin</em> means nothing you install will help, only a
+    qub built against a Qt compiled with that driver. Oracle is left out of the AppImage because its client
+    library is not redistributable. qub offers only the drivers the copy you are running can actually load, so
+    the connection form never lists one that would fail on you. Building from source, every client library is
+    your system&rsquo;s.</p>
 </div>
 
 <!-- ── Story ─────────────────────────────────────────────────────────────── -->
