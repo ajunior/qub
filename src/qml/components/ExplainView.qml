@@ -49,7 +49,8 @@ Rectangle {
         visible: !root._ok && !(root.plan && root.plan.success === false)
         icon:    Icons.lightning
         title:   "Explain a query"
-        description: "Press Ctrl+E (or the Explain button) to see how the database will run "
+        description: "Press " + KeyLabels.sequence("Ctrl+E")
+                     + " (or the Explain button) to see how the database will run "
                      + "the current statement — scan types, join order, costs and hot spots."
     }
 

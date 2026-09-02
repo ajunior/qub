@@ -383,7 +383,8 @@ Rectangle {
             text: root._filteredToNothing
                 ? "Clear the filter above (or press Esc in it) to see all "
                   + root.model.totalRowCount + " rows."
-                : "Write SQL in the editor above and press Ctrl+Enter."
+                : "Write SQL in the editor above and press "
+                  + KeyLabels.sequence("Ctrl+Enter") + "."
             color:          Theme.textSecondary
             font { family: Theme.fontFamily; pixelSize: Theme.textXs }
             wrapMode:       Text.WordWrap
