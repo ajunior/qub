@@ -449,6 +449,24 @@ Item {
 
                                             Item { Layout.fillWidth: true }
 
+                                            // A data source is looked for by what it
+                                            // connects to as often as by what it is
+                                            // called, so the host and the database
+                                            // are searched alongside the name.
+                                            ListToolbar {
+                                                id: _connTools
+                                                visible: ConnectionManager.connections.length > 1
+                                                placeholder: "Search…"
+                                                sortKeys: [{ key: "name",   label: "Name"   },
+                                                           { key: "driver", label: "Driver" },
+                                                           { key: "host",   label: "Host"   }]
+                                                sortKey:   AppSettings.connectionsSortKey
+                                                ascending: AppSettings.connectionsSortAsc
+                                                onSortKeyPicked: (k) => AppSettings.connectionsSortKey = k
+                                                onDirectionToggled: AppSettings.connectionsSortAsc =
+                                                                        !AppSettings.connectionsSortAsc
+                                            }
+
                                             Tooltip {
                                                 text: "New connection"
 
@@ -482,26 +500,6 @@ Item {
                                                     onClicked: _exportDialog.open()
                                                 }
                                             }
-                                        }
-
-                                        // A data source is looked for by what it
-                                        // connects to as often as by what it is
-                                        // called, so the host and the database
-                                        // are searched alongside the name.
-                                        ListToolbar {
-                                            id: _connTools
-                                            visible: !_connSection._showForm
-                                                     && ConnectionManager.connections.length > 1
-                                            Layout.fillWidth: true
-                                            placeholder: "Search data sources…"
-                                            sortKeys: [{ key: "name",   label: "Name"   },
-                                                       { key: "driver", label: "Driver" },
-                                                       { key: "host",   label: "Host"   }]
-                                            sortKey:   AppSettings.connectionsSortKey
-                                            ascending: AppSettings.connectionsSortAsc
-                                            onSortKeyPicked: (k) => AppSettings.connectionsSortKey = k
-                                            onDirectionToggled: AppSettings.connectionsSortAsc =
-                                                                    !AppSettings.connectionsSortAsc
                                         }
 
                                         Text {
@@ -724,6 +722,19 @@ Item {
 
                                             Item { Layout.fillWidth: true }
 
+                                            ListToolbar {
+                                                id: _sshTools
+                                                visible: SshManager.configs.length > 1
+                                                placeholder: "Search…"
+                                                sortKeys: [{ key: "name", label: "Name" },
+                                                           { key: "host", label: "Host" },
+                                                           { key: "user", label: "User" }]
+                                                sortKey:   AppSettings.sshSortKey
+                                                ascending: AppSettings.sshSortAsc
+                                                onSortKeyPicked: (k) => AppSettings.sshSortKey = k
+                                                onDirectionToggled: AppSettings.sshSortAsc = !AppSettings.sshSortAsc
+                                            }
+
                                             Tooltip {
                                                 text: "Import SSH connections"
                                                 visible: !_sshSection._showForm
@@ -748,21 +759,6 @@ Item {
                                                     onClicked: _sshExportDialog.open()
                                                 }
                                             }
-                                        }
-
-                                        ListToolbar {
-                                            id: _sshTools
-                                            visible: !_sshSection._showForm
-                                                     && SshManager.configs.length > 1
-                                            Layout.fillWidth: true
-                                            placeholder: "Search SSH connections…"
-                                            sortKeys: [{ key: "name", label: "Name" },
-                                                       { key: "host", label: "Host" },
-                                                       { key: "user", label: "User" }]
-                                            sortKey:   AppSettings.sshSortKey
-                                            ascending: AppSettings.sshSortAsc
-                                            onSortKeyPicked: (k) => AppSettings.sshSortKey = k
-                                            onDirectionToggled: AppSettings.sshSortAsc = !AppSettings.sshSortAsc
                                         }
 
                                         // Empty state
@@ -1007,6 +1003,24 @@ Item {
 
                                             Item { Layout.fillWidth: true }
 
+                                            // Defaults to most recently opened first,
+                                            // which is the order this list already had:
+                                            // it is read to get back to what you were
+                                            // doing, not to look a name up alphabetically.
+                                            ListToolbar {
+                                                id: _wsTools
+                                                visible: WorkspaceManager.workspaces.length > 1
+                                                placeholder: "Search…"
+                                                sortKeys: [{ key: "lastOpenedAt", label: "Last opened" },
+                                                           { key: "name",         label: "Name"        },
+                                                           { key: "tabCount",     label: "Tabs"        }]
+                                                sortKey:   AppSettings.workspacesSortKey
+                                                ascending: AppSettings.workspacesSortAsc
+                                                onSortKeyPicked: (k) => AppSettings.workspacesSortKey = k
+                                                onDirectionToggled: AppSettings.workspacesSortAsc =
+                                                                        !AppSettings.workspacesSortAsc
+                                            }
+
                                             Button {
                                                 text:     "New Workspace"
                                                 iconName: Icons.plus
@@ -1017,25 +1031,6 @@ Item {
                                         }
 
                                         Item { Layout.preferredHeight: 8 }
-
-                                        // Defaults to most recently opened first,
-                                        // which is the order this list already had:
-                                        // it is read to get back to what you were
-                                        // doing, not to look a name up alphabetically.
-                                        ListToolbar {
-                                            id: _wsTools
-                                            visible: WorkspaceManager.workspaces.length > 1
-                                            Layout.fillWidth: true
-                                            placeholder: "Search workspaces…"
-                                            sortKeys: [{ key: "lastOpenedAt", label: "Last opened" },
-                                                       { key: "name",         label: "Name"        },
-                                                       { key: "tabCount",     label: "Tabs"        }]
-                                            sortKey:   AppSettings.workspacesSortKey
-                                            ascending: AppSettings.workspacesSortAsc
-                                            onSortKeyPicked: (k) => AppSettings.workspacesSortKey = k
-                                            onDirectionToggled: AppSettings.workspacesSortAsc =
-                                                                    !AppSettings.workspacesSortAsc
-                                        }
 
                                         Text {
                                             visible: _wsTools.visible && _wsRepeater.count === 0
@@ -1172,6 +1167,22 @@ Item {
 
                                             Item { Layout.fillWidth: true }
 
+                                            // Sorting here reorders the folders and the
+                                            // snippets inside them, but does not dissolve
+                                            // the grouping: a snippet is found under its
+                                            // folder, and a flat list would lose that.
+                                            ListToolbar {
+                                                id: _snipTools
+                                                visible: SnippetManager.snippets.length > 1
+                                                placeholder: "Search…"
+                                                sortKeys: [{ key: "name", label: "Name" }]
+                                                sortKey:   AppSettings.snippetsSortKey
+                                                ascending: AppSettings.snippetsSortAsc
+                                                onSortKeyPicked: (k) => AppSettings.snippetsSortKey = k
+                                                onDirectionToggled: AppSettings.snippetsSortAsc =
+                                                                        !AppSettings.snippetsSortAsc
+                                            }
+
                                             Tooltip {
                                                 text: "New snippet"
 
@@ -1225,24 +1236,6 @@ Item {
                                             font.family:    Theme.fontFamily
                                             font.pixelSize: Theme.textSm
                                             Layout.fillWidth: true
-                                        }
-
-                                        // Sorting here reorders the folders and the
-                                        // snippets inside them, but does not dissolve
-                                        // the grouping: a snippet is found under its
-                                        // folder, and a flat list would lose that.
-                                        ListToolbar {
-                                            id: _snipTools
-                                            visible: !_snipSection._showForm
-                                                     && SnippetManager.snippets.length > 1
-                                            Layout.fillWidth: true
-                                            placeholder: "Search snippets…"
-                                            sortKeys: [{ key: "name", label: "Name" }]
-                                            sortKey:   AppSettings.snippetsSortKey
-                                            ascending: AppSettings.snippetsSortAsc
-                                            onSortKeyPicked: (k) => AppSettings.snippetsSortKey = k
-                                            onDirectionToggled: AppSettings.snippetsSortAsc =
-                                                                    !AppSettings.snippetsSortAsc
                                         }
 
                                         Text {
