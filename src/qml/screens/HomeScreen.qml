@@ -504,6 +504,12 @@ Item {
                                             }
                                         }
 
+                                        // The title row carries a search field, which is taller than the
+                                        // label beside it; without this the first row sits against the
+                                        // bottom of the field and reads as part of the toolbar. Same
+                                        // gap the Workspaces list already leaves.
+                                        Item { Layout.preferredHeight: 8 }
+
                                         Text {
                                             visible: ConnectionManager.connections.length === 0
                                                      && !_connSection._showForm
@@ -570,18 +576,15 @@ Item {
                                                 // workspace that does not hold this connection yet is also
                                                 // what grants it membership — the safety boundary is crossed
                                                 // deliberately, by naming the place it is crossed in.
-                                                Button {
-                                                    id:       _openBtn
-                                                    text:     "Open"
-                                                    size:     Button.Size.Sm
-                                                    variant:  Button.Variant.Ghost
-                                                    onClicked: _openMenu.open()
-                                                }
-
+                                                //
+                                                // Opening is the row's own click, not a button beside it: it
+                                                // is the one thing the row is for, the trailing buttons are
+                                                // all edits to the row rather than uses of it, and the
+                                                // Workspaces list next door already opens on the row.
                                                 Menu {
                                                     id:       _openMenu
-                                                    anchor:   _openBtn
-                                                    position: Menu.Position.BottomRight
+                                                    anchor:   _connRow
+                                                    position: Menu.Position.Bottom
                                                     model: {
                                                         const conn   = _connRow.modelData.name
                                                         const active = WorkspaceManager.activeWorkspaceId
@@ -615,17 +618,23 @@ Item {
                                                     }
                                                 }
 
+                                                // Disconnect only. A connection is global, but opening one is
+                                                // always into some workspace — connecting from here produced a
+                                                // live session belonging to no workspace and no tab, which is
+                                                // not a state worth being able to reach. Closing one is the
+                                                // opposite: this list is the only place that sees every open
+                                                // connection at once, so it is where a socket or a tunnel gets
+                                                // let go. To connect, open the row.
                                                 Tooltip {
-                                                    text: _connRow.modelData.connected ? "Disconnect" : "Connect"
+                                                    text: "Disconnect"
+                                                    visible: _connRow.modelData.connected || _connRow.modelData.pending
 
                                                     Button {
                                                         iconOnly:  true
-                                                        iconName:  _connRow.modelData.connected ? Icons.plugs : Icons.plugsConnected
+                                                        iconName:  Icons.plugs
                                                         variant:   Button.Variant.Ghost
                                                         enabled:   !_connRow.modelData.pending
-                                                        onClicked: _connRow.modelData.connected
-                                                                   ? ConnectionManager.closeConnection(_connRow.modelData.name)
-                                                                   : ConnectionManager.reconnect(_connRow.modelData.name)
+                                                        onClicked: ConnectionManager.closeConnection(_connRow.modelData.name)
                                                     }
                                                 }
                                                 Tooltip {
@@ -812,6 +821,8 @@ Item {
                                                 }
                                             }
                                         }
+
+                                        Item { Layout.preferredHeight: 8 }
 
                                         // Empty state
                                         Text {
