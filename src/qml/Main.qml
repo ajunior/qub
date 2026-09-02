@@ -45,7 +45,7 @@ ApplicationWindow {
     HomeScreen {
         anchors.fill: parent
         visible: root._page === 0
-        onConnectionSelected:     (name) => { _workspace.openConnection(name); root._page = 1 }
+        onConnectionSelected:     (name, wsId) => { _workspace.openConnection(name, wsId); root._page = 1 }
         onWorkspaceSelected:      (id)   => { _workspace.loadWorkspace(id); root._page = 1 }
         onGoToWorkspace:          root._page = 1
         onLogsRequested:          _workspace.toggleLogs()

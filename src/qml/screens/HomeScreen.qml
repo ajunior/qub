@@ -14,7 +14,9 @@ import Qub
 Item {
     id: root
 
-    signal connectionSelected(string name)
+    // workspaceId is where to open it; -1 means the workspace already loaded,
+    // which is what Save & Connect wants — that flow has no picker to offer.
+    signal connectionSelected(string name, int workspaceId)
     signal goToWorkspace()
     signal logsRequested()
     signal workspaceSelected(int workspaceId)
@@ -547,7 +549,7 @@ Item {
                                                         : ""
                                                     return datePart ? loc + " · " + datePart : loc
                                                 }
-                                                onClicked: root.connectionSelected(_connRow.modelData.name)
+                                                onClicked: _openMenu.open()
 
                                                 ConnectionStatus {
                                                     anchors.verticalCenter: parent.verticalCenter
@@ -563,6 +565,56 @@ Item {
                                                     Behavior on backgroundOpacity { NumberAnimation { duration: Theme.durationFast } }
                                                     anchors.verticalCenter: parent.verticalCenter
                                                 }
+                                                // Where a data source opens is chosen here, not inferred
+                                                // from whichever workspace happened to be active. Picking a
+                                                // workspace that does not hold this connection yet is also
+                                                // what grants it membership — the safety boundary is crossed
+                                                // deliberately, by naming the place it is crossed in.
+                                                Button {
+                                                    id:       _openBtn
+                                                    text:     "Open"
+                                                    size:     Button.Size.Sm
+                                                    variant:  Button.Variant.Ghost
+                                                    onClicked: _openMenu.open()
+                                                }
+
+                                                Menu {
+                                                    id:       _openMenu
+                                                    anchor:   _openBtn
+                                                    position: Menu.Position.BottomRight
+                                                    model: {
+                                                        const conn   = _connRow.modelData.name
+                                                        const active = WorkspaceManager.activeWorkspaceId
+                                                        const all    = WorkspaceManager.workspaces.slice()
+                                                        // The loaded workspace first: it is the common target,
+                                                        // and picking it switches nothing.
+                                                        all.sort((a, b) => (b.id === active ? 1 : 0)
+                                                                         - (a.id === active ? 1 : 0))
+                                                        const items = all.map(w => ({
+                                                            label: w.id === active ? w.name + "  (current)" : w.name,
+                                                            // A check means the workspace already holds this
+                                                            // connection; a plus means picking it will add it.
+                                                            icon:  (w.connections ?? []).indexOf(conn) >= 0
+                                                                   ? Icons.check : Icons.plusCircle,
+                                                            _wsId: w.id
+                                                        }))
+                                                        items.push(null)
+                                                        items.push({ label: "New workspace…", icon: Icons.stackPlus,
+                                                                     _act: "new" })
+                                                        return items
+                                                    }
+                                                    onTriggered: (index, item) => {
+                                                        if (item._wsId !== undefined) {
+                                                            root.connectionSelected(_connRow.modelData.name, item._wsId)
+                                                            return
+                                                        }
+                                                        if (item._act === "new") {
+                                                            _wsFormDialog.pendingConnection = _connRow.modelData.name
+                                                            _wsFormDialog.openCreate([_connRow.modelData.name])
+                                                        }
+                                                    }
+                                                }
+
                                                 Tooltip {
                                                     text: _connRow.modelData.connected ? "Disconnect" : "Connect"
 
@@ -1026,7 +1078,10 @@ Item {
                                                 iconName: Icons.plus
                                                 size:     Button.Size.Sm
                                                 variant:  Button.Variant.Ghost
-                                                onClicked: _wsFormDialog.openCreate()
+                                                onClicked: {
+                                                    _wsFormDialog.pendingConnection = ""
+                                                    _wsFormDialog.openCreate([])
+                                                }
                                             }
                                         }
 
@@ -3154,7 +3209,7 @@ Item {
                     && name === _connForm.pendingName) {
                 _savedPending = false
                 _connSection._resetForm()
-                root.connectionSelected(name)
+                root.connectionSelected(name, -1)
             }
         }
 
@@ -3181,6 +3236,17 @@ Item {
         id: _wsFormDialog
         anchors.fill: parent
         z: 150
+
+        // Set when the dialog was opened from a data source's Open menu, so the
+        // workspace that comes back opens that connection instead of nothing.
+        property string pendingConnection: ""
+
+        onDone: (workspaceId) => {
+            const conn = _wsFormDialog.pendingConnection
+            _wsFormDialog.pendingConnection = ""
+            if (_wsFormDialog.mode === "create" && conn !== "" && workspaceId >= 0)
+                root.connectionSelected(conn, workspaceId)
+        }
     }
 
     ConfirmDialog {

@@ -19,10 +19,13 @@ Dialog {
 
     signal done(int workspaceId)
 
-    function openCreate(): void {
+    // preselected: connections ticked from the start. A workspace created from a
+    // data source's Open menu arrives with that source already in it, because it
+    // is about to be added anyway — an empty list would say otherwise.
+    function openCreate(preselected: var): void {
         mode = "create"; targetId = -1
         _nameInput.text = ""
-        _buildConnList([])
+        _buildConnList(preselected ?? [])
         _errorText = ""
         open()
         _nameInput.forceActiveFocus()
