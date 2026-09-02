@@ -62,9 +62,17 @@ fi
 # already ships the ones this bundle keeps. qt-cmake rather than cmake, so the
 # toolchain, the deployment target and the architecture are Qt's own and the
 # plugin matches the framework it will be loaded beside.
+#
+# The architecture is named rather than left to qt-cmake. Qt's macOS binaries
+# are universal, and qt-cmake hands that down to anything built against them, so
+# the plugin build asks for an x86_64 slice too and dies on Homebrew's
+# single-slice libmariadb — which is what rc.22 did. What the plugin has to
+# match is not Qt but the app it will be loaded into, and package.sh reads that
+# off the built binary, so this only guesses when it is run on its own.
 QT_CMAKE="$(command -v qt-cmake || echo "$(dirname "$(command -v qmake)")/qt-cmake")"
 "$QT_CMAKE" -S "$SRC/src/plugins/sqldrivers" -B "$BUILD" \
     -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_OSX_ARCHITECTURES="${SQLDRIVER_ARCHS:-$(uname -m)}" \
     -DFEATURE_sql_mysql=ON \
     -DFEATURE_sql_psql=OFF -DFEATURE_sql_odbc=OFF -DFEATURE_sql_sqlite=OFF \
     -DFEATURE_sql_ibase=OFF -DFEATURE_sql_oci=OFF -DFEATURE_sql_db2=OFF \
