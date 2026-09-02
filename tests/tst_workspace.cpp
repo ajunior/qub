@@ -21,6 +21,7 @@ private slots:
     void connectionsPersist();
     void connectionRenameReferences();
     void saveLoadTabsRoundTrip();
+    void tabFilePathRoundTrip();
     void saveTabsIntoDeletedIdIsNoop();
 
 private:
@@ -172,6 +173,39 @@ void TestWorkspace::saveLoadTabsRoundTrip()
     QCOMPARE(out[0].toMap().value("sql").toString(), QString("SELECT 3"));
 
     QCOMPARE(mgr.workspace(9999).size(), 0);   // unknown id -> empty map
+}
+
+// A tab remembers the .sql file it was opened from or last saved to, so Ctrl+S
+// can overwrite it without asking. A tab that was never bound to one must come
+// back as an empty path — not as a dropped row, which is what binding an absent
+// key as SQL NULL against a NOT NULL column used to produce.
+void TestWorkspace::tabFilePathRoundTrip()
+{
+    WorkspaceManager mgr(freshDbPath("tabfiles"));
+    const int id = mgr.createWorkspace("Files", {});
+
+    mgr.saveTabs(id, {
+        QVariantMap{{"connectionName", "prod"}, {"sql", "SELECT 1"}, {"cursorPosition", 0},
+                    {"title", "relatorio"}, {"isActive", true},
+                    {"filePath", "file:///tmp/relatorio.sql"}},
+        // No filePath key at all: an unbound tab, and the shape every caller
+        // written before the column existed still sends.
+        QVariantMap{{"connectionName", "prod"}, {"sql", "SELECT 2"}, {"cursorPosition", 0},
+                    {"title", "Query 2"}, {"isActive", false}}
+    });
+
+    const QVariantList out = mgr.workspace(id).value("tabs").toList();
+    QCOMPARE(out.size(), 2);
+    QCOMPARE(out[0].toMap().value("filePath").toString(), QString("file:///tmp/relatorio.sql"));
+    QCOMPARE(out[1].toMap().value("filePath").toString(), QString(""));
+
+    // Rebinding replaces the path; unbinding clears it.
+    mgr.saveTabs(id, {QVariantMap{{"connectionName", "prod"}, {"sql", "SELECT 1"},
+                                  {"cursorPosition", 0}, {"title", "relatorio"},
+                                  {"isActive", true}, {"filePath", "file:///tmp/outro.sql"}}});
+    QCOMPARE(mgr.workspace(id).value("tabs").toList().at(0).toMap()
+                 .value("filePath").toString(),
+             QString("file:///tmp/outro.sql"));
 }
 
 void TestWorkspace::saveTabsIntoDeletedIdIsNoop()
