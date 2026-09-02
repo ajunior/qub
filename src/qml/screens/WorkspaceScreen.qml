@@ -1914,7 +1914,8 @@ Item {
                                 }
 
                                 Tooltip {
-                                    text: "Explain query plan (Ctrl+E)"
+                                    text: "Explain query plan ("
+                                          + KeyLabels.sequence("Ctrl+E") + ")"
                                     anchors.verticalCenter: parent.verticalCenter
                                     Button {
                                         iconOnly: true
@@ -2438,7 +2439,8 @@ Item {
                             visible:          root._sidebarTab === "snippets" && _snippetList.count === 0
                             icon:             Icons.code
                             title:            "No snippets"
-                            description:      "Select SQL and press Ctrl+S, or use the editor's ··· menu, to save a snippet. Clicking one inserts it at the cursor."
+                            description:      "Select SQL and press " + KeyLabels.sequence("Ctrl+Shift+S")
+                                              + ", or use the editor's ··· menu, to save a snippet. Clicking one inserts it at the cursor."
                             iconSize:         36
                         }
 

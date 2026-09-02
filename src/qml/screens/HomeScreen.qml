@@ -1231,7 +1231,8 @@ Item {
                                         Text {
                                             visible: SnippetManager.snippets.length === 0
                                                      && !_snipSection._showForm
-                                            text: "No snippets yet. Save one here or select SQL in the editor and press Ctrl+Shift+S."
+                                            text: "No snippets yet. Save one here or select SQL in the editor and press "
+                                                  + KeyLabels.sequence("Ctrl+Shift+S") + "."
                                             color: Theme.textSecondary
                                             font.family:    Theme.fontFamily
                                             font.pixelSize: Theme.textSm
