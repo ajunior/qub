@@ -2074,30 +2074,52 @@ Item {
                                         onTabClicked: (i) => root._resultsPane = i
                                     }
 
-                                    // Row count. When the limit cut the result the
-                                    // count alone reads as the whole answer, so it
-                                    // says so.
-                                    Text {
-                                        visible: root._rowCount > 0
-                                        text:    root._rowCount + (root._rowCount === 1 ? " row" : " rows")
-                                                 + (root._truncated ? " (limited)" : "")
-                                        color:   root._truncated ? Theme.warning : Theme.textSecondary
-                                        font { family: Theme.fontFamily; pixelSize: Theme.textSm }
-                                    }
-                                    Text {
-                                        visible: root._rowCount > 0 && root._elapsedMs > 0
-                                        text:    "·"
-                                        color:   Theme.textDisabled
-                                        font { family: Theme.fontFamily; pixelSize: Theme.textSm }
-                                    }
-                                    Text {
-                                        visible: root._elapsedMs > 0
-                                        text:    root._elapsedMs + " ms"
-                                        color:   Theme.textDisabled
-                                        font { family: Theme.fontFamily; pixelSize: Theme.textSm }
+                                    Item { Layout.fillWidth: true }
+
+                                    // What the run produced. It sits by the export
+                                    // button rather than by the tabs: a short "97
+                                    // rows" immediately after "Diff", in the same
+                                    // strip and the same size, reads as one more tab.
+                                    Divider {
+                                        vertical: true
+                                        visible:  _resultSummary.visible
+                                        Layout.preferredHeight: 18
                                     }
 
-                                    Item { Layout.fillWidth: true }
+                                    RowLayout {
+                                        id:      _resultSummary
+                                        visible: root._rowCount > 0 || root._elapsedMs > 0
+                                        spacing: Theme.sp2
+
+                                        // Row count. When the limit cut the result the
+                                        // count alone reads as the whole answer, so it
+                                        // says so.
+                                        Text {
+                                            visible: root._rowCount > 0
+                                            text:    root._rowCount + (root._rowCount === 1 ? " row" : " rows")
+                                                     + (root._truncated ? " (limited)" : "")
+                                            color:   root._truncated ? Theme.warning : Theme.textSecondary
+                                            font { family: Theme.fontFamily; pixelSize: Theme.textSm }
+                                        }
+                                        Text {
+                                            visible: root._rowCount > 0 && root._elapsedMs > 0
+                                            text:    "·"
+                                            color:   Theme.textDisabled
+                                            font { family: Theme.fontFamily; pixelSize: Theme.textSm }
+                                        }
+                                        Text {
+                                            visible: root._elapsedMs > 0
+                                            text:    root._elapsedMs + " ms"
+                                            color:   Theme.textDisabled
+                                            font { family: Theme.fontFamily; pixelSize: Theme.textSm }
+                                        }
+                                    }
+
+                                    Divider {
+                                        vertical: true
+                                        visible:  _resultSummary.visible
+                                        Layout.preferredHeight: 18
+                                    }
 
                                     // Export
                                     Tooltip {
