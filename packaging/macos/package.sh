@@ -223,16 +223,74 @@ if [ -n "${DEVELOPER_ID:-}" ]; then
     # names the profile here; CI has no keychain to keep a profile in and passes
     # an App Store Connect API key instead, which can be revoked on its own and
     # is not tied to anybody's Apple ID password.
+    NOTARY_ARGS=()
     if [ -n "${NOTARY_PROFILE:-}" ]; then
-        xcrun notarytool submit "$DIST/$DMG_NAME" \
-            --keychain-profile "$NOTARY_PROFILE" --wait
+        NOTARY_ARGS=(--keychain-profile "$NOTARY_PROFILE")
     elif [ -n "${NOTARY_KEY:-}" ]; then
-        xcrun notarytool submit "$DIST/$DMG_NAME" \
-            --key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER" --wait
+        NOTARY_ARGS=(--key "$NOTARY_KEY" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER")
     fi
 
-    if [ -n "${NOTARY_PROFILE:-}${NOTARY_KEY:-}" ]; then
-        xcrun stapler staple "$DIST/$DMG_NAME"
+    if [ ${#NOTARY_ARGS[@]} -gt 0 ]; then
+        # `notarytool submit --wait` does two very different jobs in one command:
+        # it uploads the DMG, and then it holds a single long connection open
+        # while Apple's queue works through it. The queue can take the better
+        # part of an hour, and any network hiccup in that hour kills the command
+        # — with a non-zero exit, as if the submission had been rejected, when in
+        # fact it is alive on Apple's side and about to be accepted. That is a
+        # release build thrown away over a dropped packet.
+        #
+        # So the two jobs are separated. The upload happens once, and the waiting
+        # is a poll that can fail and be tried again: an unreadable status is
+        # treated as "ask again in thirty seconds", and only a verdict from Apple
+        # ends the loop either way.
+        SUBMISSION_ID="$(xcrun notarytool submit "$DIST/$DMG_NAME" \
+                             "${NOTARY_ARGS[@]}" --no-wait \
+                         | sed -n 's/^ *id: *//p' | head -1)"
+        if [ -z "$SUBMISSION_ID" ]; then
+            echo "error: notarytool accepted no submission — nothing to wait for." >&2
+            exit 1
+        fi
+        echo "Notarization submission: $SUBMISSION_ID"
+
+        # 120 × 30s = one hour, which is past anything Apple's queue has taken
+        # here and still short enough to fit inside the job's own timeout.
+        NOTARY_STATUS=""
+        for _ in $(seq 1 120); do
+            sleep 30
+            NOTARY_STATUS="$(xcrun notarytool info "$SUBMISSION_ID" \
+                                 "${NOTARY_ARGS[@]}" 2>/dev/null \
+                             | sed -n 's/^ *status: *//p' | head -1)"
+            case "$NOTARY_STATUS" in
+                Accepted)          echo "Notarization accepted."; break ;;
+                Invalid|Rejected)  break ;;
+                "")                echo "  (status unreadable — retrying)" ;;
+                *)                 echo "  status: $NOTARY_STATUS" ;;
+            esac
+        done
+
+        # The log is worth printing either way: on a rejection it is the only
+        # place that says which binary Apple objected to, and on an acceptance it
+        # still lists the warnings that will become rejections later.
+        xcrun notarytool log "$SUBMISSION_ID" "${NOTARY_ARGS[@]}" || true
+
+        if [ "$NOTARY_STATUS" != "Accepted" ]; then
+            echo "error: notarization ended as '${NOTARY_STATUS:-unknown}'." >&2
+            echo "       Resume with: xcrun notarytool info $SUBMISSION_ID …" >&2
+            exit 1
+        fi
+
+        # Stapling reaches out to Apple too, and fails the same transient way.
+        for attempt in 1 2 3; do
+            if xcrun stapler staple "$DIST/$DMG_NAME"; then
+                break
+            fi
+            if [ "$attempt" = 3 ]; then
+                echo "error: could not staple the ticket after three tries." >&2
+                exit 1
+            fi
+            echo "stapler failed (attempt $attempt) — retrying in 30s" >&2
+            sleep 30
+        done
         xcrun stapler validate "$DIST/$DMG_NAME"
         echo "DMG signed, notarized and stapled."
     else

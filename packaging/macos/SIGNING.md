@@ -156,6 +156,22 @@ history.
 Keep the `.p12`, its password and the `.p8` in a password manager. A GitHub
 secret cannot be read back, so it is not a backup.
 
+## When notarization is interrupted
+
+Apple's queue has taken close to an hour here, and the submission outlives
+whatever was waiting on it: a dropped connection, a cancelled job, a closed
+laptop. The upload does not have to be repeated — the submission ID printed by
+`notarytool submit` is enough to pick the verdict back up, and `stapler` only
+needs a DMG that is byte-identical to the one that was submitted.
+
+```sh
+xcrun notarytool info <submission-id> --key … --key-id … --issuer …
+xcrun notarytool log  <submission-id> --key … --key-id … --issuer …
+```
+
+`package.sh` splits the upload from the wait for this reason, and treats a
+status it cannot read as "ask again" rather than as a rejection.
+
 ## Checking the result
 
 ```sh

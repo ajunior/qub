@@ -136,7 +136,7 @@ jobs:
 # ── macOS — DMG ───────────────────────────────────────────────────────────────
   build-macos:
     runs-on: macos-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
 
     steps:
       - uses: actions/checkout@v4
@@ -192,6 +192,16 @@ jobs:
           security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
               -P "$CERT_PASSWORD" -T /usr/bin/codesign
           rm -f "$RUNNER_TEMP/cert.p12"
+          # The keychain is created empty, so it holds whatever the .p12 held and
+          # nothing else. A .p12 exported without the chain leaves codesign
+          # unable to reach the Apple root and it refuses the identity — a
+          # failure that depends on how the certificate was packaged months ago,
+          # on a machine that is not this one. Fetching the intermediate here
+          # costs one request and removes that dependency.
+          curl -fsSL -o "$RUNNER_TEMP/DeveloperIDG2CA.cer" \
+              https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$KEYCHAIN" || true
+          rm -f "$RUNNER_TEMP/DeveloperIDG2CA.cer"
           # Without this, codesign stops on a GUI prompt for the key that no one
           # is there to answer, and the job hangs until it times out.
           security set-key-partition-list -S apple-tool:,apple: \
