@@ -50,10 +50,10 @@ endif()
 FetchContent_Declare(
     mahina
     GIT_REPOSITORY https://github.com/ajunior/mahina.git
-    # Head of mahina's fix/themed-editor-chrome (PR #32) — pinned to a hash
+    # mahina main after PR #32 (post-v0.45.14, untagged) — pinned to a hash
     # (not a branch or tag) so a re-pointed ref upstream cannot silently
-    # change what we build. Re-pin to main's hash once that PR merges.
-    GIT_TAG        58b669fa09b2a0403bbd7ce4894b7ed8bf19f009
+    # change what we build.
+    GIT_TAG        0c08848cff42d48f1456e766074de00d1d6b33d0
 )
 FetchContent_MakeAvailable(mahina)
 
