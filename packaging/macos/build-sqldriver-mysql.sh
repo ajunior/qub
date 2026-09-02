@@ -63,16 +63,27 @@ fi
 # toolchain, the deployment target and the architecture are Qt's own and the
 # plugin matches the framework it will be loaded beside.
 #
-# The architecture is named rather than left to qt-cmake. Qt's macOS binaries
-# are universal, and qt-cmake hands that down to anything built against them, so
-# the plugin build asks for an x86_64 slice too and dies on Homebrew's
-# single-slice libmariadb — which is what rc.22 did. What the plugin has to
-# match is not Qt but the app it will be loaded into, and package.sh reads that
-# off the built binary, so this only guesses when it is run on its own.
+# The architecture is named rather than left to qt-cmake, and then named twice.
+#
+# Qt's macOS binaries are universal and qt-cmake hands that down, so the plugin
+# build asked for an x86_64 slice and died on Homebrew's single-slice
+# libmariadb (rc.22). Setting CMAKE_OSX_ARCHITECTURES alone did not fix it
+# (rc.23): mysql/CMakeLists.txt calls qt_internal_force_macos_intel_arch(), which
+# on a universal Qt sets the *target property* OSX_ARCHITECTURES to x86_64 — and
+# a target property beats a cache variable. Qt does that because the client
+# libraries this plugin was historically built against were Intel-only on macOS.
+# Homebrew's Connector/C is the opposite: arm64 alone, on an arm64 machine.
+# QT_FORCE_MACOS_ALL_ARCHES is the escape hatch Qt documents for exactly this,
+# and turning it off leaves the arches to the cache variable below.
+#
+# What the plugin has to match is not Qt but the app it will be loaded into, and
+# package.sh reads that off the built binary; this only guesses when run alone.
+ARCHS="${SQLDRIVER_ARCHS:-$(uname -m)}"
 QT_CMAKE="$(command -v qt-cmake || echo "$(dirname "$(command -v qmake)")/qt-cmake")"
 "$QT_CMAKE" -S "$SRC/src/plugins/sqldrivers" -B "$BUILD" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_OSX_ARCHITECTURES="${SQLDRIVER_ARCHS:-$(uname -m)}" \
+    -DCMAKE_OSX_ARCHITECTURES="$ARCHS" \
+    -DQT_FORCE_MACOS_ALL_ARCHES=ON \
     -DFEATURE_sql_mysql=ON \
     -DFEATURE_sql_psql=OFF -DFEATURE_sql_odbc=OFF -DFEATURE_sql_sqlite=OFF \
     -DFEATURE_sql_ibase=OFF -DFEATURE_sql_oci=OFF -DFEATURE_sql_db2=OFF \
@@ -83,6 +94,19 @@ cmake --build "$BUILD" --parallel >&2
 
 if [ ! -f "$OUT" ]; then
     echo "error: the build produced no $OUT" >&2
+    exit 1
+fi
+
+# A plugin built for the wrong architecture links cleanly and then does not load
+# — macOS just skips it, and the user gets "driver could not be loaded" with
+# every library present and correct. That is the failure this whole file exists
+# to avoid, so the arches are read back rather than assumed.
+# lipo does not promise the order Qt was asked for, so both sides are sorted.
+sorted_archs() { tr ';, ' '\n' | sed '/^$/d' | sort | tr '\n' ' '; }
+BUILT_ARCHS="$(lipo -archs "$OUT" | sorted_archs)"
+WANTED_ARCHS="$(printf '%s' "$ARCHS" | sorted_archs)"
+if [ "$BUILT_ARCHS" != "$WANTED_ARCHS" ]; then
+    echo "error: asked for [$WANTED_ARCHS] and got [$BUILT_ARCHS]" >&2
     exit 1
 fi
 echo "$OUT"
