@@ -829,7 +829,12 @@ Item {
         const newId = _nextTabId
         _nextTabId = _nextTabId + 1
         _saveActiveEditorState()
-        const conn = (connName !== undefined && connName !== "")
+        // A typed QML parameter cannot be left out: calling this with no argument
+        // coerces the missing value into the *string* "undefined", which then
+        // sails past an emptiness check and becomes the tab's connection name —
+        // an unrunnable tab claiming a connection that never existed. Callers
+        // pass "" explicitly; this rejects the sentinel in case one forgets.
+        const conn = (connName && connName !== "undefined")
                    ? connName : root._defaultConnection
         const tabs = _queryTabs.concat([{ id: newId, label: "Query " + newId, connectionName: conn }])
         _queryTabs = tabs
@@ -913,7 +918,7 @@ Item {
 
     Shortcut {
         sequence: "Ctrl+T"
-        onActivated: root._newQueryTab()
+        onActivated: root._newQueryTab("")
     }
 
     Shortcut {
@@ -1020,7 +1025,7 @@ Item {
         case "explain":     root._runExplain(false); break
         case "format":      queryEditor.setSql(Fmt.format(queryEditor.sql)); break
         case "ai":          root._openAiPalette(); break
-        case "newTab":      root._newQueryTab(); break
+        case "newTab":      root._newQueryTab(""); break
         case "closeTab":    root._closeQueryTab(root._activeQueryTabIdx); break
         case "openFile":    _sqlOpenDialog.open(); break
         case "saveFile":
@@ -1796,7 +1801,7 @@ Item {
                                     iconName:             Icons.plus
                                     size:                 Button.Size.Sm
                                     variant:              Button.Variant.Ghost
-                                    onClicked:            root._newQueryTab()
+                                    onClicked:            root._newQueryTab("")
                                 }
                             }
 
@@ -2744,7 +2749,7 @@ Item {
         onAccepted: {
             const text = AppSettings.readFile(selectedFile)
             if (text !== "") {
-                _newQueryTab()
+                _newQueryTab("")
                 queryEditor.setSql(text)
             } else {
                 _toaster.show("Could not read file.", Toaster.Type.Error)
