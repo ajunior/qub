@@ -466,12 +466,13 @@
     <p>
       Every release carries three files: a <code>.dmg</code> for macOS, a
       <code>-setup.exe</code> for Windows and an <code>.AppImage</code> for Linux.
-      None of them is signed with a paid developer certificate, so the operating
-      system stops you the first time you open it. That is expected — it says
-      nothing about the download — and getting past it takes about thirty seconds.
+      The macOS build is signed and notarized, so it opens like any other app;
+      the Windows and Linux builds are not signed, and each stops you once the
+      first time you open it. That stop says nothing about the download, and
+      getting past it takes about thirty seconds.
     </p>
     <p>
-      With no signature to lean on, every release also carries a
+      Signed or not, every release also carries a
       <code>SHA256SUMS.txt</code> beside the three files. Put it in the same
       folder as your download and you can tell a good copy from a truncated or
       tampered one:
@@ -485,46 +486,33 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS</pre>
       compare against the line in the file.
     </p>
 
-    <h3>macOS &mdash; &ldquo;Apple could not verify&hellip;&rdquo;</h3>
+    <h3>macOS &mdash; the first launch</h3>
     <p>
-      The app inside the DMG is signed ad-hoc: enough for macOS to run it, but not
-      notarized by Apple, which requires a paid developer account. So the first
-      launch is blocked, and what you see depends on the version of macOS.
-    </p>
-    <p>
-      <strong>macOS 15 (Sequoia) and later.</strong> Double-clicking gives you
-      <em>&ldquo;qub&rdquo; Not Opened &mdash; Apple could not verify &ldquo;qub&rdquo;
-      is free of malware</em>, offering only <strong>Done</strong> and
-      <strong>Move to Trash</strong>. Don't move it to the trash:
+      The app inside the DMG is signed with a Developer ID certificate and
+      notarized by Apple, and the notarization ticket is stapled into the DMG
+      itself &mdash; so the check passes even on a Mac that is offline. Opening it is
+      two clicks:
     </p>
     <ol class="steps">
-      <li><p>Click <strong>Done</strong>.</p></li>
-      <li><p>Open <strong>System Settings &rarr; Privacy &amp; Security</strong> and
-        scroll down to <strong>Security</strong>. A line there reads
-        <em>&ldquo;qub&rdquo; was blocked to protect your Mac</em>.</p></li>
-      <li><p>Click <strong>Open Anyway</strong> and authenticate.</p></li>
-      <li><p>Launch qub again and confirm once more. From then on it opens like any
-        other application.</p></li>
+      <li><p>Drag qub to <strong>Applications</strong>, as the DMG window shows.</p></li>
+      <li><p>Double-click it. macOS says <em>&ldquo;qub&rdquo; is an app downloaded
+        from the Internet. Are you sure you want to open it?</em> &mdash; click
+        <strong>Open</strong>.</p></li>
     </ol>
     <p>
-      <strong>macOS 14 (Sonoma) and earlier.</strong> Control-click (or right-click)
-      qub in Finder and choose <strong>Open</strong>. The same warning appears, but
-      this time with an <strong>Open</strong> button — one click and macOS remembers.
-      That shortcut was removed in Sequoia, which is why newer versions need the trip
-      through System Settings.
+      That question is quarantine, not Gatekeeper: macOS asks it once about
+      anything that arrived from a browser, signed or not, and it does not come
+      back. There is no trip through System Settings and no control-click detour.
     </p>
-    <p>
-      <strong>Either one, from a terminal.</strong> The block is a single extended
-      attribute your browser attaches to anything downloaded. Removing it skips all
-      of the above:
-    </p>
-    <pre>xattr -d com.apple.quarantine /Applications/qub.app</pre>
 
     <div class="callout note">
       <span class="icon">◆</span>
-      <p>A dialog saying <em>&ldquo;qub&rdquo; is damaged and can't be opened</em> is
-      the same quarantine attribute wearing a scarier message, not a corrupted
-      download. The command above clears that one too.</p>
+      <p>If you do see <em>&ldquo;Apple could not verify&hellip;&rdquo;</em> or
+      <em>&ldquo;qub&rdquo; is damaged and can't be opened</em>, something changed
+      the file after Apple signed it &mdash; an interrupted download, or a copy that
+      passed through something that rewrote it. Check it against
+      <code>SHA256SUMS.txt</code> on the release page and download it again; the
+      answer is not to strip the quarantine attribute.</p>
     </div>
 
     <div class="callout warn">
@@ -534,25 +522,27 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS</pre>
       Mac, build from source.</p>
     </div>
 
-    <h3>macOS &mdash; the keychain asks again after every update</h3>
+    <h3>macOS &mdash; the keychain asks on first use</h3>
     <p>
-      The first time qub reads a saved password, Keychain asks for permission and you
-      can answer <strong>Always Allow</strong>. Install a new version of qub and it
-      asks again — once per stored password — even though you already said always.
-    </p>
-    <p>
-      Clicking <strong>Always Allow</strong> again is the right answer, and it is not
-      qub asking. The permission Keychain records is bound to the signature of the
-      exact binary that asked for it, and an ad-hoc signature is derived from the
-      build itself. A new release is therefore a different application as far as
-      Keychain is concerned, and the old permission doesn't carry over. A paid
-      Developer ID signature would keep it stable across versions; until qub has one,
-      expect one round of prompts after each update.
-    </p>
-    <p>
-      What is stored, and how to inspect or revoke it, is under
+      The first time qub reads a saved password, Keychain asks for permission &mdash;
+      once per stored password, so a first launch with three saved connections asks
+      three times. Answer <strong>Always Allow</strong> and it stops asking. What is
+      stored, and how to inspect or revoke it, is under
       <a href="#connections">Passwords and the system keychain</a>.
     </p>
+    <p>
+      The permission Keychain records is bound to the signature of the binary that
+      asked for it, which is why the answer sticks across updates now: every release
+      is signed with the same Developer ID, so each new version is the same
+      application as far as Keychain is concerned. Two cases still re-prompt once,
+      and both are the same reason &mdash; a different signature:
+    </p>
+    <ul>
+      <li><p>Upgrading from a build that predates signing, whose passwords were
+        stored under an ad-hoc signature derived from that build.</p></li>
+      <li><p>A qub you built from source, which is signed ad-hoc and so is a new
+        application on every rebuild.</p></li>
+    </ul>
 
     <h3>Windows and Linux</h3>
     <table>

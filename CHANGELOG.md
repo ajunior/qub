@@ -44,3 +44,7 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
     editable palette. Every one of those saved lists — connections, SSH
     configurations, workspaces, snippets — searches and sorts, each remembering
     the key and direction you left it on.
+  - **Installing** — the macOS DMG is signed with a Developer ID certificate,
+    notarized by Apple and stapled, so it opens with two clicks and no trip
+    through System Settings, offline included. The Windows installer and the
+    Linux AppImage are unsigned; SmartScreen warns once on Windows.
