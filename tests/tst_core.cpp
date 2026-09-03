@@ -484,6 +484,19 @@ void TestCore::complete_dottedTable()
     QCOMPARE(dotted("x.na", scope), QStringLiteral("x"));
     // No dot → null.
     QCOMPARE(dotted("nam", scope), QStringLiteral("<null>"));
+
+    // A dot too many leaves no qualifier to resolve, and also returns null.
+    // These are reachable by typing, and the caller dereferenced the result
+    // until it learned otherwise: QueryEditor asked a null for its indexOf on
+    // every keystroke while the stray dot sat near the cursor.
+    QCOMPARE(dotted("x..", scope), QStringLiteral("<null>"));
+    QCOMPARE(dotted("x..y", scope), QStringLiteral("<null>"));
+    QCOMPARE(dotted("..", scope), QStringLiteral("<null>"));
+    QCOMPARE(dotted(".x", scope), QStringLiteral("<null>"));
+
+    // A schema-qualified name still resolves through its last segment, so the
+    // guard above does not cost the case it looks like.
+    QCOMPARE(dotted("public.orders.i", scope), QStringLiteral("public.orders"));
 }
 
 // ── Foreign-key navigation (fk.js) ──────────────────────────────────────────────
