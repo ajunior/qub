@@ -433,9 +433,34 @@ Rectangle {
             }
         }
 
+        // Where the last right-click landed. The menu covers the whole table,
+        // header included, and the header answers a different question than a
+        // cell does: how wide should this column be, rather than what is in it.
+        property int  _menuCol:      -1
+        property bool _menuOnHeader: false
+
         ContextMenu {
             anchor: _table
+            onOpening: (x, y) => {
+                _table._menuOnHeader = _table.isInHeader(y)
+                _table._menuCol      = _table.columnAt(x)
+            }
             model: {
+                if (_table._menuOnHeader) {
+                    const col = _table._menuCol
+                    const name = (col >= 0 && root.model)
+                        ? root.model.headerData(col, Qt.Horizontal, Qt.DisplayRole) : ""
+                    return [
+                        { label: col >= 0 ? "Fit \u201c" + name + "\u201d to contents"
+                                          : "Fit column to contents",
+                          icon: Icons.arrowsHorizontal, act: "fitcol", disabled: col < 0 },
+                        { label: "Fit all columns to contents",
+                          icon: Icons.arrowsOutLineHorizontal, act: "fitall" },
+                        null,
+                        { label: "Reset column widths", icon: Icons.arrowCounterClockwise,
+                          act: "resetcols" },
+                    ]
+                }
                 const items = [
                     { label: "View value…",     icon: Icons.arrowsOut,  act: "view",
                       disabled: root._selCol < 0 },
@@ -486,6 +511,12 @@ Rectangle {
                     root.navigateRequested(item.sql, item.label)
                 } else if (item.act === "export") {
                     root.exportRequested()
+                } else if (item.act === "fitcol") {
+                    _table.fitColumn(_table._menuCol)
+                } else if (item.act === "fitall") {
+                    _table.fitColumns()
+                } else if (item.act === "resetcols") {
+                    _table.resetColumnWidths()
                 }
             }
         }

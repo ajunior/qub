@@ -1155,6 +1155,18 @@ LIMIT $3</pre>
       automatically on confirmation. Primary key columns are protected and shown as read-only.
     </p>
 
+    <h3>Column widths</h3>
+    <p>
+      Columns start out sharing the width of the grid evenly, which is rarely what a
+      result set wants: a column of two-letter codes gets the same room as one holding a
+      timestamp. Drag the edge of a header to resize one by hand, double-click that edge
+      to fit the column to its widest value, or right-click the header for
+      <strong>Fit &ldquo;column&rdquo; to contents</strong>,
+      <strong>Fit all columns to contents</strong> and <strong>Reset column widths</strong>.
+      A fit measures the first 500 rows and stops at 600&nbsp;px, so one cell holding a page
+      of JSON cannot push every column after it off the screen.
+    </p>
+
     <h3>Value inspector</h3>
     <p>
       To read a value that's too wide for the grid, open it in the inspector: double-click a
