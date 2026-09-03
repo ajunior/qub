@@ -78,8 +78,17 @@ function literal(value, driver) {
     return "'" + s.split("'").join("''") + "'";
 }
 
+// Keywords of generated SQL, cased the way the user asked for in settings.
+// Only keywords: an identifier keeps whatever case the database gave it,
+// because lowercasing "Users" would change which table the name refers to on
+// a case-sensitive server.
+function kw(text, keywordCase) {
+    return keywordCase === "lower" ? String(text).toLowerCase() : String(text);
+}
+
 // SELECT that fetches rows of `table` where `column` = `value`.
-function selectBy(table, column, value, driver) {
-    return "SELECT * FROM " + ident(table, driver) +
-           " WHERE " + ident(column, driver) + " = " + literal(value, driver);
+function selectBy(table, column, value, driver, keywordCase) {
+    return kw("SELECT * FROM ", keywordCase) + ident(table, driver) +
+           kw(" WHERE ", keywordCase) + ident(column, driver) + " = " +
+           literal(value, driver);
 }

@@ -23,6 +23,11 @@ public:
     Q_PROPERTY(bool   preserveCursorPosition   READ preserveCursorPosition   WRITE setPreserveCursorPosition   NOTIFY preserveCursorPositionChanged)
     Q_PROPERTY(bool   schemaInsertOnDoubleClick READ schemaInsertOnDoubleClick WRITE setSchemaInsertOnDoubleClick NOTIFY schemaInsertOnDoubleClickChanged)
     Q_PROPERTY(bool   autoComplete              READ autoComplete              WRITE setAutoComplete              NOTIFY autoCompleteChanged)
+    // "upper" or "lower" — how keywords are cased in the SQL qub writes for
+    // you (the browse button, a double-clicked table, a foreign-key jump).
+    // It never touches SQL you typed, and never an identifier: lowercasing
+    // "Users" would change which table it names on a case-sensitive database.
+    Q_PROPERTY(QString sqlKeywordCase         READ sqlKeywordCase           WRITE setSqlKeywordCase           NOTIFY sqlKeywordCaseChanged)
     Q_PROPERTY(bool   schemaQuickBrowse         READ schemaQuickBrowse         WRITE setSchemaQuickBrowse         NOTIFY schemaQuickBrowseChanged)
     Q_PROPERTY(bool   autoReconnect             READ autoReconnect             WRITE setAutoReconnect             NOTIFY autoReconnectChanged)
     Q_PROPERTY(bool   liveShareWarnOnStart      READ liveShareWarnOnStart      WRITE setLiveShareWarnOnStart      NOTIFY liveShareWarnOnStartChanged)
@@ -74,6 +79,7 @@ public:
     bool preserveCursorPosition() const;
     bool schemaInsertOnDoubleClick() const;
     bool autoComplete() const;
+    QString sqlKeywordCase() const;
     bool schemaQuickBrowse() const;
     bool autoReconnect() const;
     bool    liveShareWarnOnStart() const;
@@ -111,6 +117,7 @@ public:
     void setPreserveCursorPosition(bool value);
     void setSchemaInsertOnDoubleClick(bool value);
     void setAutoComplete(bool value);
+    void setSqlKeywordCase(const QString &value);
     void setSchemaQuickBrowse(bool value);
     void setAutoReconnect(bool value);
     void setLiveShareWarnOnStart(bool value);
@@ -160,6 +167,7 @@ signals:
     void preserveCursorPositionChanged();
     void schemaInsertOnDoubleClickChanged();
     void autoCompleteChanged();
+    void sqlKeywordCaseChanged();
     void schemaQuickBrowseChanged();
     void autoReconnectChanged();
     void liveShareWarnOnStartChanged();

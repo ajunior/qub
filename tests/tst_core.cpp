@@ -65,6 +65,7 @@ private slots:
     void fk_outgoingResolves();
     void fk_incomingLists();
     void fk_selectByDialects();
+    void fk_selectByKeywordCase();
 
     // ── Cell value inspector (cellview.js) ────────────────────────────────────
     void cellview_classifies();
@@ -581,6 +582,27 @@ void TestCore::fk_selectByDialects()
     // literal is still well-formed).
     QCOMPARE(sel("t", "c", "''", "QSQLITE"),
              QStringLiteral("SELECT * FROM \"t\" WHERE \"c\" = NULL"));
+}
+
+void TestCore::fk_selectByKeywordCase()
+{
+    auto sel = [&](const QString &keywordCase) {
+        return m_js.evaluate(
+            QStringLiteral("selectBy('Users','Id','7','QPSQL','%1')").arg(keywordCase))
+            .toString();
+    };
+
+    // The identifiers keep their case in both directions: only the keywords
+    // move. Lowercasing "Users" would name a different table on a
+    // case-sensitive server.
+    QCOMPARE(sel("lower"),
+             QStringLiteral("select * from \"Users\" where \"Id\" = 7"));
+    QCOMPARE(sel("upper"),
+             QStringLiteral("SELECT * FROM \"Users\" WHERE \"Id\" = 7"));
+    // Anything else, the missing argument included, is upper — the setting can
+    // only ever hold one of the two, and unset must not be a third behaviour.
+    QCOMPARE(m_js.evaluate("selectBy('t','c','1','QPSQL')").toString(),
+             QStringLiteral("SELECT * FROM \"t\" WHERE \"c\" = 1"));
 }
 
 // ── Cell value inspector (cellview.js) ──────────────────────────────────────────

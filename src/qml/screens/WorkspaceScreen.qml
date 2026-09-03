@@ -1806,7 +1806,8 @@ Item {
                     if (!AppSettings.schemaInsertOnDoubleClick) return
                     const table = _schemaTree._qualify(schema, name)
                     if (queryEditor.sql.trim() === "")
-                        queryEditor.setSql("SELECT * FROM " + table)
+                        queryEditor.setSql(Fk.kw("SELECT * FROM ",
+                                                 AppSettings.sqlKeywordCase) + table)
                     else
                         queryEditor.insertAtCursor(table)
                 }
@@ -1817,10 +1818,12 @@ Item {
                 onTableQuickBrowseRequested: (schema, name) => {
                     // Quoted per the connection's dialect rather than with a
                     // hardcoded double quote, which MySQL reads as a string.
-                    const sql = 'SELECT * FROM '
+                    const kwCase = AppSettings.sqlKeywordCase
+                    const sql = Fk.kw('SELECT * FROM ', kwCase)
                               + Fk.ident(_schemaTree._qualify(schema, name),
                                          root._activeConn?.driver ?? "")
-                              + (root._limit > 0 ? ' LIMIT ' + root._limit : '')
+                              + (root._limit > 0
+                                 ? Fk.kw(' LIMIT ', kwCase) + root._limit : '')
                     queryEditor.setSql(sql)
                     root._executingSql = sql
                     QueryExecutor.activeTabId = root._currentTabId

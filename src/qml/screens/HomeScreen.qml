@@ -2082,6 +2082,40 @@ Item {
                                     }
                                 }
 
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        text:  "Keyword case in generated SQL"
+                                        color: Theme.textPrimary
+                                        font { family: Theme.fontFamily; pixelSize: Theme.textSm }
+                                    }
+
+                                    // Only the SQL qub writes for you — a table's
+                                    // browse button, a double-clicked table, a
+                                    // foreign-key jump. SQL you typed is never
+                                    // recased, and neither is an identifier.
+                                    Row {
+                                        spacing: 6
+                                        Repeater {
+                                            model: [
+                                                { label: "UPPER (SELECT * FROM)", value: "upper" },
+                                                { label: "lower (select * from)", value: "lower" },
+                                            ]
+                                            delegate: Button {
+                                                id: delegateItem14
+                                                required property var modelData
+                                                text:    delegateItem14.modelData.label
+                                                variant: AppSettings.sqlKeywordCase === delegateItem14.modelData.value
+                                                         ? Button.Variant.Filled
+                                                         : Button.Variant.Outlined
+                                                onClicked: AppSettings.sqlKeywordCase = delegateItem14.modelData.value
+                                            }
+                                        }
+                                    }
+                                }
+
                             }
 
                             Rectangle {
