@@ -8,6 +8,7 @@
 #include <QStringList>
 #include <QVariantList>
 #include <QUrl>
+#include <QDateTime>
 #include <atomic>
 #include <memory>
 #include "Types.h"
@@ -103,6 +104,10 @@ private:
     int                                  m_rowLimit      = 1000;
     int                                  m_pendingTabId  = -1;
     QString                              m_pendingSql;
+    // When the statement went out. The log entry is written when it comes
+    // back, so without this the console has one timestamp for two events and
+    // has to date the statement by the moment it finished.
+    QDateTime                            m_pendingStartedAt;
     QString                              m_pendingConnName;
 
     // Per-tab memory of the last successfully-run SELECT, so a full export can
