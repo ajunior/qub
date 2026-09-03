@@ -642,6 +642,7 @@ Item {
     }
 
     function _runQuery(): void {
+        queryEditor.dismissCompletion()
         if (QueryExecutor.running) {
             _toaster.show("A query is already running — stop it or wait for it to finish.",
                           Toaster.Type.Warning, 4000)
@@ -697,6 +698,7 @@ Item {
     // EXPLAIN ANALYZE, which *executes* the statement — the pane only offers it
     // for read-only queries, and we re-check here.
     function _runExplain(analyze: bool): void {
+        queryEditor.dismissCompletion()
         if (!root._activeTabUsable) {
             _toaster.show(root.activeConnection === ""
                           ? "This tab has no connection."
