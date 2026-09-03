@@ -67,6 +67,7 @@ qt_add_executable(qub
     WIN32
     src/main.cpp
     src/core/AppSettings.cpp
+    src/core/AppDatabase.cpp
     src/core/CredentialStore.cpp
     src/core/ProfileManager.cpp
     src/core/SshManager.cpp
@@ -195,6 +196,7 @@ find_package(Qt6 REQUIRED COMPONENTS Test Qml)
 
 qt_add_executable(qub_tests
     tests/tst_core.cpp
+    src/core/AppDatabase.cpp
     src/core/SqlUtils.cpp
     src/core/MarkdownDoc.cpp
     src/core/ResultModel.cpp
@@ -225,6 +227,7 @@ add_test(NAME qub_tests COMMAND qub_tests)
 
 qt_add_executable(qub_workspace_tests
     tests/tst_workspace.cpp
+    src/core/AppDatabase.cpp
     src/core/WorkspaceManager.cpp
 )
 target_include_directories(qub_workspace_tests PRIVATE src src/core)
@@ -233,6 +236,7 @@ add_test(NAME qub_workspace_tests COMMAND qub_workspace_tests)
 
 qt_add_executable(qub_snippet_tests
     tests/tst_snippets.cpp
+    src/core/AppDatabase.cpp
     src/core/SnippetManager.cpp
 )
 target_include_directories(qub_snippet_tests PRIVATE src src/core)
@@ -256,6 +260,7 @@ add_test(NAME qub_adapter_tests COMMAND qub_adapter_tests)
 # so no keychain/SSH stack is pulled in — only the query engine.
 qt_add_executable(qub_executor_tests
     tests/tst_executor.cpp
+    src/core/AppDatabase.cpp
     src/core/QueryExecutor.cpp
     src/core/ResultModel.cpp
     src/core/ResultDiff.cpp

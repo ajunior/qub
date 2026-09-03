@@ -1,4 +1,5 @@
 #include "SchemaSnapshotManager.h"
+#include "AppDatabase.h"
 #include "SchemaDiff.h"
 
 #include <QSqlQuery>
@@ -38,6 +39,8 @@ void SchemaSnapshotManager::initDb(const QString &dbPath)
     m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
     m_db.setDatabaseName(path);
     m_db.open();
+
+    AppDatabase::stampIfNew(m_db);
 
     QSqlQuery q(m_db);
     q.exec(R"(
