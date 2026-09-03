@@ -2588,6 +2588,16 @@ Item {
                                             color: Theme.textSecondary
                                             anchors.verticalCenter: parent.verticalCenter
                                         }
+                                        // The caret only says the row collapses. This
+                                        // says what the name is — without it a folder
+                                        // reads as a workspace, which snippets have
+                                        // nothing to do with.
+                                        Icon {
+                                            name:  Icons.folder
+                                            size:  12
+                                            color: Theme.textSecondary
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
                                         Text {
                                             text:  _snipRow.modelData.folder ?? ""
                                             color: Theme.textSecondary
