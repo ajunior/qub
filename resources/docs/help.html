@@ -1205,6 +1205,9 @@ LIMIT $3</pre>
     </ul>
     <p>
       Click a cell first (which also selects it), then right-click for its navigation options.
+      The new tab is named after the table it lands in, so a trail of jumps reads as the
+      tables you followed. If a tab already answers to that name, the new one keeps its
+      <em>Query n</em> label rather than repeating it; double-click any tab to rename it.
       Foreign keys are read from the live schema of PostgreSQL, MySQL/MariaDB, and SQLite
       connections, and the generated query uses the connection's identifier-quoting dialect.
     </p>
@@ -1269,9 +1272,9 @@ LIMIT $3</pre>
     <p>
       Enable the quick-browse button in Settings (<em>Show quick browse button</em>).
       A ▶ icon appears on hover next to each table and runs
-      <code>SELECT * FROM table</code> instantly, in a tab of its own — whatever you
-      were writing in the current tab stays where it was. The row limit applies just
-      as it does to the Run button.
+      <code>SELECT * FROM table</code> instantly, in a tab of its own, named after the
+      table — whatever you were writing in the current tab stays where it was. The row
+      limit applies just as it does to the Run button.
     </p>
 
     <h3>Table actions menu</h3>
