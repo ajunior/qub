@@ -2132,15 +2132,21 @@ Item {
                                 // on its own line, read as a ragged list rather
                                 // than a section. They are all one subject — what
                                 // qub remembers between sessions — so they share a
-                                // line, bottom-aligned to the number field so the
-                                // spinner's label does not push it out of line.
-                                // Clearing sits apart on the right: it is the one
-                                // that destroys something.
+                                // line. Aligning them is fiddly: the spinner
+                                // carries its label above the field, so a plain
+                                // centre alignment centres against label+field and
+                                // floats the other two high. They bottom-align to
+                                // the spinner instead, then lift by half of what
+                                // they are shorter than the field — which puts each
+                                // one on the field's centre line, whatever the theme
+                                // sizes them at. Clearing sits apart on the right:
+                                // it is the one that destroys something.
                                 RowLayout {
                                     Layout.fillWidth: true
                                     spacing: Theme.sp5
 
                                     NumberInput {
+                                        id: _histLimit
                                         label: "History limit"
                                         value: AppSettings.historyLimit
                                         min: 10; max: 1000; step: 10
@@ -2149,19 +2155,25 @@ Item {
                                     }
 
                                     Toggle {
+                                        id: _histCursorToggle
                                         text: "Restore cursor position in editor tabs"
                                         checked: AppSettings.preserveCursorPosition
                                         Layout.alignment: Qt.AlignBottom
+                                        Layout.bottomMargin:
+                                            (_histLimit._fieldH - _histCursorToggle.implicitHeight) / 2
                                         onCheckedChanged: AppSettings.preserveCursorPosition = checked
                                     }
 
                                     Item { Layout.fillWidth: true }
 
                                     Button {
+                                        id:       _histClearBtn
                                         text:     "Clear history"
                                         iconName: Icons.trash
                                         variant:  Button.Variant.Outlined
                                         Layout.alignment: Qt.AlignBottom
+                                        Layout.bottomMargin:
+                                            (_histLimit._fieldH - _histClearBtn.implicitHeight) / 2
                                         onClicked: _historyClearConfirm.isOpen = true
                                     }
                                 }
