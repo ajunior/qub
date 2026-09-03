@@ -11,13 +11,18 @@ Item {
     property string connectionName: ""
     property var    _schemas:       []
 
-    signal tableSelected(string name)
-    signal columnClicked(string table, string column)
-    signal tableDoubleClicked(string name)
-    signal columnDoubleClicked(string table, string column)
-    signal tableQuickBrowseRequested(string name)
-    signal tableStatsRequested(string name)
-    signal tableDdlRequested(string name)
+    // How many schemas this connection exposes. One means every table name in
+    // the tree is already unambiguous; more than one means none of them are.
+    readonly property int schemaCount: root._schemas.length
+
+    signal schemaDoubleClicked(string schema)
+    signal tableSelected(string schema, string name)
+    signal columnClicked(string schema, string table, string column)
+    signal tableDoubleClicked(string schema, string name)
+    signal columnDoubleClicked(string schema, string table, string column)
+    signal tableQuickBrowseRequested(string schema, string name)
+    signal tableStatsRequested(string schema, string name)
+    signal tableDdlRequested(string schema, string name)
 
     onConnectionNameChanged: _reload()
 
@@ -48,12 +53,13 @@ Item {
         framed:       false
         schemas:          root._schemas
         showBrowseAction: AppSettings.schemaQuickBrowse
-        onTableSelected:             (name)          => root.tableSelected(name)
-        onColumnClicked:             (table, column) => root.columnClicked(table, column)
-        onTableDoubleClicked:        (name)          => root.tableDoubleClicked(name)
-        onColumnDoubleClicked:       (table, column) => root.columnDoubleClicked(table, column)
-        onTableQuickBrowseRequested: (name)          => root.tableQuickBrowseRequested(name)
-        onTableStatsRequested:       (name)          => root.tableStatsRequested(name)
-        onTableDdlRequested:         (name)          => root.tableDdlRequested(name)
+        onSchemaDoubleClicked:       (schema)                => root.schemaDoubleClicked(schema)
+        onTableSelected:             (schema, name)          => root.tableSelected(schema, name)
+        onColumnClicked:             (schema, table, column) => root.columnClicked(schema, table, column)
+        onTableDoubleClicked:        (schema, name)          => root.tableDoubleClicked(schema, name)
+        onColumnDoubleClicked:       (schema, table, column) => root.columnDoubleClicked(schema, table, column)
+        onTableQuickBrowseRequested: (schema, name)          => root.tableQuickBrowseRequested(schema, name)
+        onTableStatsRequested:       (schema, name)          => root.tableStatsRequested(schema, name)
+        onTableDdlRequested:         (schema, name)          => root.tableDdlRequested(schema, name)
     }
 }
