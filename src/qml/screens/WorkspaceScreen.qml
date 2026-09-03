@@ -7,6 +7,7 @@ import QtCore
 import QtQuick.Controls.Basic as QQC
 import Mahina
 import "../guard.js"   as Guard
+import "../fk.js"      as Fk
 import "../drivers.js" as Drivers
 import "../format.js"  as Fmt
 import "../params.js"  as Params
@@ -1781,28 +1782,52 @@ Item {
             secondVisible: root._showQuery || root._showResults || root._showSidebar
 
             firstItem: SchemaTree {
+                id: _schemaTree
                 // Never render an out-of-workspace connection's schema.
                 connectionName: root._activeTabUsable ? root.activeConnection : ""
-                onTableDoubleClicked: (name) => {
-                    if (!AppSettings.schemaInsertOnDoubleClick) return
-                    if (queryEditor.sql.trim() === "")
-                        queryEditor.setSql("SELECT * FROM " + name)
-                    else
-                        queryEditor.insertAtCursor(name)
+
+                // A table name is unique only inside its schema, and the tab's
+                // session resolves an unqualified one against exactly one of
+                // them — search_path in Postgres, the current database in
+                // MySQL. A name from any other schema is then simply not found,
+                // which is what the browse button kept running into: it could
+                // show you every schema and only query one. Where the
+                // connection exposes a single schema there is nothing to
+                // disambiguate and the prefix would be noise ("main"."users").
+                function _qualify(schema: string, table: string): string {
+                    return _schemaTree.schemaCount > 1 ? schema + "." + table : table
                 }
-                onColumnDoubleClicked: (table, column) => {
+
+                onSchemaDoubleClicked: (schema) => {
+                    if (AppSettings.schemaInsertOnDoubleClick)
+                        queryEditor.insertAtCursor(schema)
+                }
+                onTableDoubleClicked: (schema, name) => {
+                    if (!AppSettings.schemaInsertOnDoubleClick) return
+                    const table = _schemaTree._qualify(schema, name)
+                    if (queryEditor.sql.trim() === "")
+                        queryEditor.setSql("SELECT * FROM " + table)
+                    else
+                        queryEditor.insertAtCursor(table)
+                }
+                onColumnDoubleClicked: (schema, table, column) => {
                     if (AppSettings.schemaInsertOnDoubleClick)
                         queryEditor.insertAtCursor(column)
                 }
-                onTableQuickBrowseRequested: (name) => {
-                    const sql = 'SELECT * FROM "' + name + '"' + (root._limit > 0 ? ' LIMIT ' + root._limit : '')
+                onTableQuickBrowseRequested: (schema, name) => {
+                    // Quoted per the connection's dialect rather than with a
+                    // hardcoded double quote, which MySQL reads as a string.
+                    const sql = 'SELECT * FROM '
+                              + Fk.ident(_schemaTree._qualify(schema, name),
+                                         root._activeConn?.driver ?? "")
+                              + (root._limit > 0 ? ' LIMIT ' + root._limit : '')
                     queryEditor.setSql(sql)
                     root._executingSql = sql
                     QueryExecutor.activeTabId = root._currentTabId
                     QueryExecutor.execute(root.activeConnection, sql)
                 }
-                onTableStatsRequested: (name) => _tableStatsPopup.openFor(root.activeConnection, name)
-                onTableDdlRequested:   (name) => _tableDdlPopup.openFor(root.activeConnection, name)
+                onTableStatsRequested: (schema, name) => _tableStatsPopup.openFor(root.activeConnection, name)
+                onTableDdlRequested:   (schema, name) => _tableDdlPopup.openFor(root.activeConnection, name)
             }
 
             secondItem: SplitPane {
