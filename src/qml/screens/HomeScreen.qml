@@ -2095,7 +2095,7 @@ Item {
                                 spacing: 14
                                 visible: {
                                     const q = _settings._q
-                                    return !q || ["history","limit","restore","cursor","caret","position"].some(t => t.includes(q))
+                                    return !q || ["history","limit","restore","cursor","caret","position","clear","erase","delete","forget"].some(t => t.includes(q))
                                 }
 
                                 Text {
@@ -2118,6 +2118,13 @@ Item {
                                     text: "Restore cursor position in editor tabs"
                                     checked: AppSettings.preserveCursorPosition
                                     onCheckedChanged: AppSettings.preserveCursorPosition = checked
+                                }
+
+                                Button {
+                                    text:     "Clear history"
+                                    iconName: Icons.trash
+                                    variant:  Button.Variant.Outlined
+                                    onClicked: _historyClearConfirm.isOpen = true
                                 }
                             }
 
@@ -3391,6 +3398,21 @@ Item {
         confirmText:     "Delete"
         isDestructive:   true
         onConfirmed:     ConnectionManager.removeConnection(connName)
+    }
+
+    ConfirmDialog {
+        id:            _historyClearConfirm
+        dialogTitle:   "Clear query history?"
+        // Slow Queries is an aggregate over this same table, so clearing the
+        // history empties it too. That is not obvious from a button that says
+        // "history", and it is the part of this that cannot be undone by simply
+        // running the query again.
+        dialogMessage: "Every recorded execution will be permanently removed. "
+                     + "Slow Queries is built from the same records, so it will "
+                     + "start over from empty too."
+        confirmText:   "Clear"
+        isDestructive: true
+        onConfirmed:   HistoryManager.clear()
     }
 
     ConfirmDialog {

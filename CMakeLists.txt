@@ -50,10 +50,9 @@ endif()
 FetchContent_Declare(
     mahina
     GIT_REPOSITORY https://github.com/ajunior/mahina.git
-    # mahina main after PR #32 (post-v0.45.14, untagged) — pinned to a hash
-    # (not a branch or tag) so a re-pointed ref upstream cannot silently
-    # change what we build.
-    GIT_TAG        0c08848cff42d48f1456e766074de00d1d6b33d0
+    # Commit hash of tag v0.45.16 — pinned to a hash (not a branch or tag) so a
+    # re-pointed ref upstream cannot silently change what we build.
+    GIT_TAG        98b5a770984d07d30f570690d7cb132bf1bdfb0d
 )
 FetchContent_MakeAvailable(mahina)
 
