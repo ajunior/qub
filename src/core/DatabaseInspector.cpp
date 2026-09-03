@@ -4,6 +4,7 @@
 #include "ExplainPlan.h"
 #include "SchemaDiff.h"
 #include "Types.h"
+#include <QFileInfo>
 #include <QFutureWatcher>
 #include <QHash>
 #include <QSet>
@@ -538,6 +539,56 @@ QVariantMap DatabaseInspector::metrics(const QString &connectionName) const
     m[QStringLiteral("driver")]        = driver;
     m[QStringLiteral("serverMetrics")] = false;
     return m;
+}
+
+// ── Current database / schema ──────────────────────────────────────────────────
+
+QVariantMap DatabaseInspector::currentContext(const QString &connectionName) const
+{
+    auto *a = m_cm->adapter(connectionName);
+    if (!a || !a->isOpen()) return {};
+
+    // Asked of the server rather than read off the saved connection: the
+    // connection stores what was typed into the form, which may be a whole
+    // URL, may be blank where the driver defaults it, and — for the schema —
+    // says nothing about a `SET search_path` run since.
+    const QString driver = a->driverName();
+    QVariantMap ctx;
+
+    if (driver == QLatin1String("QPSQL")) {
+        ctx[QStringLiteral("database")] =
+            firstVal(a->execute(QStringLiteral("SELECT current_database()"))).toString();
+        ctx[QStringLiteral("schema")] =
+            firstVal(a->execute(QStringLiteral("SELECT current_schema()"))).toString();
+        return ctx;
+    }
+    if (driver == QLatin1String("QMYSQL") || driver == QLatin1String("QMARIADB")) {
+        ctx[QStringLiteral("database")] =
+            firstVal(a->execute(QStringLiteral("SELECT DATABASE()"))).toString();
+        return ctx;
+    }
+    if (driver == QLatin1String("QSQLITE")) {
+        // The file is the database, so the file's name is the one worth
+        // showing — the whole path is too long for a status bar and its
+        // directory is not what tells two databases apart.
+        const QString file =
+            firstVal(a->execute(QStringLiteral(
+                "SELECT file FROM pragma_database_list WHERE name = 'main'"))).toString();
+        ctx[QStringLiteral("database")] = file.isEmpty()
+            ? QStringLiteral(":memory:")
+            : QFileInfo(file).fileName();
+        return ctx;
+    }
+    if (driver == QLatin1String("QOCI")) {
+        ctx[QStringLiteral("database")] =
+            firstVal(a->execute(QStringLiteral(
+                "SELECT SYS_CONTEXT('USERENV','DB_NAME') FROM dual"))).toString();
+        ctx[QStringLiteral("schema")] =
+            firstVal(a->execute(QStringLiteral(
+                "SELECT SYS_CONTEXT('USERENV','CURRENT_SCHEMA') FROM dual"))).toString();
+        return ctx;
+    }
+    return ctx;
 }
 
 QVariantMap DatabaseInspector::schemaDiff(const QString &connA, const QString &connB) const

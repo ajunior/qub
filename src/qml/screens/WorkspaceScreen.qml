@@ -1191,6 +1191,11 @@ Item {
     }
 
     // ── Status bar item arrays ────────────────────────────────────────────────
+    // Where the next statement lands, read left to right: the kind of database,
+    // the database itself, the schema an unqualified name resolves to inside
+    // it. The connection's *name* is not here — it is a label you chose, it is
+    // already on the picker two rows up, and it is the one of the four that
+    // cannot tell you which `orders` a query is about to touch.
     readonly property var _sbLeft: {
         if (!root.activeConnection)
             return [{ icon: Icons.database, text: "No connection", color: Theme.textDisabled }]
@@ -1198,18 +1203,46 @@ Item {
             return [{ icon: Icons.warningCircle,
                       text: root.activeConnection + " — not in workspace",
                       color: Theme.warning }]
-        return [
-            {
-                icon:  _activeConn?.connected ? Icons.checkCircle : Icons.xCircle,
-                text:  root.activeConnection,
-                color: _activeConn?.connected ? Theme.success : Theme.textSecondary
-            },
-            {
-                icon:  Icons.database,
-                text:  _activeConn?.driver ? Drivers.label(_activeConn.driver) : "",
-                color: Theme.textDisabled
-            }
-        ]
+
+        const items = [{
+            // The connected mark rides on the driver rather than taking a slot
+            // of its own: it is a property of this line, not a fourth thing to
+            // read.
+            icon:  _activeConn?.connected ? Icons.checkCircle : Icons.xCircle,
+            text:  _activeConn?.driver ? Drivers.label(_activeConn.driver) : "",
+            color: _activeConn?.connected ? Theme.success : Theme.textSecondary
+        }]
+        if (root._dbContext.database)
+            items.push({ icon:  Icons.database,
+                         text:  root._dbContext.database,
+                         color: Theme.textDisabled })
+        if (root._dbContext.schema)
+            items.push({ icon:  Icons.treeStructure,
+                         text:  root._dbContext.schema,
+                         color: Theme.textDisabled })
+        return items
+    }
+
+    // The live database and schema of the active connection. Introspection is
+    // synchronous on the GUI thread, so this is a property refreshed on the few
+    // events that can move it — never a binding that re-asks the server every
+    // time the status bar repaints.
+    property var _dbContext: ({ database: "", schema: "" })
+    property bool _ctxMayHaveMoved: false
+
+    function _refreshDbContext(): void {
+        root._dbContext = root.activeConnection
+                          ? DatabaseInspector.currentContext(root.activeConnection)
+                          : ({ database: "", schema: "" })
+    }
+
+    onActiveConnectionChanged: root._refreshDbContext()
+
+    Connections {
+        target: ConnectionManager
+        // Connecting and disconnecting are what make the answer exist or stop
+        // existing; a connection edited under us can move the database too.
+        function onConnectionsChanged() { Qt.callLater(root._refreshDbContext) }
     }
 
     // Compact number: integers get locale grouping, decimals trimmed to 3 places.
@@ -2856,7 +2889,14 @@ Item {
 
     Connections {
         target: QueryExecutor
-        function onExecutionStarted(connectionName: string): void {
+        function onExecutionStarted(connectionName: string, sql: string): void {
+            // `SET search_path` and `USE` move where an unqualified name lands
+            // without changing anything the schema views watch, so the status
+            // bar has to notice them itself — and only them: re-asking the
+            // server after every SELECT would put two round trips on the GUI
+            // thread for a statement that cannot have moved anything.
+            root._ctxMayHaveMoved = /(^|;)\s*(set\s+search_path|use\s+)/i.test(sql)
+
             const tabId = QueryExecutor.activeTabId
             const m = Object.assign({}, root._tabStateMap)
             m[tabId] = Object.assign({}, m[tabId] ?? {}, { error: "" })
@@ -2909,6 +2949,7 @@ Item {
 
             // Refresh the FK list for the active connection so cell navigation works.
             if (success) root._ensureFks()
+            if (success && root._ctxMayHaveMoved) root._refreshDbContext()
 
             // Gutter: green check on success, leave error icon (set by onExecutionError) on failure
             if (success)
