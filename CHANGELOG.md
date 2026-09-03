@@ -7,6 +7,15 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Feat** A result column can be fitted to what is actually in it. Double-click
+  the edge of a header, or right-click the header for **Fit "column" to
+  contents**, **Fit all columns to contents** and **Reset column widths**.
+  Columns split the grid evenly and stayed there, so a column of two-letter
+  status codes got the same room as one holding a timestamp — half the table
+  padding, the other half elided into `...` — and the only way out was dragging
+  every edge by hand again each time the query came back wider. A fit reads the
+  first 500 rows and stops at 600 px, so one cell holding a page of JSON cannot
+  push every column after it off the screen
 - **Fix** The completion popup only opens while you are typing. Clicking into
   a word, or arrowing through one, used to open it over text you were only
   reading: the caret landing inside `SELECT` counted as a five-character
