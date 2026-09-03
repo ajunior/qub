@@ -43,6 +43,12 @@ Item {
     function setDecorations(decs: var): void { lineDecorations = decs }
     function clearDecorations(): void { lineDecorations = [] }
 
+    // Asking to run is saying you are done typing. Nothing else closes the
+    // popup here: running moves neither the caret nor the focus, so a
+    // suggestion raised by the last keystroke would sit over the query for as
+    // long as the results are on screen.
+    function dismissCompletion(): void { root._items = [] }
+
     // ── Completion state ──────────────────────────────────────────────────────
     property var  _items:    []
     property int  _selIdx:   0

@@ -5,52 +5,38 @@ All notable changes to qub are documented here.
 Entry prefixes: **New** (new feature), **Feat** (new capability on an existing
 feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
-## Unreleased
+## 0.44.9
 
-- **Feat** A tab opened by pointing at something is named after it. Browsing
-  `flights` from the schema panel opens a tab called `flights`, and following a
-  foreign key opens one called `aircrafts` — a strip reading "Query 2 | Query 3 |
-  Query 4" told you only how many times you had asked something, which is the
-  one thing you already knew. A name another tab already answers to is left
-  alone rather than repeated, and double-clicking a tab still renames it by hand
-- **Fix** Browsing a table from the schema panel opens a tab of its own instead
-  of overwriting the one you were working in. The ▶ button replaced the current
-  editor's contents with `SELECT * FROM table` and ran it, so looking up what was
-  in a table cost you the query you were in the middle of writing — the same
-  gesture a foreign-key jump already answered with a new tab. It now runs through
-  the same path the Run button does, which also means the result grid is editable
-  for a single-table browse, the connection's safety profile is consulted, and the
-  row limit is applied with the marker that lets a full export strip it back off
-- **Feat** A result column can be fitted to what is actually in it. Double-click
+The first public release of qub.
+
+- **Feat** Pointing at a table opens it in a tab of its own, named after it.
+  Browsing `flights` from the schema panel gives you a tab called `flights`,
+  and following a foreign key gives you one called `aircrafts` — instead of
+  replacing the query you were in the middle of writing, and instead of a strip
+  reading "Query 2 | Query 3 | Query 4", which told you only how many times you
+  had asked something. A name another tab already answers to is left alone
+  rather than repeated, and double-clicking a tab still renames it by hand. The
+  browse runs through the same path the Run button does, so the grid is
+  editable for a single-table browse, the connection's safety profile is
+  consulted, and the row limit is applied with the marker that lets a full
+  export strip it back off
+- **Feat** A result column can be fitted to what is actually in it: double-click
   the edge of a header, or right-click the header for **Fit "column" to
   contents**, **Fit all columns to contents** and **Reset column widths**.
-  Columns split the grid evenly and stayed there, so a column of two-letter
-  status codes got the same room as one holding a timestamp — half the table
-  padding, the other half elided into `...` — and the only way out was dragging
-  every edge by hand again each time the query came back wider. A fit reads the
-  first 500 rows and stops at 600 px, so one cell holding a page of JSON cannot
-  push every column after it off the screen
-- **Fix** The completion popup only opens while you are typing. Clicking into
-  a word, or arrowing through one, used to open it over text you were only
-  reading: the caret landing inside `SELECT` counted as a five-character
-  prefix and offered to complete it. Nor does text the editor loads on its own
-  open it — switching tabs, formatting, inserting a snippet. Autocomplete
-  itself is still a setting (Settings → Editor)
-- **Fix** The Schema graph is asked for on a schema — from that row's `···`
-  menu in the browser — rather than on the whole connection from the toolbar.
-  On a 754-table database the old scope froze qub for seconds (the layout
-  compares every table against every other one, on the GUI thread) and drew a
-  ring of overlapping labels nobody could read. Above 150 tables it now says
+  Columns otherwise split the grid evenly and stay there, which gives a column
+  of two-letter status codes the same room as one holding a timestamp — half
+  the cell padding, the other half elided into `...`. A fit reads the first 500
+  rows and stops at 600 px, so one cell holding a page of JSON cannot push
+  every column after it off the screen
+- **Feat** A schema draws itself as a graph of its tables and the foreign keys
+  between them, from that row's `···` menu in the browser. It pans by dragging
+  and zooms on the wheel, with `−` / `+` / `Fit` buttons in its header, and
+  labels appear once the tables have room to carry one, so a crowded graph
+  shows plain nodes and zooming in reveals the names. Above 150 tables it says
   so instead of drawing, and offers to draw only the tables that do have
-  foreign keys where those fit
-- **Feat** The graph pans by dragging and zooms on the wheel, with `−` / `+` /
-  `Fit` buttons in its header. Labels appear once the tables have room to carry
-  one, so a crowded graph shows plain nodes and zooming in reveals the names
-- **Fix** Foreign keys are read with the schema of both ends, so a graph of
-  `analytics` no longer draws a line because some other schema happens to hold
-  a table of the same name. On PostgreSQL the query also joined the referenced
-  table on the child's schema, which silently dropped every foreign key
-  pointing into another schema
+  foreign keys where those fit: the layout compares every table against every
+  other one on the GUI thread, and on a 754-table database that is seconds of
+  frozen window around a ring of labels nobody could read
 - **Feat** `Copy name` in the schema browser: on a table row's `···` menu, and
   on a schema row, which now has a menu of its own. Copying a table name meant
   running the table and lifting the name back out of the SQL qub had written.
@@ -76,19 +62,6 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
   and failed on a table `public` does not have. Qualified only where the
   connection exposes more than one schema, so SQLite never grows a `"main".`
   prefix
-- **Fix** The browse button quoted table names with a double quote whatever the
-  connection was, which MySQL reads as a string literal rather than an
-  identifier — so on MySQL that button had never worked. It now quotes per the
-  connection's dialect
-- **Fix** Docker discovery finds Postgres containers whose image is not called
-  "postgres" — postgis, timescale, pgvector, citus, supabase. They were skipped
-  outright, so the browse list simply had no row for them, which reads as "that
-  container is not running" rather than "qub does not recognise this image". The
-  real cost was picking the plain neighbour instead and meeting `could not
-  access file "$libdir/postgis-3"`
-- **Fix** Typing one dot too many no longer makes the completion popup ask a
-  null for its columns. It never showed anything wrong — it stopped mid-refresh
-  and left the previous suggestions on screen
 - **Feat** The Output console is one selectable text buffer instead of a list
   of rows, and a statement takes two stamped lines: the SQL at the moment it
   was sent, the outcome at the moment it came back. Rows could only ever hand
@@ -98,11 +71,6 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
   console. The stamp on the statement is a real one: `QueryExecutor` now
   records when the statement went out, rather than the console dating it by
   the moment it finished
-- **Fix** Hovering a line in the Output console no longer nudges its text down.
-  The copy button appeared on hover inside a `RowLayout`, grew the row, and
-  everything in it that had no explicit alignment re-centred itself against
-  the taller row — including the message, which then sat a pixel below its own
-  timestamp
 - **Feat** `Settings → Editor → Keyword case in generated SQL` chooses between
   `SELECT * FROM users` and `select * from users` for the SQL qub writes for
   you — a table's browse button, a double-clicked table, a foreign-key jump.
@@ -126,9 +94,9 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
   runs can be switched off. The button is red and reads "Stop Live Share"
   either way, so the pulse was reinforcement, not the only signal
 
-- **New** First public release. qub is a SQL editor for people who work in SQL
-  all day and want the editor out of the way: the query is the centre of the
-  window, and everything else is a keystroke from it rather than a menu dive.
+- **New** qub is a SQL editor for people who work in SQL all day and want the
+  editor out of the way: the query is the centre of the window, and everything
+  else is a keystroke from it rather than a menu dive.
   - **Connections** — PostgreSQL, MySQL/MariaDB, SQLite, Oracle, Firebird and
     ODBC, open simultaneously, each tab carrying its own. Passwords go to the
     OS keychain, never to disk. Reusable SSH tunnel definitions, each testable
@@ -141,11 +109,16 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
     typed values and remember them per tab; SQL generated from plain language
     against the live schema and dialect (Anthropic, OpenAI or a local Ollama);
     `/* @md */` blocks that turn a query file into a literate document; and a
-    command palette that reaches every action in the workspace.
+    command palette that reaches every action in the workspace. A tab opened
+    from a `.sql` file stays bound to it — Ctrl+S writes back to that file with
+    no dialog, and the tab marks whether what you are looking at still matches
+    what is on disk.
   - **Reading results** — the same result set opens as a grid, a chart, a
     per-column profile, a pivot table, a query plan, a set of data-quality
-    checks, or a diff against an earlier run. Cells and whole rows expand into
-    a reader, and a foreign key opens the rows it points at in a new tab.
+    checks, or a diff against an earlier run — and the panes you never reach
+    for switch off, so the tab bar carries only what you use. Cells and whole
+    rows expand into a reader, and a foreign key opens the rows it points at
+    in a new tab.
     The row limit says so when it actually cut a result, rather than letting a
     partial answer read as the whole one. Exports go out as CSV, TSV, JSON,
     Excel, Markdown or SQL `INSERT`s, and are never truncated to what the grid
@@ -155,15 +128,19 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
     with the statement above it, which is what you paste back to whoever asked
     you to run it.
   - **Around the database** — searchable history of everything you have run,
-    with slow-query aggregation by fingerprint; named snippets; workspaces that
-    restore their own tabs and restrict themselves to the connections you
-    allow; live database metrics with threshold alerts; schema snapshots and
-    schema-to-schema comparison; a token-protected link that streams a live
-    result set to any browser on your network; and four themes with a fully
-    editable palette. Every one of those saved lists — connections, SSH
-    configurations, workspaces, snippets — searches and sorts, each remembering
-    the key and direction you left it on.
+    droppable one entry at a time or all at once, with slow-query aggregation
+    by fingerprint; named snippets; workspaces that restore their own tabs and
+    restrict themselves to the connections you allow; live database metrics
+    with threshold alerts; schema snapshots and schema-to-schema comparison; a
+    token-protected link that streams a live result set to any browser on your
+    network, saying plainly how far it reaches and whether it is encrypted; and
+    four themes with a fully editable palette, light or dark or following
+    whichever one the desktop is on. Every one of those saved lists —
+    connections, SSH configurations, workspaces, snippets — searches and sorts,
+    each remembering the key and direction you left it on.
   - **Installing** — the macOS DMG is signed with a Developer ID certificate,
     notarized by Apple and stapled, so it opens with two clicks and no trip
-    through System Settings, offline included. The Windows installer and the
-    Linux AppImage are unsigned; SmartScreen warns once on Windows.
+    through System Settings, offline included. It also carries a MySQL driver
+    compiled for it, which Qt does not ship for macOS at all. The Windows
+    installer and the Linux AppImage are unsigned; SmartScreen warns once on
+    Windows.
