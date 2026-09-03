@@ -171,6 +171,19 @@ void AppSettings::setQueryLimit(int value) {
     emit queryLimitChanged();
 }
 
+// Anything that is not "lower" reads as "upper", so a settings file carrying
+// a value from nowhere lands on the SQL everyone writes rather than on a
+// third, undefined behaviour.
+QString AppSettings::sqlKeywordCase() const {
+    return m_settings.value("sqlKeywordCase", "upper").toString() == QLatin1String("lower")
+           ? QStringLiteral("lower") : QStringLiteral("upper");
+}
+void AppSettings::setSqlKeywordCase(const QString &value) {
+    if (sqlKeywordCase() == value) return;
+    m_settings.setValue("sqlKeywordCase", value);
+    emit sqlKeywordCaseChanged();
+}
+
 bool AppSettings::highlightCurrentLine() const { return m_settings.value("highlightCurrentLine", true).toBool(); }
 void AppSettings::setHighlightCurrentLine(bool value) {
     if (highlightCurrentLine() == value) return;

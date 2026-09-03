@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Layouts
 import Mahina
+import Qub
 import "../fk.js" as Fk
 import "../cellview.js" as CellView
 
@@ -126,7 +127,8 @@ Rectangle {
             out.push({
                 name:    cols[c],
                 value:   val,
-                fkSql:   fk ? Fk.selectBy(fk.toTable, fk.toColumn, val, root.driver) : "",
+                fkSql:   fk ? Fk.selectBy(fk.toTable, fk.toColumn, val, root.driver,
+                                          AppSettings.sqlKeywordCase) : "",
                 fkLabel: fk ? ("Go to " + fk.toTable + " row") : ""
             })
         }
@@ -449,14 +451,16 @@ Rectangle {
                               icon: Icons.arrowSquareOut, act: "nav",
                               disabled: root._selVal === "",
                               sql: Fk.selectBy(root._fkOut.toTable, root._fkOut.toColumn,
-                                               root._selVal, root.driver) })
+                                               root._selVal, root.driver,
+                                               AppSettings.sqlKeywordCase) })
                 for (let i = 0; i < root._fkIn.length; i++) {
                     const inc = root._fkIn[i]
                     fk.push({ label: "Rows in " + inc.fromTable + " (" + inc.fromColumn + ")",
                               icon: Icons.arrowBendUpLeft, act: "nav",
                               disabled: root._selVal === "",
                               sql: Fk.selectBy(inc.fromTable, inc.fromColumn,
-                                               root._selVal, root.driver) })
+                                               root._selVal, root.driver,
+                                               AppSettings.sqlKeywordCase) })
                 }
                 const tail = [ null,
                     { label: "Export CSV…", icon: Icons.downloadSimple, act: "export",

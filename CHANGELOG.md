@@ -29,6 +29,13 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 - **Fix** Typing one dot too many no longer makes the completion popup ask a
   null for its columns. It never showed anything wrong — it stopped mid-refresh
   and left the previous suggestions on screen
+- **Feat** `Settings → Editor → Keyword case in generated SQL` chooses between
+  `SELECT * FROM users` and `select * from users` for the SQL qub writes for
+  you — a table's browse button, a double-clicked table, a foreign-key jump.
+  Everyone types SQL in one case and reads a pasted line in the other as
+  somebody else's. It touches keywords only: an identifier keeps the case the
+  database gave it, since lowercasing `Users` would name a different table on
+  a case-sensitive server. Upper is the default
 - **Feat** A live share can end by itself. `Settings → Sharing → Stop sharing
   after` takes a number of minutes; the toolbar counts down, warns a minute out
   and says so when the session closes. The failure mode of live share was never
