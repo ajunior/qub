@@ -7,6 +7,7 @@
 #include <QStringList>
 #include <QVariantList>
 
+class QTimer;
 class QHttpServer;
 class QTcpServer;
 class QWebSocket;
@@ -24,6 +25,11 @@ public:
     Q_PROPERTY(int         clientCount   READ clientCount   NOTIFY clientCountChanged)
     Q_PROPERTY(bool        allowDownload READ allowDownload WRITE setAllowDownload NOTIFY allowDownloadChanged)
     Q_PROPERTY(bool        lanVisible    READ lanVisible    NOTIFY activeChanged)
+    // Seconds left before the share stops itself, or 0 when nothing is counting
+    // down. Ticks once a second so the toolbar can show it: a share that will
+    // end at some unstated moment is worse than one that never ends, because
+    // you cannot plan around it.
+    Q_PROPERTY(int         secondsLeft   READ secondsLeft   NOTIFY secondsLeftChanged)
 
 public:
     explicit LiveShareServer(QObject *parent = nullptr);
@@ -37,16 +43,23 @@ public:
     int         clientCount()  const;
     bool        allowDownload() const;
     bool        lanVisible()   const;
+    int         secondsLeft()   const;
 
     void setAllowDownload(bool value);
 
     // lanVisible=false (default) binds to 127.0.0.1 only. If useTls is
     // requested and the certificate can't be loaded, the server does NOT fall
     // back to plaintext — it emits startFailed() and stays inactive.
+    // autoStopSeconds > 0 arms a timer that stops the share on its own. Seconds
+    // rather than the minutes the setting is written in: the server has no
+    // reason to know the unit a settings field happens to use, and a duration
+    // it can only be given sixty of at a time cannot be tested in under a
+    // minute.
     Q_INVOKABLE void start(bool useTls = false,
                            const QString &certPath = {},
                            const QString &keyPath  = {},
-                           bool lanVisible = false);
+                           bool lanVisible = false,
+                           int autoStopSeconds = 0);
     Q_INVOKABLE void stop();
     Q_INVOKABLE void fetchPublicIp();
 
@@ -62,6 +75,11 @@ signals:
     void publicUrlChanged();
     void allowDownloadChanged();
     void startFailed(const QString &message);
+    void secondsLeftChanged();
+    // The timer ran out and the share is already down. Distinct from
+    // activeChanged() because the UI has something to say about this one and
+    // nothing to say about a stop the person asked for.
+    void autoStopped();
 
 private:
     void broadcast(const QByteArray &json);
@@ -78,6 +96,8 @@ private:
     bool                 m_useTls        = false;
     bool                 m_allowDownload = false;
     bool                 m_lanVisible    = false;
+    QTimer              *m_countdown     = nullptr;
+    int                  m_secondsLeft   = 0;
 };
 
 QUB_QML_SINGLETON_FOREIGN(LiveShareServer)

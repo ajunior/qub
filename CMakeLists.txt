@@ -268,6 +268,19 @@ target_include_directories(qub_executor_tests PRIVATE src src/core)
 target_link_libraries(qub_executor_tests PRIVATE Qt6::Test Qt6::Qml Qt6::Sql Qt6::Concurrent)
 add_test(NAME qub_executor_tests COMMAND qub_executor_tests)
 
+# The Live Share auto-stop countdown. Binds a real plaintext port on localhost,
+# which is what start() does — a countdown armed against a stubbed-out server
+# would not be testing the code that ships.
+qt_add_executable(qub_liveshare_tests
+    tests/tst_liveshare.cpp
+    src/core/LiveShareServer.cpp
+)
+target_include_directories(qub_liveshare_tests PRIVATE src src/core)
+target_link_libraries(qub_liveshare_tests
+    PRIVATE Qt6::Test Qt6::Qml Qt6::Network Qt6::HttpServer Qt6::WebSockets
+            OpenSSL::SSL OpenSSL::Crypto)
+add_test(NAME qub_liveshare_tests COMMAND qub_liveshare_tests)
+
 # ── macOS bundle metadata ─────────────────────────────────────────────────────
 if(APPLE)
     configure_file(packaging/macos/Info.plist.in

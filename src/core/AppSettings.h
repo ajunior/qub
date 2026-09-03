@@ -32,6 +32,11 @@ public:
     Q_PROPERTY(QString liveShareKeyPath    READ liveShareKeyPath    WRITE setLiveShareKeyPath    NOTIFY liveShareKeyPathChanged)
     Q_PROPERTY(bool    liveShareAllowDownload READ liveShareAllowDownload WRITE setLiveShareAllowDownload NOTIFY liveShareAllowDownloadChanged)
     Q_PROPERTY(bool    liveShareLanVisible  READ liveShareLanVisible  WRITE setLiveShareLanVisible  NOTIFY liveShareLanVisibleChanged)
+    // Minutes before a running share shuts itself off; 0 leaves it up until
+    // someone stops it. The failure mode of Live Share is not starting it by
+    // mistake — it is forgetting it is on.
+    Q_PROPERTY(int     liveShareAutoStopMinutes READ liveShareAutoStopMinutes WRITE setLiveShareAutoStopMinutes NOTIFY liveShareAutoStopMinutesChanged)
+    Q_PROPERTY(bool    liveShareButtonPing  READ liveShareButtonPing  WRITE setLiveShareButtonPing  NOTIFY liveShareButtonPingChanged)
 
     // Ordering of the four saved-item lists on the Home screen. Each keeps its
     // own key and direction: they are read side by side but wanted in different
@@ -78,6 +83,8 @@ public:
     QString liveShareKeyPath()        const;
     bool    liveShareAllowDownload()  const;
     bool    liveShareLanVisible()     const;
+    int     liveShareAutoStopMinutes() const;
+    bool    liveShareButtonPing()     const;
     int  queryLimit()           const;
     bool   highlightCurrentLine() const;
     double lineHeight() const;
@@ -113,6 +120,8 @@ public:
     void setLiveShareKeyPath(const QString &value);
     void setLiveShareAllowDownload(bool value);
     void setLiveShareLanVisible(bool value);
+    void setLiveShareAutoStopMinutes(int value);
+    void setLiveShareButtonPing(bool value);
     void setQueryLimit(int value);
     void setHighlightCurrentLine(bool value);
     void setLineHeight(double value);
@@ -164,6 +173,8 @@ signals:
     void liveShareKeyPathChanged();
     void liveShareAllowDownloadChanged();
     void liveShareLanVisibleChanged();
+    void liveShareAutoStopMinutesChanged();
+    void liveShareButtonPingChanged();
     void queryLimitChanged();
     void highlightCurrentLineChanged();
     void lineHeightChanged();

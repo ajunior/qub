@@ -137,6 +137,26 @@ void AppSettings::setLiveShareLanVisible(bool value) {
     emit liveShareLanVisibleChanged();
 }
 
+// 0 means no timer. Anything else is clamped to a minute at the low end: a
+// share that stops before the person it is for has finished opening the link
+// is a bug report, not a safeguard.
+int AppSettings::liveShareAutoStopMinutes() const {
+    const int v = m_settings.value("liveShareAutoStopMinutes", 0).toInt();
+    return v <= 0 ? 0 : qBound(1, v, 480);
+}
+void AppSettings::setLiveShareAutoStopMinutes(int value) {
+    if (liveShareAutoStopMinutes() == value) return;
+    m_settings.setValue("liveShareAutoStopMinutes", value);
+    emit liveShareAutoStopMinutesChanged();
+}
+
+bool AppSettings::liveShareButtonPing() const { return m_settings.value("liveShareButtonPing", true).toBool(); }
+void AppSettings::setLiveShareButtonPing(bool value) {
+    if (liveShareButtonPing() == value) return;
+    m_settings.setValue("liveShareButtonPing", value);
+    emit liveShareButtonPingChanged();
+}
+
 bool AppSettings::liveShareAllowDownload() const { return m_settings.value("liveShareAllowDownload", false).toBool(); }
 void AppSettings::setLiveShareAllowDownload(bool value) {
     if (liveShareAllowDownload() == value) return;
