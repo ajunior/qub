@@ -53,7 +53,14 @@ Item {
     }
 
     // Columns of a table, tolerating a schema-qualified name.
+    //
+    // `table` is whatever dottedTable() resolved, which is null when the text
+    // before the dot yields no qualifier at all — the prefix "x..", reachable
+    // by typing one dot too many. The columns of nothing are no columns; the
+    // alternative was a TypeError on every keystroke while that second dot sat
+    // near the cursor, since completion re-runs on each one.
     function _columnsOf(table: var): var {
+        if (!table) return []
         let cols = ConnectionManager.columns(root.connectionName, table)
         if ((!cols || cols.length === 0) && table.indexOf('.') >= 0)
             cols = ConnectionManager.columns(root.connectionName, table.split('.').pop())
