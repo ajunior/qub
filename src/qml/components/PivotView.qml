@@ -58,8 +58,15 @@ Rectangle {
     readonly property var _pivot: {
         void root._rows                          // depend on the data
         if (!root._ready) return null
-        return root.model.pivot(root._rowCol, root._colCol,
-                                root._needsValue ? root._valCol : -1, root._agg)
+        const p = root.model.pivot(root._rowCol, root._colCol,
+                                   root._needsValue ? root._valCol : -1, root._agg)
+        // pivot() answers with an empty map when the chosen columns fall
+        // outside the result — which they do for a moment every time a new
+        // result arrives while the pickers still point at the old one's
+        // columns. An empty QVariantMap reaches QML as {}, which is truthy, so
+        // every `_pivot ? …` guard below waved it through and then read
+        // undefined off it. Nothing is a pivot until it has a row field.
+        return p && p.rowField !== undefined ? p : null
     }
 
     function _fmt(v: var): var {
@@ -143,8 +150,8 @@ Rectangle {
         // ── Truncation notice ───────────────────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            visible: root._pivot
-                     && (root._pivot.rowsTruncated || root._pivot.colsTruncated)
+            visible: !!(root._pivot
+                        && (root._pivot.rowsTruncated || root._pivot.colsTruncated))
             height: visible ? 26 : 0
             color:  Qt.rgba(Theme.warning.r, Theme.warning.g, Theme.warning.b, 0.08)
             RowLayout {
@@ -176,7 +183,7 @@ Rectangle {
             ScrollArea {
                 id: _scroll
                 anchors.fill: parent
-                visible:    root._ready && root._pivot
+                visible:    !!(root._ready && root._pivot)
                 horizontal: true
                 vertical:   true
                 clip:       true
