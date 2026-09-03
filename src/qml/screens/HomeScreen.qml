@@ -1391,6 +1391,15 @@ Item {
                                                 id: delegateItem5
                                                 required property var modelData
                                                 Layout.fillWidth: true
+                                                // A snippet in a folder sits inside it,
+                                                // not beside it. The sidebar already
+                                                // insets these; the home page did not,
+                                                // which left header and row sharing a
+                                                // margin and reading as peers.
+                                                Layout.leftMargin:
+                                                    delegateItem5.modelData.kind === "snippet"
+                                                    && delegateItem5.modelData.snip.folder !== ""
+                                                    ? Theme.sp3 : 0
                                                 sourceComponent: delegateItem5.modelData.kind === "folder"
                                                                  ? _snipFolderHeader : _snipListRow
                                                 onLoaded: item.row = Qt.binding(() => delegateItem5.modelData)
@@ -1536,13 +1545,17 @@ Item {
                                                         anchors.verticalCenter: parent.verticalCenter
                                                     }
 
+                                                    // Upper case in the same voice as
+                                                    // the SNIPPETS label above: a folder
+                                                    // name set like a snippet name reads
+                                                    // as one more snippet.
                                                     Text {
-                                                        text:  _folderRoot.row.folder
+                                                        text:  _folderRoot.row.folder.toUpperCase()
                                                         color: Theme.textSecondary
                                                         font.family:      Theme.fontFamily
                                                         font.pixelSize:   Theme.textXs
                                                         font.weight:      Theme.weightSemibold
-                                                        font.letterSpacing: 1.2
+                                                        font.letterSpacing: 1.5
                                                         anchors.verticalCenter: parent.verticalCenter
                                                     }
                                                 }
@@ -1554,20 +1567,11 @@ Item {
 
                                             ListRow {
                                                 id: _snipRowRoot
-                                                property var row: ({ snip: { id: -1, name: "", sql: "", connectionName: "" } })
+                                                property var row: ({ snip: { id: -1, name: "", sql: "" } })
                                                 title: _snipRowRoot.row.snip.name
                                                 subtitle: _snipRowRoot.row.snip.sql.replace(/\s+/g, " ").substring(0, 80)
                                                 onClicked: _snipSection._openEdit(_snipRowRoot.row.snip)
 
-                                                // Same reasoning as the folder header:
-                                                // this name is a connection.
-                                                Badge {
-                                                    visible:     _snipRowRoot.row.snip.connectionName !== ""
-                                                    text:        _snipRowRoot.row.snip.connectionName
-                                                    iconName:    Icons.database
-                                                    colorScheme: Badge.Color.Default
-                                                    anchors.verticalCenter: parent.verticalCenter
-                                                }
                                                 Tooltip {
                                                     text: "Edit snippet"
 
