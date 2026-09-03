@@ -483,8 +483,11 @@ Item {
         root._fkList = c ? DatabaseInspector.foreignKeys(c) : []
     }
 
-    // Open the referenced/​referencing rows from an FK menu in a fresh tab.
-    function _openFkTab(sql: string, title: string): void {
+    // Run a query the user asked for by pointing at something — a foreign key,
+    // a table in the schema browser — in a tab of its own. Whatever is in the
+    // current editor is a piece of work in progress, and the answer to "show me
+    // this table" is not worth overwriting it with.
+    function _runInNewTab(sql: string): void {
         root._newQueryTab(root.activeConnection)
         queryEditor.setSql(sql)
         root._runQuery()
@@ -1839,16 +1842,12 @@ Item {
                 onTableQuickBrowseRequested: (schema, name) => {
                     // Quoted per the connection's dialect rather than with a
                     // hardcoded double quote, which MySQL reads as a string.
-                    const kwCase = AppSettings.sqlKeywordCase
-                    const sql = Fk.kw('SELECT * FROM ', kwCase)
-                              + Fk.ident(_schemaTree._qualify(schema, name),
-                                         root._activeConn?.driver ?? "")
-                              + (root._limit > 0
-                                 ? Fk.kw(' LIMIT ', kwCase) + root._limit : '')
-                    queryEditor.setSql(sql)
-                    root._executingSql = sql
-                    QueryExecutor.activeTabId = root._currentTabId
-                    QueryExecutor.execute(root.activeConnection, sql)
+                    // No LIMIT here: _runQuery applies the row limit the same
+                    // way it does for the Run button, marker and all.
+                    root._runInNewTab(
+                        Fk.kw('SELECT * FROM ', AppSettings.sqlKeywordCase)
+                        + Fk.ident(_schemaTree._qualify(schema, name),
+                                   root._activeConn?.driver ?? ""))
                 }
                 onTableStatsRequested: (schema, name) => _tableStatsPopup.openFor(root.activeConnection, name)
                 onTableDdlRequested:   (schema, name) => _tableDdlPopup.openFor(root.activeConnection, name)
@@ -2498,7 +2497,7 @@ Item {
                                     onExportRequested: _csvDialog.open()
                                     onEditCommitted: (row, col, colName, newValue, oldValue) =>
                                         root._applyInlineEdit(row, col, colName, newValue)
-                                    onNavigateRequested: (sql, title) => root._openFkTab(sql, title)
+                                    onNavigateRequested: (sql) => root._runInNewTab(sql)
                                 }
 
                                 // DataGrip-style session console for the active connection
