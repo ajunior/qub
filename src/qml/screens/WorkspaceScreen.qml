@@ -240,6 +240,37 @@ Item {
 
     // ── Live Share URL selection ──────────────────────────────────────────────
     property string _liveShareSelectedUrl: ""
+
+    // A profile may forbid sharing the connections that carry it. That is not a
+    // security boundary — whoever turns it off can also edit the profile — it is
+    // there for the way sharing actually goes wrong: the session is already
+    // running, you switch tabs to look something up, and the tab is production.
+    // Absent on a profile written before the rule existed, which reads as
+    // allowed: switching a working button off with no trace of who did it would
+    // be worse than the gap it closes.
+    readonly property bool _shareAllowedHere:
+        root._profile?.allowLiveShare !== undefined ? root._profile.allowLiveShare : true
+
+    // Forbidden and sharing cannot both be true, so arriving at a forbidden
+    // connection ends the session rather than merely greying out the button that
+    // would have ended it.
+    on_ShareAllowedHereChanged: {
+        if (!root._shareAllowedHere && LiveShareServer.active) {
+            LiveShareServer.stop()
+            _toaster.show("Live Share stopped — the \"" + (root._profile?.name ?? "")
+                          + "\" profile does not allow sharing this connection.",
+                          Toaster.Type.Warning, 8000)
+        }
+    }
+
+    function _startLiveShare(): void {
+        LiveShareServer.start(AppSettings.liveShareUseTls,
+                              AppSettings.liveShareCertPath,
+                              AppSettings.liveShareKeyPath,
+                              AppSettings.liveShareLanVisible,
+                              AppSettings.liveShareAutoStopMinutes * 60)
+    }
+
     Connections {
         target: LiveShareServer
         function onActiveChanged() {
@@ -247,6 +278,16 @@ Item {
         }
         function onStartFailed(message: string): void {
             _toaster.show("Live Share failed to start: " + message, Toaster.Type.Error, 8000)
+        }
+        function onAutoStopped(): void {
+            _toaster.show("Live Share stopped — the " + AppSettings.liveShareAutoStopMinutes
+                          + "-minute limit ran out.", Toaster.Type.Info, 8000)
+        }
+        // The countdown is on screen, but someone reading a result set is not
+        // reading the toolbar. One warning, far enough out to finish a sentence.
+        function onSecondsLeftChanged(): void {
+            if (LiveShareServer.secondsLeft === 60)
+                _toaster.show("Live Share stops in 1 minute.", Toaster.Type.Warning, 6000)
         }
     }
 
@@ -1499,40 +1540,51 @@ Item {
 
                         readonly property real spread: 6
 
-                        anchors.fill:    _liveShareBtn
+                        // Fills the tooltip wrapper rather than the button it
+                        // holds: the wrapper sizes to the button, and an anchor
+                        // has to name a parent or a sibling.
+                        anchors.fill:    _liveShareBtnTip
                         anchors.margins: -_liveSharePing.spread * _liveSharePing.phase
                         radius:          Theme.radiusSm + _liveSharePing.spread * _liveSharePing.phase
                         color:           "transparent"
                         border.color:    Theme.error
                         border.width:    1.5
-                        visible:         LiveShareServer.active
+                        visible:         LiveShareServer.active && AppSettings.liveShareButtonPing
                         opacity:         0.7 * (1 - _liveSharePing.phase)
 
                         SequentialAnimation on phase {
-                            running: LiveShareServer.active
+                            running: _liveSharePing.visible
                             loops:   Animation.Infinite
                             NumberAnimation { from: 0; to: 1; duration: 1100; easing.type: Easing.OutQuad }
                             PauseAnimation  { duration: 700 }
                         }
                     }
 
-                    Button {
-                        id:         _liveShareBtn
-                        text:       LiveShareServer.active ? "Stop Live Share" : "Live Share"
-                        iconName:   LiveShareServer.active ? Icons.stop : Icons.broadcast
-                        iconWeight: LiveShareServer.active ? Icon.Weight.Fill : Icon.Weight.Regular
-                        size:       Button.Size.Sm
-                        variant:    LiveShareServer.active ? Button.Variant.Danger : Button.Variant.Ghost
-                        onClicked: {
-                            if (LiveShareServer.active) {
-                                if (AppSettings.liveShareWarnOnStop)
-                                    _liveShareStopPopup.open()
-                                else
-                                    LiveShareServer.stop()
-                            } else if (AppSettings.liveShareWarnOnStart) {
-                                _liveShareWarnPopup.open()
-                            } else {
-                                LiveShareServer.start(AppSettings.liveShareUseTls, AppSettings.liveShareCertPath, AppSettings.liveShareKeyPath, AppSettings.liveShareLanVisible)
+                    Tooltip {
+                        id: _liveShareBtnTip
+                        text: root._shareAllowedHere
+                              ? ""
+                              : "The \"" + (root._profile?.name ?? "") + "\" profile does not "
+                                + "allow Live Share on this connection"
+                        Button {
+                            id:         _liveShareBtn
+                            text:       LiveShareServer.active ? "Stop Live Share" : "Live Share"
+                            iconName:   LiveShareServer.active ? Icons.stop : Icons.broadcast
+                            iconWeight: LiveShareServer.active ? Icon.Weight.Fill : Icon.Weight.Regular
+                            size:       Button.Size.Sm
+                            variant:    LiveShareServer.active ? Button.Variant.Danger : Button.Variant.Ghost
+                            enabled:    root._shareAllowedHere
+                            onClicked: {
+                                if (LiveShareServer.active) {
+                                    if (AppSettings.liveShareWarnOnStop)
+                                        _liveShareStopPopup.open()
+                                    else
+                                        LiveShareServer.stop()
+                                } else if (AppSettings.liveShareWarnOnStart) {
+                                    _liveShareWarnPopup.open()
+                                } else {
+                                    root._startLiveShare()
+                                }
                             }
                         }
                     }
@@ -1577,6 +1629,32 @@ Item {
                     text:  LiveShareServer.clientCount + (LiveShareServer.clientCount === 1 ? " viewer" : " viewers")
                     color: LiveShareServer.clientCount > 0 ? Theme.textPrimary : Theme.textDisabled
                     font { family: Theme.fontFamily; pixelSize: Theme.textXs }
+                }
+
+                Rectangle {
+                    Layout.preferredWidth: 1; Layout.preferredHeight: 14
+                    color: Theme.border
+                    Layout.alignment: Qt.AlignVCenter
+                    visible: LiveShareServer.secondsLeft > 0
+                }
+
+                // ── Time left ─────────────────────────────────────────────────
+                // Only when something is counting down. Turns the colour of a
+                // warning for the last minute, which is also when the toast goes
+                // out — the two say the same thing in two places because one of
+                // them is where you are not looking.
+                Icon {
+                    name:    Icons.timer
+                    size:    11
+                    color:   LiveShareServer.secondsLeft <= 60 ? Theme.warning : Theme.textDisabled
+                    visible: LiveShareServer.secondsLeft > 0
+                }
+                Text {
+                    visible: LiveShareServer.secondsLeft > 0
+                    text:    Math.floor(LiveShareServer.secondsLeft / 60) + ":"
+                             + String(LiveShareServer.secondsLeft % 60).padStart(2, "0")
+                    color:   LiveShareServer.secondsLeft <= 60 ? Theme.warning : Theme.textSecondary
+                    font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
                 }
 
                 Rectangle { width: 1; height: 14; color: Theme.border; Layout.alignment: Qt.AlignVCenter }
@@ -3175,7 +3253,7 @@ Item {
                         if (_liveShareWarnPopup._dontShowAgain)
                             AppSettings.liveShareWarnOnStart = false
                         _liveShareWarnPopup.close()
-                        LiveShareServer.start(AppSettings.liveShareUseTls, AppSettings.liveShareCertPath, AppSettings.liveShareKeyPath, AppSettings.liveShareLanVisible)
+                        root._startLiveShare()
                     }
                 }
                 Button {

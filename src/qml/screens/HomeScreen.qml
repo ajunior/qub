@@ -2282,7 +2282,7 @@ Item {
                                 spacing: 14
                                 visible: {
                                     const q = _settings._q
-                                    return !q || ["share","live","sharing","warning","broadcast","https","tls","ssl","certificate","cert","download","csv","json","tsv","export"].some(t => t.includes(q))
+                                    return !q || ["share","live","sharing","warning","broadcast","https","tls","ssl","certificate","cert","download","csv","json","tsv","export","timer","minutes","stop","pulse","ping"].some(t => t.includes(q))
                                 }
 
                                 Text {
@@ -2304,6 +2304,43 @@ Item {
                                     text: "Show warning before starting Live Share"
                                     checked: AppSettings.liveShareWarnOnStart
                                     onCheckedChanged: AppSettings.liveShareWarnOnStart = checked
+                                }
+
+                                Toggle {
+                                    text: "Pulse the Live Share button while a session is running"
+                                    checked: AppSettings.liveShareButtonPing
+                                    onCheckedChanged: AppSettings.liveShareButtonPing = checked
+                                }
+
+                                // The one thing that goes wrong with Live Share is not starting it
+                                // by accident — it is leaving it on. A session that ends by itself
+                                // needs nobody to remember it.
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Theme.sp5
+
+                                    NumberInput {
+                                        id: _shareAutoStop
+                                        label: "Stop sharing after (minutes)"
+                                        value: AppSettings.liveShareAutoStopMinutes
+                                        min: 0; max: 480; step: 5
+                                        Layout.alignment: Qt.AlignBottom
+                                        onValueChanged: if (value !== AppSettings.liveShareAutoStopMinutes)
+                                                            AppSettings.liveShareAutoStopMinutes = value
+                                    }
+
+                                    Text {
+                                        text: AppSettings.liveShareAutoStopMinutes > 0
+                                              ? "The toolbar counts down, and warns a minute before."
+                                              : "0 — a session stays up until you stop it."
+                                        color: Theme.textDisabled
+                                        font.family:    Theme.fontFamily
+                                        font.pixelSize: Theme.textSm
+                                        Layout.fillWidth: true
+                                        wrapMode: Text.WordWrap
+                                        Layout.alignment: Qt.AlignBottom
+                                        Layout.bottomMargin: (_shareAutoStop._fieldH - implicitHeight) / 2
+                                    }
                                 }
 
                                 Toggle {
@@ -2601,7 +2638,7 @@ Item {
                                 spacing: 14
                                 visible: {
                                     const q = _settings._q
-                                    return !q || ["profile","read-only","readonly","delete","drop","truncate","update","where","rule","confirm","safety","color"].some(t => t.includes(q))
+                                    return !q || ["profile","read-only","readonly","delete","drop","truncate","update","where","rule","confirm","safety","color","share","live"].some(t => t.includes(q))
                                 }
 
                                 property bool   _showForm:   false
@@ -2613,6 +2650,7 @@ Item {
                                 property bool   _newConfDrop:    true
                                 property bool   _newConfTrunc:   true
                                 property bool   _newConfUpdNoWh: true
+                                property bool   _newAllowShare:   true
 
                                 function _openEdit(p: var): void {
                                     _editingId       = p.id
@@ -2622,6 +2660,10 @@ Item {
                                     _newConfDrop     = p.confirmDrop   !== undefined ? p.confirmDrop   : true
                                     _newConfTrunc    = p.confirmTruncate !== undefined ? p.confirmTruncate : true
                                     _newConfUpdNoWh  = p.confirmUpdateWithoutWhere !== undefined ? p.confirmUpdateWithoutWhere : true
+                                    // A profile written before this rule existed says nothing about
+                                    // sharing, and silently reading that as "forbidden" would switch
+                                    // off a working button with no trace of who did it.
+                                    _newAllowShare   = p.allowLiveShare !== undefined ? p.allowLiveShare : true
                                     _profNameInput.text = p.name || ""
                                     _showForm = true
                                 }
@@ -2636,6 +2678,7 @@ Item {
                                     _newConfDrop     = true
                                     _newConfTrunc    = true
                                     _newConfUpdNoWh  = true
+                                    _newAllowShare   = true
                                     _showForm        = false
                                 }
 
@@ -2787,6 +2830,16 @@ Item {
                                         onCheckedChanged: _profilesSection._newConfUpdNoWh = checked
                                     }
 
+                                    // Not a security boundary — whoever can turn this off can also
+                                    // edit the profile. It is here for the way sharing actually goes
+                                    // wrong: the share is already running, you switch to another tab
+                                    // to look something up, and that tab is production.
+                                    Toggle {
+                                        text: "Allow Live Share on connections using this profile"
+                                        checked: _profilesSection._newAllowShare
+                                        onCheckedChanged: _profilesSection._newAllowShare = checked
+                                    }
+
                                     Divider {}
 
                                     RowLayout {
@@ -2813,7 +2866,8 @@ Item {
                                                     confirmDelete:             _profilesSection._newConfDel,
                                                     confirmDrop:               _profilesSection._newConfDrop,
                                                     confirmTruncate:           _profilesSection._newConfTrunc,
-                                                    confirmUpdateWithoutWhere: _profilesSection._newConfUpdNoWh
+                                                    confirmUpdateWithoutWhere: _profilesSection._newConfUpdNoWh,
+                                                    allowLiveShare:            _profilesSection._newAllowShare
                                                 }
                                                 if (_profilesSection._editingId !== "")
                                                     ProfileManager.updateProfile(_profilesSection._editingId, data)

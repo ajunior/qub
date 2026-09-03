@@ -7,6 +7,22 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Feat** A live share can end by itself. `Settings → Sharing → Stop sharing
+  after` takes a number of minutes; the toolbar counts down, warns a minute out
+  and says so when the session closes. The failure mode of live share was never
+  starting it by accident — it was forgetting it was on, and a share that ends
+  on its own needs nobody to remember it. 0, the default, keeps the old
+  behaviour of running until stopped
+- **Feat** A profile can forbid live share on the connections that carry it.
+  Turning off `Allow Live Share` disables the button on those connections, and
+  stops a session already running the moment you switch to one. It is a guard
+  against inattention rather than against the person — anyone who can turn it
+  off can also edit the profile — and it closes the case where the share is
+  already up, you switch tabs to check something, and the tab is production
+- **Feat** The ring that pulses around the Live Share button while a session
+  runs can be switched off. The button is red and reads "Stop Live Share"
+  either way, so the pulse was reinforcement, not the only signal
+
 - **New** First public release. qub is a SQL editor for people who work in SQL
   all day and want the editor out of the way: the query is the centre of the
   window, and everything else is a keystroke from it rather than a menu dive.

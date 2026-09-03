@@ -1495,6 +1495,19 @@ grouped by country, sorted by count descending
       You can provide your own certificate and private key in <strong>Settings → Sharing</strong>.
     </p>
 
+    <h3>Ending a share on time</h3>
+    <p>
+      The way live share goes wrong is not starting it by mistake — it is leaving it on.
+      Set <strong>Stop sharing after</strong> in <strong>Settings → Sharing</strong> to a
+      number of minutes and the session ends by itself: the toolbar counts down, warns a
+      minute before, and tells you when it has stopped. Zero, the default, leaves a session
+      up until you stop it.
+    </p>
+    <p>
+      A profile can also forbid sharing outright — see
+      <a href="#profiles">Allow Live Share</a> under the profile rules.
+    </p>
+
     <div class="callout note">
       <span class="icon">◎</span>
       <p>Live share exposes your query results over the network. Use with care on production data.
@@ -1545,6 +1558,13 @@ grouped by country, sorted by count descending
       <li>
         <strong>Confirm UPDATE without WHERE</strong>
         Shows a confirmation dialog when an <code>UPDATE</code> has no <code>WHERE</code> clause.
+      </li>
+      <li>
+        <strong>Allow Live Share</strong>
+        On by default. Turn it off and the Live Share button is disabled while you are
+        on a connection using this profile — and a session already running stops the
+        moment you switch to one. It guards against inattention, not against you:
+        anyone who can turn it off can also edit the profile.
       </li>
     </ul>
 
@@ -1704,6 +1724,8 @@ grouped by country, sorted by count descending
     <table>
       <tr><th>Setting</th><th>Description</th></tr>
       <tr><td>Warn on start / stop</td><td>Show a confirmation before starting or stopping live share.</td></tr>
+      <tr><td>Pulse the button</td><td>Ring the Live Share button while a session runs. The button is red and reads "Stop Live Share" either way.</td></tr>
+      <tr><td>Stop sharing after</td><td>Minutes before a running session ends by itself. 0 leaves it up until you stop it.</td></tr>
       <tr><td>TLS certificate</td><td>Path to a custom certificate file for HTTPS sharing.</td></tr>
       <tr><td>TLS private key</td><td>Path to the private key matching the certificate.</td></tr>
     </table>

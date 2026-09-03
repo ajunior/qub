@@ -23,6 +23,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QAbstractSocket>
+#include <QTimer>
 #include <QStandardPaths>
 #include <QDir>
 #include <QCryptographicHash>
@@ -32,7 +33,23 @@
 #include <openssl/x509.h>
 #include <openssl/pem.h>
 
-LiveShareServer::LiveShareServer(QObject *parent) : QObject(parent) {}
+LiveShareServer::LiveShareServer(QObject *parent) : QObject(parent)
+{
+    // One timer for both jobs: it ticks the number the toolbar shows, and the
+    // tick that reaches zero is the one that stops the share. A separate
+    // single-shot for the stop could disagree with the number on screen.
+    m_countdown = new QTimer(this);
+    m_countdown->setInterval(1000);
+    connect(m_countdown, &QTimer::timeout, this, [this] {
+        if (m_secondsLeft <= 0) return;
+        --m_secondsLeft;
+        emit secondsLeftChanged();
+        if (m_secondsLeft == 0) {
+            stop();
+            emit autoStopped();
+        }
+    });
+}
 
 LiveShareServer::~LiveShareServer() { stop(); }
 
@@ -43,6 +60,7 @@ QString LiveShareServer::publicUrl()    const { return m_publicUrl; }
 int     LiveShareServer::clientCount()  const { return m_clients.size(); }
 bool    LiveShareServer::allowDownload() const { return m_allowDownload; }
 bool    LiveShareServer::lanVisible()   const { return m_lanVisible; }
+int     LiveShareServer::secondsLeft()  const { return m_secondsLeft; }
 
 bool LiveShareServer::tokenMatches(const QString &provided) const
 {
@@ -164,7 +182,7 @@ bool LiveShareServer::generateSelfSignedCert(const QString &certFile, const QStr
 }
 
 void LiveShareServer::start(bool useTls, const QString &certPath, const QString &keyPath,
-                            bool lanVisible)
+                            bool lanVisible, int autoStopSeconds)
 {
     if (m_active) return;
 
@@ -296,6 +314,15 @@ void LiveShareServer::start(bool useTls, const QString &certPath, const QString 
     const QString scheme = m_useTls ? "https" : "http";
     m_url    = QStringLiteral("%1://localhost:%2/live?token=%3").arg(scheme).arg(m_port).arg(m_token);
     m_active = true;
+
+    // Armed only once the server is genuinely up, so a start that failed on a
+    // missing certificate does not leave a clock running against nothing.
+    if (autoStopSeconds > 0) {
+        m_secondsLeft = autoStopSeconds;
+        m_countdown->start();
+        emit secondsLeftChanged();
+    }
+
     emit activeChanged();
     emit clientCountChanged();
 }
@@ -316,6 +343,12 @@ void LiveShareServer::stop()
     m_port       = 0;
     m_url.clear();
     m_publicUrl.clear();
+
+    m_countdown->stop();
+    if (m_secondsLeft != 0) {
+        m_secondsLeft = 0;
+        emit secondsLeftChanged();
+    }
 
     emit activeChanged();
     emit clientCountChanged();
