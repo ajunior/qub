@@ -3088,10 +3088,25 @@ Item {
                     }
                 }
 
+                // Both facts follow the settings rather than being asserted
+                // once. The old line said the link was local-only "unless you
+                // forward the port", which stopped being true the moment the
+                // LAN setting was added, and it never mentioned that without a
+                // certificate the whole session is plain HTTP — the one thing
+                // someone about to broadcast their result sets should be told.
                 Text {
                     width: parent.width
-                    text: "The link only works while qub is running. It is only accessible from this machine unless you forward the port."
-                    color: Theme.textDisabled
+                    text: {
+                        const reach = AppSettings.liveShareLanVisible
+                            ? "The link is reachable from anywhere on your network."
+                            : "The link is only reachable from this machine unless you forward the port."
+                        const crypto = AppSettings.liveShareUseTls
+                            ? "Traffic is encrypted."
+                            : "Traffic is not encrypted: queries and results travel in plain text. "
+                              + "Turn on TLS in Settings to change that."
+                        return "The link only works while qub is running. " + reach + " " + crypto
+                    }
+                    color: AppSettings.liveShareUseTls ? Theme.textDisabled : Theme.warning
                     font { family: Theme.fontFamily; pixelSize: 11 }
                     wrapMode: Text.WordWrap
                 }
