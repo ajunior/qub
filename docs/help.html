@@ -994,9 +994,14 @@ LIMIT $3</pre>
       Next to <strong>Results</strong> sits an <strong>Output</strong> tab — a console-style
       stream of everything the active connection did in this session: each executed statement
       with its outcome (<code>SELECT · 500 rows · 142ms</code>), connection and SSH tunnel
-      events, and errors inline in red with the failing SQL echoed underneath. It follows new
+      events, and errors inline in red with the failing SQL echoed underneath. A statement takes
+      two stamped lines — the SQL at the moment it was sent, the outcome at the moment it came
+      back — so the gap between them is on screen rather than in a duration you have to read.
+      The console is one selectable text buffer, not a list of rows: drag through it and copy
+      the three lines you want, or right-click for <em>Copy</em>, <em>Select all</em> and
+      <em>Copy console</em> (the whole session as plain text). It follows new
       entries like a terminal; scroll up to read and it pauses, with a <em>Latest</em> button
-      to jump back to the live tail. Hover a line to copy its SQL. The global
+      to jump back to the live tail. The global
       <a href="#activity-log">activity log</a> (<kbd>Ctrl</kbd>+<kbd>L</kbd>) remains the
       place to see all connections at once with filtering and export.
     </p>
