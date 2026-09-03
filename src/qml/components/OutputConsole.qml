@@ -1,14 +1,18 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Layouts
+import QtQuick.Controls.Basic as QQC
 import Mahina
 import Qub
 
 // DataGrip-style session console: the chronological stream of everything the
 // given connection did — executed statements with their outcome, connection
-// and tunnel events, errors inline. Dense, read-only, console-like. Sits as
-// the "Output" tab next to Results in the workspace.
+// and tunnel events, errors inline. Sits as the "Output" tab next to Results.
+//
+// It is one selectable text buffer rather than a list of rows, which is the
+// whole point: a console you can drag a cursor through copies the three lines
+// you want as readily as the whole session, and a list of delegates can only
+// ever hand you a row at a time.
 Rectangle {
     id: root
 
@@ -22,128 +26,149 @@ Rectangle {
         return LogManager.entries.filter(e => e.connection === name)
     }
 
-    function _levelColor(level: var): var {
+    function _levelColor(level: string): color {
         if (level === "error") return Theme.error
         if (level === "warn")  return Theme.warning
         return Theme.textPrimary
     }
 
-    ListView {
-        id: _lv
+    // Rich text wants six hex digits; a Theme token stringifies to eight when
+    // it carries an alpha channel, which Qt's CSS subset then ignores along
+    // with the colour it was attached to.
+    function _hex(c: color): string {
+        const col = Qt.color(c)
+        return Qt.rgba(col.r, col.g, col.b, 1).toString()
+    }
+
+    function _esc(s: string): string {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    }
+
+    // "2026-09-03 14:02:31.204" → ["2026-09-03", "14:02:31.204"]. The date is
+    // worth one line when it changes and worth nothing on every line after.
+    function _splitStamp(stamp: string): var {
+        const at = String(stamp).indexOf(" ")
+        return at < 0 ? ["", String(stamp)]
+                      : [String(stamp).substring(0, at), String(stamp).substring(at + 1)]
+    }
+
+    // The console as a list of { text, color, dim } lines — built once and used
+    // twice, since the coloured markup on screen and the plain text that goes
+    // to the clipboard have to be the same lines in the same order.
+    readonly property var _lines: {
+        const out  = []
+        const ents = root._entries
+        let lastDate = ""
+
+        for (let i = 0; i < ents.length; i++) {
+            const e      = ents[i]
+            const detail = e.detail ?? ({})
+            const level  = e.level ?? "info"
+            const parts  = root._splitStamp(e.timestamp ?? "")
+            const date   = parts[0]
+            const done   = parts[1]
+
+            if (date !== "" && date !== lastDate) {
+                out.push({ text: date, color: Theme.textDisabled, dim: true })
+                lastDate = date
+            }
+
+            // A statement gets two lines with two stamps: it was sent at one
+            // moment and answered at another, and the gap between them is
+            // often the only thing on screen worth reading.
+            const sql = (detail.sql ?? "").replace(/\s+/g, " ").trim()
+            if (sql !== "") {
+                const started = root._splitStamp(detail.startedAt ?? e.timestamp ?? "")[1]
+                out.push({ text: "[" + started + "] " + sql,
+                           color: Theme.textSecondary, dim: false })
+            }
+
+            out.push({ text: "[" + done + "] " + (e.message ?? ""),
+                       color: root._levelColor(level), dim: false })
+
+            const err = detail.error ?? ""
+            if (level === "error" && err !== "")
+                out.push({ text: String(err), color: Theme.error, dim: false })
+        }
+        return out
+    }
+
+    readonly property string _plainText: {
+        const ls = root._lines
+        let out = ""
+        for (let i = 0; i < ls.length; i++) out += ls[i].text + "\n"
+        return out
+    }
+
+    readonly property string _richText: {
+        const ls = root._lines
+        let out = ""
+        for (let i = 0; i < ls.length; i++) {
+            const l = ls[i]
+            out += '<span style="color:' + root._hex(l.color) + '">'
+                 + root._esc(l.text) + '</span><br/>'
+        }
+        return out
+    }
+
+    function _copy(text: string): void {
+        _clip.text = text
+        _clip.selectAll()
+        _clip.copy()
+        _clip.text = ""
+    }
+
+    Flickable {
+        id: _flick
         anchors { fill: parent; margins: Theme.sp2 }
-        model:          root._entries
+        contentWidth:   width
+        contentHeight:  _out.contentHeight
         clip:           true
-        spacing:        2
         boundsBehavior: Flickable.StopAtBounds
+        QQC.ScrollBar.vertical: QQC.ScrollBar {
+            policy: QQC.ScrollBar.AsNeeded
+            contentItem: Rectangle { radius: 3; color: Theme.textDisabled; opacity: 0.6 }
+            background:  Rectangle { color: "transparent" }
+        }
 
         // Stick to the bottom like a terminal, but stop following when the
         // user scrolls up to read; resume when they return to the end.
         property bool _stick: true
-        onMovementEnded: _stick = atYEnd
-        onCountChanged:  Qt.callLater(() => { if (_stick) positionViewAtEnd() })
+        function _toEnd(): void { contentY = Math.max(0, contentHeight - height) }
+        onMovementEnded:    _stick = atYEnd
+        onContentHeightChanged: if (_stick) Qt.callLater(_flick._toEnd)
 
-        delegate: Item {
-            id: _row
-            required property var modelData
+        TextEdit {
+            id: _out
+            width:         _flick.width
+            readOnly:      true
+            selectByMouse: true
+            textFormat:    TextEdit.RichText
+            text:          root._richText
+            wrapMode:      TextEdit.Wrap
+            color:         Theme.textPrimary
+            font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
 
-            readonly property string _sqlOneLine:
-                (modelData.detail?.sql ?? "").replace(/\s+/g, " ").trim()
-
-            // What lands on the clipboard: the statement as written, then the
-            // stamped outcome, then the error if there was one — the block you
-            // paste back to whoever asked you to run the query, character for
-            // character what the row above shows.
-            function copyBlock(): string {
-                const sql   = _row.modelData.detail?.sql   ?? ""
-                const err   = _row.modelData.detail?.error ?? ""
-                const stamp = _row.modelData.timestamp ?? ""
-                let out = ""
-                if (sql.trim() !== "") out += sql.trim() + "\n"
-                out += "[" + stamp + "] " + (_row.modelData.message ?? "")
-                if (err !== "") out += "\n" + err
-                return out
-            }
-
-            width:  _lv.width
-            height: _lines.implicitHeight + 6
-
-            Rectangle {
-                anchors.fill: parent
-                radius:  Theme.radiusSm
-                color:   Theme.surfaceVariant
-                visible: _rowH.hovered
-            }
-            HoverHandler { id: _rowH }
-
-            ColumnLayout {
-                id: _lines
-                anchors {
-                    left: parent.left; right: parent.right
-                    verticalCenter: parent.verticalCenter
-                    leftMargin: Theme.sp2; rightMargin: Theme.sp2
-                }
-                spacing: 1
-
-                // Echo of the executed statement, collapsed to one line. It
-                // comes first because the outcome below is a sentence *about*
-                // it — the same order DataGrip's console uses.
-                Text {
-                    Layout.fillWidth: true
-                    visible: _row._sqlOneLine !== ""
-                    text:    _row._sqlOneLine
-                    color:   Theme.textSecondary
-                    font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
-                    elide:   Text.ElideRight
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: Theme.sp2
-
-                    Text {
-                        Layout.alignment: Qt.AlignTop
-                        text:  _row.modelData.timestamp ?? ""
-                        color: Theme.textDisabled
-                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        // Wraps rather than elides: the timing breakdown is the
-                        // point of the line, and it sits at the end of it.
-                        text:     _row.modelData.message ?? ""
-                        color:    root._levelColor(_row.modelData.level ?? "info")
-                        font { family: Theme.fontFamilyMono; pixelSize: Theme.textSm }
-                        wrapMode: Text.Wrap
-                    }
-
-                    Tooltip {
-                        text: _row._sqlOneLine !== "" ? "Copy statement and result"
-                                                      : "Copy message"
-                        visible: _rowH.hovered
-                        Button {
-                            iconOnly: true
-                            iconName: Icons.copy
-                            size:     Button.Size.Sm
-                            variant:  Button.Variant.Ghost
-                            onClicked: {
-                                _clip.text = _row.copyBlock()
-                                _clip.selectAll()
-                                _clip.copy()
-                                _clip.text = ""
-                            }
-                        }
-                    }
-                }
-
-                // Full error text, wrapped — errors deserve the space
-                Text {
-                    Layout.fillWidth: true
-                    visible:  (_row.modelData.level ?? "") === "error"
-                              && (_row.modelData.detail?.error ?? "") !== ""
-                    text:     _row.modelData.detail?.error ?? ""
-                    color:    Theme.error
-                    font { family: Theme.fontFamilyMono; pixelSize: Theme.textXs }
-                    wrapMode: Text.WrapAnywhere
+            ContextMenu {
+                anchor: _out
+                menuWidth: 190
+                model: [
+                    { label: "Copy",       act: "copy",   icon: Icons.copy,
+                      disabled: _out.selectedText === "" },
+                    { label: "Select all", act: "all",    icon: Icons.selectionAll,
+                      disabled: root._lines.length === 0 },
+                    null,
+                    { label: "Copy console", act: "whole", icon: Icons.clipboardText,
+                      disabled: root._lines.length === 0 },
+                ]
+                onTriggered: (index, item) => {
+                    // "Copy" hands over the selection as the user sees it;
+                    // "Copy console" goes through the plain lines instead, so a
+                    // whole session pasted into a chat window arrives as text
+                    // and not as a page of coloured markup.
+                    if (item.act === "copy")  _out.copy()
+                    if (item.act === "all")   _out.selectAll()
+                    if (item.act === "whole") root._copy(root._plainText)
                 }
             }
         }
@@ -152,11 +177,11 @@ Rectangle {
     // Jump back to the live tail after scrolling up
     Button {
         anchors { right: parent.right; bottom: parent.bottom; margins: Theme.sp3 }
-        visible:  !_lv._stick && _lv.count > 0
+        visible:  !_flick._stick && root._lines.length > 0
         text:     "Latest"
         iconName: Icons.arrowDown
         size:     Button.Size.Sm
-        onClicked: { _lv._stick = true; _lv.positionViewAtEnd() }
+        onClicked: { _flick._stick = true; _flick._toEnd() }
     }
 
     // Empty state

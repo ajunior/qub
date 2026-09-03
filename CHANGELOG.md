@@ -29,6 +29,20 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 - **Fix** Typing one dot too many no longer makes the completion popup ask a
   null for its columns. It never showed anything wrong — it stopped mid-refresh
   and left the previous suggestions on screen
+- **Feat** The Output console is one selectable text buffer instead of a list
+  of rows, and a statement takes two stamped lines: the SQL at the moment it
+  was sent, the outcome at the moment it came back. Rows could only ever hand
+  you a row at a time — a console you can drag a cursor through copies the
+  three lines you want as readily as the whole session, which is the thing
+  people go to a console for. Right-click adds Copy, Select all and Copy
+  console. The stamp on the statement is a real one: `QueryExecutor` now
+  records when the statement went out, rather than the console dating it by
+  the moment it finished
+- **Fix** Hovering a line in the Output console no longer nudges its text down.
+  The copy button appeared on hover inside a `RowLayout`, grew the row, and
+  everything in it that had no explicit alignment re-centred itself against
+  the taller row — including the message, which then sat a pixel below its own
+  timestamp
 - **Feat** `Settings → Editor → Keyword case in generated SQL` chooses between
   `SELECT * FROM users` and `select * from users` for the SQL qub writes for
   you — a table's browse button, a double-clicked table, a foreign-key jump.

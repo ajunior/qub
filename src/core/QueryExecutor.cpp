@@ -1,4 +1,5 @@
 #include "QueryExecutor.h"
+#include <QDateTime>
 #include <QRegularExpression>
 #include "AdapterProvider.h"
 #include "LogManager.h"
@@ -192,6 +193,7 @@ void QueryExecutor::execute(const QString &connectionName, const QString &sql)
     m_pendingTabId   = m_activeTabId;
     m_pendingSql     = sql;
     m_pendingConnName = connectionName;
+    m_pendingStartedAt = QDateTime::currentDateTime();
     tabResultModel(m_pendingTabId)->clear();
     emit executionStarted(connectionName, sql);
 
@@ -331,6 +333,7 @@ void QueryExecutor::onFinished()
                                       result.truncated, result.execMs, result.fetchMs,
                                       result.elapsedMs),
                         {{"sql", m_pendingSql},
+                         {"startedAt", m_pendingStartedAt.toString("yyyy-MM-dd HH:mm:ss.zzz")},
                          {"elapsedMs", result.elapsedMs},
                          {"execMs", result.execMs},
                          {"fetchMs", result.fetchMs},
@@ -342,6 +345,7 @@ void QueryExecutor::onFinished()
             m_log->post("error", "QUERY", m_pendingConnName,
                         "failed after " + formatDuration(result.elapsedMs),
                         {{"sql", m_pendingSql}, {"error", result.error},
+                         {"startedAt", m_pendingStartedAt.toString("yyyy-MM-dd HH:mm:ss.zzz")},
                          {"elapsedMs", result.elapsedMs},
                          {"execMs", result.execMs}, {"fetchMs", result.fetchMs}});
         emit executionError(result.error);
