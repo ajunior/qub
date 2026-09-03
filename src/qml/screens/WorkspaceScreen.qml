@@ -483,9 +483,16 @@ Item {
         root._fkList = c ? DatabaseInspector.foreignKeys(c) : []
     }
 
-    // Open the referenced/​referencing rows from an FK menu in a fresh tab.
-    function _openFkTab(sql: string, title: string): void {
+    // Run a query the user asked for by pointing at something — a foreign key,
+    // a table in the schema browser — in a tab of its own. Whatever is in the
+    // current editor is a piece of work in progress, and the answer to "show me
+    // this table" is not worth overwriting it with.
+    // The name is what the person pointed at — the table — so the strip reads
+    // "aircrafts | flights" instead of "Query 2 | Query 3", which says only how
+    // many times you have asked something.
+    function _runInNewTab(sql: string, name: string): void {
         root._newQueryTab(root.activeConnection)
+        root._nameTab(root._currentTabId, name)
         queryEditor.setSql(sql)
         root._runQuery()
     }
@@ -781,18 +788,27 @@ Item {
         return tabId === _currentTabId ? currentSql : (_tabSqlMap[tabId] ?? "")
     }
 
+    // Name a tab after whatever it was opened for — a file, a table. Silent
+    // where it cannot: an empty name, or one a neighbouring tab already
+    // answers to, leaves "Query 7" rather than putting two identical labels
+    // in the strip. A tab a person renamed by hand is never re-named here,
+    // because nothing calls this after the tab is open.
+    function _nameTab(tabId: int, name: string): void {
+        const label = (name ?? "").slice(0, 32)
+        const idx   = _queryTabs.findIndex(t => t.id === tabId)
+        if (!label || idx < 0) return
+        if (_queryTabs.some((t, i) => i !== idx && t.label === label)) return
+        const tabs = _queryTabs.slice()
+        tabs[idx]  = { id: tabs[idx].id, label, connectionName: tabs[idx].connectionName }
+        _queryTabs = tabs
+    }
+
     // A tab opened from a file answers to the file's name — "Query 7" tells you
     // nothing once the tab is bound. Only on open: a later save-as leaves a
     // label the person may well have chosen by hand.
     function _nameTabAfterFile(tabId: int, url: var): void {
         const base = decodeURIComponent(url.toString().split("/").pop() ?? "")
-        const name = base.replace(/\.sql$/i, "").slice(0, 32)
-        const idx  = _queryTabs.findIndex(t => t.id === tabId)
-        if (!name || idx < 0) return
-        if (_queryTabs.some((t, i) => i !== idx && t.label === name)) return
-        const tabs = _queryTabs.slice()
-        tabs[idx]  = { id: tabs[idx].id, label: name, connectionName: tabs[idx].connectionName }
-        _queryTabs = tabs
+        _nameTab(tabId, base.replace(/\.sql$/i, ""))
     }
 
     function _bindTabFile(tabId: int, url: var, sql: string): void {
@@ -1839,16 +1855,13 @@ Item {
                 onTableQuickBrowseRequested: (schema, name) => {
                     // Quoted per the connection's dialect rather than with a
                     // hardcoded double quote, which MySQL reads as a string.
-                    const kwCase = AppSettings.sqlKeywordCase
-                    const sql = Fk.kw('SELECT * FROM ', kwCase)
-                              + Fk.ident(_schemaTree._qualify(schema, name),
-                                         root._activeConn?.driver ?? "")
-                              + (root._limit > 0
-                                 ? Fk.kw(' LIMIT ', kwCase) + root._limit : '')
-                    queryEditor.setSql(sql)
-                    root._executingSql = sql
-                    QueryExecutor.activeTabId = root._currentTabId
-                    QueryExecutor.execute(root.activeConnection, sql)
+                    // No LIMIT here: _runQuery applies the row limit the same
+                    // way it does for the Run button, marker and all.
+                    const table = _schemaTree._qualify(schema, name)
+                    root._runInNewTab(
+                        Fk.kw('SELECT * FROM ', AppSettings.sqlKeywordCase)
+                        + Fk.ident(table, root._activeConn?.driver ?? ""),
+                        table)
                 }
                 onTableStatsRequested: (schema, name) => _tableStatsPopup.openFor(root.activeConnection, name)
                 onTableDdlRequested:   (schema, name) => _tableDdlPopup.openFor(root.activeConnection, name)
@@ -2498,7 +2511,7 @@ Item {
                                     onExportRequested: _csvDialog.open()
                                     onEditCommitted: (row, col, colName, newValue, oldValue) =>
                                         root._applyInlineEdit(row, col, colName, newValue)
-                                    onNavigateRequested: (sql, title) => root._openFkTab(sql, title)
+                                    onNavigateRequested: (sql, table) => root._runInNewTab(sql, table)
                                 }
 
                                 // DataGrip-style session console for the active connection

@@ -27,8 +27,9 @@ Rectangle {
     signal cellCopied(string value)
     signal exportRequested()
     signal editCommitted(int row, int col, string colName, string newValue, string oldValue)
-    // Emitted when the user follows a foreign key; carries the SELECT to open.
-    signal navigateRequested(string sql, string title)
+    // Emitted when the user follows a foreign key; carries the SELECT to open
+    // and the table it reads, which is what the new tab is named after.
+    signal navigateRequested(string sql, string table)
 
     color: Theme.surface
     // No frame: this fills a pane whose seams are already drawn — the
@@ -114,8 +115,9 @@ Rectangle {
     // ── Row viewer (record form) ──────────────────────────────────────────────
     property int _rowViewIdx: -1
 
-    // The current row as [{ name, value, fkSql, fkLabel }] — FK fields carry the
-    // navigation query (reuses fk.js), values are drilled into via the inspector.
+    // The current row as [{ name, value, fkSql, fkLabel, fkTable }] — FK fields
+    // carry the navigation query (reuses fk.js), values are drilled into via
+    // the inspector.
     readonly property var _rowFields: {
         if (!root.model || root._rowViewIdx < 0 || root._rowViewIdx >= root.model.count)
             return []
@@ -129,7 +131,8 @@ Rectangle {
                 value:   val,
                 fkSql:   fk ? Fk.selectBy(fk.toTable, fk.toColumn, val, root.driver,
                                           AppSettings.sqlKeywordCase) : "",
-                fkLabel: fk ? ("Go to " + fk.toTable + " row") : ""
+                fkLabel: fk ? ("Go to " + fk.toTable + " row") : "",
+                fkTable: fk ? fk.toTable : ""
             })
         }
         return out
@@ -475,6 +478,7 @@ Rectangle {
                     fk.push({ label: "Go to " + root._fkOut.toTable + " row",
                               icon: Icons.arrowSquareOut, act: "nav",
                               disabled: root._selVal === "",
+                              table: root._fkOut.toTable,
                               sql: Fk.selectBy(root._fkOut.toTable, root._fkOut.toColumn,
                                                root._selVal, root.driver,
                                                AppSettings.sqlKeywordCase) })
@@ -483,6 +487,7 @@ Rectangle {
                     fk.push({ label: "Rows in " + inc.fromTable + " (" + inc.fromColumn + ")",
                               icon: Icons.arrowBendUpLeft, act: "nav",
                               disabled: root._selVal === "",
+                              table: inc.fromTable,
                               sql: Fk.selectBy(inc.fromTable, inc.fromColumn,
                                                root._selVal, root.driver,
                                                AppSettings.sqlKeywordCase) })
@@ -508,7 +513,7 @@ Rectangle {
                         root.cellCopied(tsv)
                     }
                 } else if (item.act === "nav") {
-                    root.navigateRequested(item.sql, item.label)
+                    root.navigateRequested(item.sql, item.table)
                 } else if (item.act === "export") {
                     root.exportRequested()
                 } else if (item.act === "fitcol") {
@@ -701,7 +706,8 @@ Rectangle {
                                         cursorShape:  Qt.PointingHandCursor
                                         onClicked: {
                                             _rowDialog.close()
-                                            root.navigateRequested(delegateItem.modelData.fkSql, delegateItem.modelData.fkLabel)
+                                            root.navigateRequested(delegateItem.modelData.fkSql,
+                                                                   delegateItem.modelData.fkTable)
                                         }
                                     }
                                 }

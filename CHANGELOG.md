@@ -7,6 +7,20 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Feat** A tab opened by pointing at something is named after it. Browsing
+  `flights` from the schema panel opens a tab called `flights`, and following a
+  foreign key opens one called `aircrafts` — a strip reading "Query 2 | Query 3 |
+  Query 4" told you only how many times you had asked something, which is the
+  one thing you already knew. A name another tab already answers to is left
+  alone rather than repeated, and double-clicking a tab still renames it by hand
+- **Fix** Browsing a table from the schema panel opens a tab of its own instead
+  of overwriting the one you were working in. The ▶ button replaced the current
+  editor's contents with `SELECT * FROM table` and ran it, so looking up what was
+  in a table cost you the query you were in the middle of writing — the same
+  gesture a foreign-key jump already answered with a new tab. It now runs through
+  the same path the Run button does, which also means the result grid is editable
+  for a single-table browse, the connection's safety profile is consulted, and the
+  row limit is applied with the marker that lets a full export strip it back off
 - **Feat** A result column can be fitted to what is actually in it. Double-click
   the edge of a header, or right-click the header for **Fit "column" to
   contents**, **Fit all columns to contents** and **Reset column widths**.
