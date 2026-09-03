@@ -1236,9 +1236,15 @@ LIMIT $3</pre>
     <h3>Table actions menu</h3>
     <p>
       Hover over any table row to reveal a <strong>···</strong> button on the right.
-      Clicking it opens a menu with two actions:
+      Clicking it opens a menu with three actions:
     </p>
     <ul class="rules">
+      <li>
+        <strong>Copy name</strong>
+        Copies the table name to the clipboard, qualified with its schema
+        (<code>analytics.orders</code>) where the connection exposes more than one — the
+        same name the quick-browse button would have queried.
+      </li>
       <li>
         <strong>Statistics</strong>
         Opens a popup with row count, size, pages, dead rows, vacuum and analyze timestamps
@@ -1252,6 +1258,12 @@ LIMIT $3</pre>
         on SQLite, and reconstructs from <code>information_schema</code> on PostgreSQL.
       </li>
     </ul>
+
+    <h3>Schema actions menu</h3>
+    <p>
+      A schema row has a <strong>···</strong> button of its own, with
+      <strong>Copy name</strong> — the schema name alone, unqualified.
+    </p>
   </section>
 
   <hr />
