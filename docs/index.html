@@ -166,6 +166,9 @@
       max-width: 420px;
     }
     .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    /* View Source and Docs travel together: when the row does run out of
+       width, both drop to the next line rather than the last one alone. */
+    .hero-actions-sec { display: flex; gap: 10px; }
     .btn {
       display: inline-flex;
       align-items: center;
@@ -630,7 +633,7 @@
 <!-- ── Hero ─────────────────────────────────────────────────────────────── -->
 <div class="hero">
   <div class="hero-left">
-    <div class="hero-badge">Open Source &nbsp;·&nbsp; GPL v3 &nbsp;·&nbsp; v0.44.9</div>
+    <div class="hero-badge">Open Source &nbsp;·&nbsp; GPL v3 &nbsp;·&nbsp; <span id="hero-version">v0.44.9</span></div>
     <div class="hero-name">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="20 16 60 68">
         <defs>
@@ -668,8 +671,10 @@
           </div>
         </div>
       </div>
-      <a class="btn btn-ghost" href="https://github.com/ajunior/qub">View Source</a>
-      <a class="btn btn-ghost" href="help.html">Docs</a>
+      <div class="hero-actions-sec">
+        <a class="btn btn-ghost" href="https://github.com/ajunior/qub">View Source</a>
+        <a class="btn btn-ghost" href="help.html">Docs</a>
+      </div>
     </div>
   </div>
 
@@ -993,7 +998,11 @@
         meta.textContent = meta.textContent.split(' ')[0] + '  ' + size(hit.size);
         if (os && a.getAttribute('data-os') === os) main.href = hit.browser_download_url;
       });
-      if (tag && os) main.textContent = 'Download for ' + TARGETS[os].label + ' ' + tag;
+      // Only the badge carries the version. Putting it on the button too
+      // repeated it, and widened the button after the row had already been
+      // laid out — enough, on a narrow window, to push Docs onto its own line.
+      var hv = document.getElementById('hero-version');
+      if (tag && hv) hv.textContent = 'v' + tag;
     })
     .catch(function () { /* the pinned links above are already in place */ });
 })();
