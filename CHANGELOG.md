@@ -7,6 +7,19 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Feat** Double-clicking a schema in the browser inserts its name in the
+  editor, and a table outside the default schema is now qualified with it —
+  both when double-clicked and when its browse button runs a query. The tree
+  could show you every schema and only query one: an unqualified name resolves
+  against exactly one of them (`search_path` in PostgreSQL, the current
+  database in MySQL), so browsing `analytics.users` ran `SELECT * FROM users`
+  and failed on a table `public` does not have. Qualified only where the
+  connection exposes more than one schema, so SQLite never grows a `"main".`
+  prefix
+- **Fix** The browse button quoted table names with a double quote whatever the
+  connection was, which MySQL reads as a string literal rather than an
+  identifier — so on MySQL that button had never worked. It now quotes per the
+  connection's dialect
 - **Fix** Docker discovery finds Postgres containers whose image is not called
   "postgres" — postgis, timescale, pgvector, citus, supabase. They were skipped
   outright, so the browse list simply had no row for them, which reads as "that
