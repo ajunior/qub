@@ -1982,18 +1982,23 @@ Item {
                                         font { family: Theme.fontFamily; pixelSize: Theme.textSm }
                                     }
 
+                                    // The three names only mean anything relative to
+                                    // each other, so each carries its multiplier. The
+                                    // values also have to include the default, or a
+                                    // fresh install shows three unselected buttons.
                                     Row {
                                         spacing: 6
                                         Repeater {
                                             model: [
-                                                { label: "Compact",     value: 1.2 },
-                                                { label: "Normal",      value: 1.0 },
-                                                { label: "Comfortable", value: 1.5 },
+                                                { label: "Compact",     value: 1.0 },
+                                                { label: "Normal",      value: 1.3 },
+                                                { label: "Comfortable", value: 1.6 },
                                             ]
                                             delegate: Button {
                                                 id: delegateItem9
                                                 required property var modelData
                                                 text:    delegateItem9.modelData.label
+                                                         + " (" + delegateItem9.modelData.value.toFixed(1) + ")"
                                                 variant: Math.abs(AppSettings.lineHeight - delegateItem9.modelData.value) < 0.01
                                                          ? Button.Variant.Filled
                                                          : Button.Variant.Outlined
@@ -2013,27 +2018,43 @@ Item {
                                         font { family: Theme.fontFamily; pixelSize: Theme.textSm }
                                     }
 
-                                    Row {
-                                        spacing: 6
-                                        Repeater {
-                                            model: [2, 4, 8]
-                                            delegate: Button {
-                                                id: delegateItem10
-                                                required property int modelData
-                                                text:    delegateItem10.modelData + " spaces"
-                                                variant: AppSettings.tabSize === delegateItem10.modelData
-                                                         ? Button.Variant.Filled
-                                                         : Button.Variant.Outlined
-                                                onClicked: AppSettings.tabSize = delegateItem10.modelData
+                                    // How wide an indent is and what Tab actually
+                                    // inserts are one decision, so they share a line.
+                                    RowLayout {
+                                        Layout.fillWidth: true
+                                        spacing: Theme.sp5
+
+                                        Row {
+                                            spacing: 6
+                                            Repeater {
+                                                model: [2, 4, 8]
+                                                delegate: Button {
+                                                    id: delegateItem10
+                                                    required property int modelData
+                                                    text:    delegateItem10.modelData + " spaces"
+                                                    variant: AppSettings.tabSize === delegateItem10.modelData
+                                                             ? Button.Variant.Filled
+                                                             : Button.Variant.Outlined
+                                                    onClicked: AppSettings.tabSize = delegateItem10.modelData
+                                                }
                                             }
                                         }
-                                    }
-                                }
 
-                                Toggle {
-                                    text: "Insert spaces when pressing Tab (instead of a tab character)"
-                                    checked: AppSettings.insertSpacesForTab
-                                    onCheckedChanged: AppSettings.insertSpacesForTab = checked
+                                        // Short on the row, with the rest on hover —
+                                        // the long form pushed the buttons off-centre.
+                                        Tooltip {
+                                            Layout.alignment: Qt.AlignVCenter
+                                            text: "Off, Tab inserts a tab character"
+
+                                            Toggle {
+                                                text: "Insert spaces when pressing Tab"
+                                                checked: AppSettings.insertSpacesForTab
+                                                onCheckedChanged: AppSettings.insertSpacesForTab = checked
+                                            }
+                                        }
+
+                                        Item { Layout.fillWidth: true }
+                                    }
                                 }
 
                                 NumberInput {

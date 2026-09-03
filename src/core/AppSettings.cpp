@@ -158,7 +158,8 @@ void AppSettings::setHighlightCurrentLine(bool value) {
     emit highlightCurrentLineChanged();
 }
 
-// 1.0 packs the lines tight enough that a long statement reads as a block.
+// 1.3 is the "Normal" preset on the settings page; at 1.0 a long statement
+// packs tight enough to read as one block.
 double AppSettings::lineHeight() const { return m_settings.value("lineHeight", 1.3).toDouble(); }
 void AppSettings::setLineHeight(double value) {
     if (lineHeight() == value) return;
