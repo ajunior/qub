@@ -353,7 +353,6 @@
   <div class="section-label">Getting started</div>
   <ul>
     <li><a href="#overview">Overview</a></li>
-    <li><a href="#installing">Installing</a></li>
     <li><a href="#connections">Connections</a></li>
   </ul>
   <div class="section-label">Editor</div>
@@ -456,114 +455,6 @@
         <span>Full palette customization. Ships with 4 built-in themes and supports custom JSON themes.</span>
       </div>
     </div>
-  </section>
-
-  <hr />
-
-  <!-- ── Installing ─────────────────────────────────────── -->
-  <section id="installing">
-    <h2>Installing</h2>
-    <p>
-      Every release carries three files: a <code>.dmg</code> for macOS, a
-      <code>-setup.exe</code> for Windows and an <code>.AppImage</code> for Linux.
-      The macOS build is signed and notarized, so it opens like any other app;
-      the Windows and Linux builds are not signed, and each stops you once the
-      first time you open it. That stop says nothing about the download, and
-      getting past it takes about thirty seconds.
-    </p>
-    <p>
-      Signed or not, every release also carries a
-      <code>SHA256SUMS.txt</code> beside the three files. Put it in the same
-      folder as your download and you can tell a good copy from a truncated or
-      tampered one:
-    </p>
-    <pre>sha256sum -c SHA256SUMS.txt --ignore-missing      # Linux
-shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS</pre>
-    <p>
-      <code>--ignore-missing</code> checks the file you actually downloaded and
-      stays quiet about the two you did not. On Windows,
-      <code>certutil -hashfile &lt;file&gt; SHA256</code> prints the hash to
-      compare against the line in the file.
-    </p>
-
-    <h3>macOS &mdash; the first launch</h3>
-    <p>
-      The app inside the DMG is signed with a Developer ID certificate and
-      notarized by Apple, and the notarization ticket is stapled into the DMG
-      itself &mdash; so the check passes even on a Mac that is offline. Opening it is
-      two clicks:
-    </p>
-    <ol class="steps">
-      <li><p>Drag qub to <strong>Applications</strong>, as the DMG window shows.</p></li>
-      <li><p>Double-click it. macOS says <em>&ldquo;qub&rdquo; is an app downloaded
-        from the Internet. Are you sure you want to open it?</em> &mdash; click
-        <strong>Open</strong>.</p></li>
-    </ol>
-    <p>
-      That question is quarantine, not Gatekeeper: macOS asks it once about
-      anything that arrived from a browser, signed or not, and it does not come
-      back. There is no trip through System Settings and no control-click detour.
-    </p>
-
-    <div class="callout note">
-      <span class="icon">◆</span>
-      <p>If you do see <em>&ldquo;Apple could not verify&hellip;&rdquo;</em> or
-      <em>&ldquo;qub&rdquo; is damaged and can't be opened</em>, something changed
-      the file after Apple signed it &mdash; an interrupted download, or a copy that
-      passed through something that rewrote it. Check it against
-      <code>SHA256SUMS.txt</code> on the release page and download it again; the
-      answer is not to strip the quarantine attribute.</p>
-    </div>
-
-    <div class="callout warn">
-      <span class="icon">⚠</span>
-      <p><strong>Apple Silicon only.</strong> The DMG is built on an arm64 runner, so
-      it runs on M-series Macs. There is no Intel or universal build — on an Intel
-      Mac, build from source.</p>
-    </div>
-
-    <h3>macOS &mdash; the keychain asks on first use</h3>
-    <p>
-      The first time qub reads a saved password, Keychain asks for permission &mdash;
-      once per stored password, so a first launch with three saved connections asks
-      three times. Answer <strong>Always Allow</strong> and it stops asking. What is
-      stored, and how to inspect or revoke it, is under
-      <a href="#connections">Passwords and the system keychain</a>.
-    </p>
-    <p>
-      The permission Keychain records is bound to the signature of the binary that
-      asked for it, which is why the answer sticks across updates now: every release
-      is signed with the same Developer ID, so each new version is the same
-      application as far as Keychain is concerned. Two cases still re-prompt once,
-      and both are the same reason &mdash; a different signature:
-    </p>
-    <ul>
-      <li><p>Upgrading from a build that predates signing, whose passwords were
-        stored under an ad-hoc signature derived from that build.</p></li>
-      <li><p>A qub you built from source, which is signed ad-hoc and so is a new
-        application on every rebuild.</p></li>
-    </ul>
-
-    <h3>Windows and Linux</h3>
-    <table>
-      <thead><tr><th>System</th><th>What you see, and what to do</th></tr></thead>
-      <tbody>
-        <tr>
-          <td>Windows</td>
-          <td>The installer is unsigned, so SmartScreen shows <em>Windows protected
-            your PC</em>. Click <strong>More info</strong>, then
-            <strong>Run anyway</strong>.</td>
-        </tr>
-        <tr>
-          <td>Linux</td>
-          <td>Make the AppImage executable and run it:
-            <code>chmod +x qub-*.AppImage</code>. On a distribution without FUSE 2
-            installed it refuses to mount itself — either install
-            <code>libfuse2</code>, or run it as
-            <code>./qub-*.AppImage --appimage-extract-and-run</code>.</td>
-        </tr>
-      </tbody>
-    </table>
   </section>
 
   <hr />
@@ -693,6 +584,33 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS</pre>
       <tr><td>QOCI</td><td>Oracle</td><td>Oracle Instant Client</td></tr>
       <tr><td>QIBASE</td><td>Firebird</td><td>libfbclient</td></tr>
     </table>
+
+    <p>
+      Which of those a copy of qub can actually load is decided by Qt, not by qub: the official
+      Qt binaries the macOS and Windows builds are made with carry no MySQL/MariaDB driver at
+      all, and the macOS ones none for Oracle or Firebird. The macOS DMG is the exception &mdash;
+      it ships a MySQL/MariaDB plugin qub compiles itself. qub lists only the drivers the copy
+      you are running found, so the connection form never offers one that would fail on you.
+    </p>
+    <table>
+      <tr><th>Driver</th><th>Linux &middot; AppImage</th><th>macOS &middot; DMG</th><th>Windows &middot; installer</th></tr>
+      <tr><td>QSQLITE</td><td>bundled</td><td>bundled</td><td>bundled</td></tr>
+      <tr><td>QPSQL</td><td>bundled</td><td>bundled</td><td>bundled</td></tr>
+      <tr><td>QODBC</td><td>bundled</td><td>bundled</td><td>system unixODBC</td></tr>
+      <tr><td>QMYSQL / QMARIADB</td><td>bundled</td><td>bundled</td><td><em>no plugin</em></td></tr>
+      <tr><td>QIBASE</td><td>bundled</td><td><em>no plugin</em></td><td>bring <code>fbclient.dll</code></td></tr>
+      <tr><td>QOCI</td><td><em>not bundled</em></td><td><em>no plugin</em></td><td>bring Instant Client</td></tr>
+    </table>
+
+    <div class="callout info">
+      <span class="icon">&#8505;</span>
+      <p><em>No plugin</em> means nothing you install will help — only a qub built against a Qt
+      compiled with that driver, which is what the macOS DMG does for MySQL: it carries a plugin
+      built during packaging against MariaDB Connector/C, and the client library alongside it.
+      Oracle is left out of the AppImage because its client library is not
+      redistributable. Building qub from source, every client library is your
+      system&rsquo;s and every driver Qt built is available.</p>
+    </div>
 
     <div class="callout info">
       <span class="icon">ℹ</span>
@@ -1804,15 +1722,6 @@ grouped by country, sorted by count descending
   <section id="shortcuts">
     <h2>Keyboard shortcuts</h2>
 
-    <div class="callout note">
-      <span class="icon">⌘</span>
-      <p>The tables below are written the way a PC keyboard is labelled. On macOS
-      <kbd>Ctrl</kbd> is Command (<kbd>⌘</kbd>) and <kbd>Alt</kbd> is Option
-      (<kbd>⌥</kbd>) &mdash; qub itself prints the shortcuts with the Mac symbols
-      when it runs there, so the panel behind <kbd>?</kbd> always matches the
-      keyboard in front of you.</p>
-    </div>
-
     <h3>Query editor</h3>
     <table>
       <tr><th>Action</th><th>Shortcut</th></tr>
@@ -1844,11 +1753,10 @@ grouped by country, sorted by count descending
     <h3>Files</h3>
     <table>
       <tr><th>Action</th><th>Shortcut</th></tr>
-      <tr><td>Save query to a <code>.sql</code> file</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
-      <tr><td>Save selection as a snippet</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
+      <tr><td>Save selection as snippet</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd></td></tr>
+      <tr><td>Save to file</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd></td></tr>
       <tr><td>Open file</td><td><kbd>Ctrl</kbd>+<kbd>O</kbd></td></tr>
       <tr><td>Export as CSV</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd></td></tr>
-      <tr><td>View selected row</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td></tr>
     </table>
 
     <h3>Panels</h3>
@@ -1863,40 +1771,6 @@ grouped by country, sorted by count descending
       <tr><td>Command palette</td><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td></tr>
       <tr><td>Show keyboard shortcuts</td><td><kbd>?</kbd></td></tr>
     </table>
-
-    <h3>One panel at a time</h3>
-    <p>
-      Adding <kbd>Shift</kbd> to a panel number gives that panel the whole
-      window: everything else is hidden. The same keystroke brings the layout
-      back &mdash; the one you had, not the default, because qub takes a
-      snapshot of the arrangement on the way in. Toggling any panel by hand
-      afterwards ends focus mode, since the snapshot then describes a layout
-      you have moved on from.
-    </p>
-    <table>
-      <tr><th>Action</th><th>Shortcut</th><th>macOS</th></tr>
-      <tr><td>Focus schema panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>1</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>1</kbd></td></tr>
-      <tr><td>Focus query editor</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>2</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>2</kbd></td></tr>
-      <tr><td>Focus results panel</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>3</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>3</kbd></td></tr>
-      <tr><td>Focus sidebar</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>4</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>4</kbd></td></tr>
-      <tr><td>Focus editor and preview</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>5</kbd></td><td><kbd>⌘</kbd><kbd>⌥</kbd><kbd>5</kbd></td></tr>
-    </table>
-    <div class="callout note">
-      <span class="icon">◆</span>
-      <p>macOS keeps <kbd>⌘</kbd><kbd>⇧</kbd><kbd>3</kbd> and
-      <kbd>⌘</kbd><kbd>⇧</kbd><kbd>4</kbd> for its own screenshots, and takes
-      them before any application is asked. That is why focus mode also answers
-      to Option in place of Shift, and why the Mac column above is the one qub
-      shows you there. Both spellings work on every platform.</p>
-    </div>
-
-    <p>
-      The markdown preview is not a panel of its own &mdash; it shares the
-      editor's split &mdash; so focusing it leaves the editor and the preview
-      up together. There is also a <em>Restore panel layout</em> entry in the
-      command palette (<kbd>Ctrl</kbd>+<kbd>P</kbd>) for getting out without
-      remembering which panel you zoomed into.
-    </p>
   </section>
 
 </main>
