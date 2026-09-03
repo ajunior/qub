@@ -7,6 +7,9 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Fix** Typing one dot too many no longer makes the completion popup ask a
+  null for its columns. It never showed anything wrong — it stopped mid-refresh
+  and left the previous suggestions on screen
 - **Feat** A live share can end by itself. `Settings → Sharing → Stop sharing
   after` takes a number of minutes; the toolbar counts down, warns a minute out
   and says so when the session closes. The failure mode of live share was never
