@@ -31,6 +31,10 @@ Item {
     readonly property var _usableConnections:
         ConnectionManager.connections.filter(c => workspaceConnections.indexOf(c.name) !== -1)
     // The active tab points at a connection this workspace may actually use.
+    // A tab whose connection was deleted or dropped from the workspace is never
+    // retargeted: it keeps its SQL and its target name and renders disabled
+    // until a same-named connection exists again. (Silently moving a query from
+    // staging to prod is exactly the wrong favour to do someone.)
     readonly property bool _activeTabUsable:
         activeConnection !== "" && _usableConnections.some(c => c.name === activeConnection)
 
@@ -336,24 +340,6 @@ Item {
     property int  _activeQueryTabIdx: 0
     property int  _nextTabId:         1
 
-    // Connection new tabs are opened on — set from the top-bar dropdown. This is
-    // purely a template; it never retargets an existing tab. Each tab keeps its
-    // own connection (changed via its color-coded dot menu).
-    property string _defaultConnection: ""
-    // The dropdown is a template for new tabs, not a mirror of the active tab,
-    // so an explicit pick is left alone. What is never right is a template that
-    // is empty or points outside the workspace while the user is sitting on a
-    // working connection — re-derive it whenever that can have happened.
-    function _syncDefaultConnection(): void {
-        if (_defaultConnection !== "" && _inWorkspace(_defaultConnection)
-            && _connExists(_defaultConnection))
-            return
-        _defaultConnection = _activeTabUsable ? activeConnection
-                                              : _firstUsableConnection()
-                          || _firstUsableConnection()
-    }
-    onActiveConnectionChanged:   _syncDefaultConnection()
-    on_UsableConnectionsChanged: _syncDefaultConnection()
     property var  _tabSqlMap:         ({})   // { tabId: sqlString } — only written on tab switch
     property var  _tabCursorMap:      ({})   // { tabId: cursorPosition }
 
@@ -837,7 +823,6 @@ Item {
         _queryTabs         = tabs
         _activeQueryTabIdx = activeIdx
         const at = tabs[activeIdx]
-        _defaultConnection = at.connectionName || _firstUsableConnection()
         queryEditor.setSql(sqlMap[at.id] ?? "")
         queryEditor.setDecorations([])
         _applyCursor(at.id)
@@ -909,7 +894,9 @@ Item {
         // an unrunnable tab claiming a connection that never existed. Callers
         // pass "" explicitly; this rejects the sentinel in case one forgets.
         const conn = (connName && connName !== "undefined")
-                   ? connName : root._defaultConnection
+                   ? connName
+                   : (root._activeTabUsable ? root.activeConnection
+                                            : root._firstUsableConnection())
         const tabs = _queryTabs.concat([{ id: newId, label: "Query " + newId, connectionName: conn }])
         _queryTabs = tabs
         _tabSwitching = true
@@ -1298,14 +1285,18 @@ Item {
                 Rectangle { width: 1; height: 14; color: Theme.border; Layout.alignment: Qt.AlignVCenter; opacity: 0.5 }
                 Item { Layout.preferredWidth: Theme.sp2 }
 
-                // ── Default-connection dropdown ───────────────────────────────
-                // Picks the connection new tabs open on; never retargets a tab.
+                // ── Connection dropdown ───────────────────────────────────────
+                // The connection the tab you are on runs against — the same thing
+                // that tab's own colour dot picks, and the same name the status
+                // bar reports. A second, differently scoped connection name up
+                // here read as the current one, and was wrong for every tab but
+                // whichever one happened to match it.
                 Tooltip {
-                    text: "Default connection for new tabs — an offline one connects when picked"
+                    text: "Connection this tab runs on — an offline one connects when picked"
                     Button {
                         id:       _connBtn
                         iconName: Icons.database
-                        text:     root._defaultConnection || "No connection"
+                        text:     root.activeConnection || "No connection"
                         size:     Button.Size.Sm
                         variant:  Button.Variant.Ghost
                         onClicked: _connMenu.open()
@@ -1317,12 +1308,12 @@ Item {
                     anchor: _connBtn
                     // Only connections in this workspace are offered. The row icon
                     // is the connection's state, in the same two symbols the status
-                    // bar uses; the check mark is which one new tabs open on.
+                    // bar uses; the check mark is the one this tab is on.
                     model: {
                         const items = root._usableConnections.map(c => ({
                             label:   c.name,
                             icon:    c.connected ? Icons.checkCircle : Icons.xCircle,
-                            checked: c.name === root._defaultConnection,
+                            checked: c.name === root.activeConnection,
                             _conn:   c.name,
                             _down:   !c.connected
                         }))
@@ -1332,13 +1323,12 @@ Item {
                     }
                     onTriggered: (index, item) => {
                         if (item._conn !== undefined) {
-                            root._defaultConnection = item._conn
+                            root._setActiveTabConnection(item._conn)
                             // Picking an offline connection opens it. Otherwise the
                             // only way in was the reconnect button, which acts on the
                             // active tab's connection alone and hides itself while
                             // that one is up — so a second, offline connection could
                             // only be reached by leaving for the home screen.
-                            root._adoptIfUnassigned(item._conn)
                             if (item._down) {
                                 _toaster.show("Connecting to " + item._conn + "…", Toaster.Type.Info)
                                 ConnectionManager.reconnect(item._conn)
@@ -2679,12 +2669,6 @@ Item {
             _toaster.show("Reconnected. Retrying query…", Toaster.Type.Success)
             QueryExecutor.execute(root.activeConnection, root._executingSql)
         }
-        function onConnectionRemoved(name: string): void {
-            // Never retarget tabs — they keep their SQL and target name, and
-            // render disabled until a same-named connection exists again.
-            // (Silent retargeting is exactly wrong in a prod/staging split.)
-            root._syncDefaultConnection()
-        }
         function onConnectionRenamed(oldName: string, newName: string): void {
             if (!oldName || !newName || oldName === newName) return
 
@@ -2707,8 +2691,6 @@ Item {
                 root._queryTabs = tabs
                 root._sessionDirty = true
             }
-            if (root._defaultConnection === oldName)
-                root._defaultConnection = newName
         }
         function onConnectionError(name: string, error: string): void {
             if (root._reconnectRetryPending && name === root.activeConnection) {
@@ -3418,8 +3400,7 @@ Item {
                 const ws = WorkspaceManager.workspace(id)
                 root.workspaceName     = ws.name ?? root.workspaceName
                 root.workspaceConnections = ws.connections ?? []
-                root._syncDefaultConnection()
-                root._adoptIfUnassigned(root._defaultConnection)
+                root._adoptIfUnassigned(root._firstUsableConnection())
             }
         }
     }
