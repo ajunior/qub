@@ -1003,6 +1003,17 @@ LIMIT $3</pre>
       shows the row count and execution time.
     </p>
 
+    <h3>Status bar</h3>
+    <p>
+      The left of the status bar says where the next statement will land, read left to
+      right: the kind of database (with a check mark while the connection is up), the
+      database itself, and — on PostgreSQL and Oracle, where a schema is a separate
+      thing from a database — the schema an unqualified table name resolves to, each
+      with its own icon. A <code>SET search_path</code> or <code>USE</code> you run
+      moves it, so the schema shown is the live one rather than the one the connection
+      was created with.
+    </p>
+
     <h3>Output console</h3>
     <p>
       Next to <strong>Results</strong> sits an <strong>Output</strong> tab — a console-style

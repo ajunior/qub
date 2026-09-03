@@ -28,6 +28,16 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
   The table name arrives qualified with its schema exactly where an unqualified
   one would resolve against a different table — the rule the browse button
   already follows
+- **Feat** The status bar names the database and the schema a statement is about
+  to run against — `PostgreSQL | sctai_platform_study_db | public` — in place of
+  the connection's name, which the picker two rows up was already showing. The
+  name is a label you chose; it cannot tell you which `orders` you are about to
+  touch, and on a connection whose `search_path` has moved it says nothing at
+  all. Both are asked of the server rather than read off the saved connection,
+  so a `SET search_path` or a `USE` updates them. The schema gets an icon of its
+  own instead of borrowing the database's, and is shown only where a schema is a
+  different thing from a database: MySQL and SQLite would have repeated the
+  database name under a second label
 - **Feat** Double-clicking a schema in the browser inserts its name in the
   editor, and a table outside the default schema is now qualified with it —
   both when double-clicked and when its browse button runs a query. The tree

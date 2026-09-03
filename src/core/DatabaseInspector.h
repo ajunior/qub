@@ -36,6 +36,14 @@ public:
     // `connB` the comparison. See SchemaDiff::compare for the returned shape.
     Q_INVOKABLE QVariantMap  schemaDiff(const QString &connA, const QString &connB) const;
 
+    // Where a statement typed right now would land: the database it runs in
+    // and — only where the two are different things — the schema an unqualified
+    // name resolves to. `schema` comes back empty on MySQL and SQLite, whose
+    // schema *is* the database: repeating the same word under a second label
+    // would say nothing. Empty map when not connected.
+    //   { database: "shop", schema: "public" }
+    Q_INVOKABLE QVariantMap  currentContext(const QString &connectionName) const;
+
     // Instantaneous, cheap scalar health metrics for the active database.
     // Returns raw counters/gauges; the UI keeps history and derives rates.
     // Empty map when not connected.
