@@ -2128,24 +2128,42 @@ Item {
                                     font.letterSpacing: 1.5
                                 }
 
-                                NumberInput {
-                                    label: "History limit"
-                                    value: AppSettings.historyLimit
-                                    min: 10; max: 1000; step: 10
-                                    onValueChanged: if (value !== AppSettings.historyLimit) AppSettings.historyLimit = value
-                                }
+                                // Three controls of three different shapes, each
+                                // on its own line, read as a ragged list rather
+                                // than a section. They are all one subject — what
+                                // qub remembers between sessions — so they share a
+                                // line, bottom-aligned to the number field so the
+                                // spinner's label does not push it out of line.
+                                // Clearing sits apart on the right: it is the one
+                                // that destroys something.
+                                RowLayout {
+                                    Layout.fillWidth: true
+                                    spacing: Theme.sp5
 
-                                Toggle {
-                                    text: "Restore cursor position in editor tabs"
-                                    checked: AppSettings.preserveCursorPosition
-                                    onCheckedChanged: AppSettings.preserveCursorPosition = checked
-                                }
+                                    NumberInput {
+                                        label: "History limit"
+                                        value: AppSettings.historyLimit
+                                        min: 10; max: 1000; step: 10
+                                        Layout.alignment: Qt.AlignBottom
+                                        onValueChanged: if (value !== AppSettings.historyLimit) AppSettings.historyLimit = value
+                                    }
 
-                                Button {
-                                    text:     "Clear history"
-                                    iconName: Icons.trash
-                                    variant:  Button.Variant.Outlined
-                                    onClicked: _historyClearConfirm.isOpen = true
+                                    Toggle {
+                                        text: "Restore cursor position in editor tabs"
+                                        checked: AppSettings.preserveCursorPosition
+                                        Layout.alignment: Qt.AlignBottom
+                                        onCheckedChanged: AppSettings.preserveCursorPosition = checked
+                                    }
+
+                                    Item { Layout.fillWidth: true }
+
+                                    Button {
+                                        text:     "Clear history"
+                                        iconName: Icons.trash
+                                        variant:  Button.Variant.Outlined
+                                        Layout.alignment: Qt.AlignBottom
+                                        onClicked: _historyClearConfirm.isOpen = true
+                                    }
                                 }
                             }
 
