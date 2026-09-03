@@ -7,6 +7,12 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Fix** The completion popup only opens while you are typing. Clicking into
+  a word, or arrowing through one, used to open it over text you were only
+  reading: the caret landing inside `SELECT` counted as a five-character
+  prefix and offered to complete it. Nor does text the editor loads on its own
+  open it — switching tabs, formatting, inserting a snippet. Autocomplete
+  itself is still a setting (Settings → Editor)
 - **Fix** The Schema graph is asked for on a schema — from that row's `···`
   menu in the browser — rather than on the whole connection from the toolbar.
   On a 754-table database the old scope froze qub for seconds (the layout

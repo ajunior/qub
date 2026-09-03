@@ -23,7 +23,13 @@ Item {
         return _editor.code.substring(0, pos).split('\n').length
     }
 
-    function setSql(value: var): void { _editor.code = value }
+    // Loading a tab, formatting, inserting a snippet: text arriving in the
+    // editor that the user did not type asks for no suggestions, however much
+    // of a prefix the caret happens to land on.
+    function setSql(value: var): void {
+        _editor.code = value
+        _items       = []
+    }
     function insertAtCursor(text: var): void { _editor.insertAtCursor(text) }
 
     // CodeEditor exposes cursorPosition as a read-only alias, so we move the
@@ -139,11 +145,31 @@ Item {
     }
 
     // ── Reactions ─────────────────────────────────────────────────────────────
+
+    // True only for as long as the signals of one edit are being delivered.
+    // Qt.callLater runs once control returns to the event loop, so every
+    // signal the same keystroke emits still sees it set, and the next thing
+    // the user does — a click, an arrow key — no longer does.
+    property bool _editing: false
+    function _endEdit(): void { root._editing = false }
+
     Connections {
         target: _editor
-        // Text/cursor changes → refresh suggestions
-        function onCodeChanged()           { root._refresh() }
-        function onCursorPositionChanged() { root._refresh() }
+        // An edit refreshes the suggestions.
+        function onCodeChanged() {
+            root._editing = true
+            root._refresh()
+            Qt.callLater(root._endEdit)
+        }
+        // The caret riding along with an edit refreshes too — the two signals
+        // arrive in either order. The caret moving on its own does not: it
+        // means the user clicked into a word or arrowed through one, and
+        // opening a list of completions over text they were only reading is
+        // the popup getting in the way of the editor.
+        function onCursorPositionChanged() {
+            if (root._editing) root._refresh()
+            else               root._items = []
+        }
         // Focus lost → dismiss
         function onActiveFocusChanged()    { if (!_editor.activeFocus) root._items = [] }
         // Key routing from CodeEditor when completionActive
