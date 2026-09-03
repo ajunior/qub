@@ -3,6 +3,7 @@
 #include <QObject>
 #include "QmlSingleton.h"
 #include <QSettings>
+#include <QStringList>
 #include <QUrl>
 
 class AppSettings : public QObject {
@@ -48,6 +49,10 @@ public:
     Q_PROPERTY(double lineHeight               READ lineHeight               WRITE setLineHeight               NOTIFY lineHeightChanged)
     Q_PROPERTY(int    tabSize                  READ tabSize                  WRITE setTabSize                  NOTIFY tabSizeChanged)
     Q_PROPERTY(bool   insertSpacesForTab       READ insertSpacesForTab       WRITE setInsertSpacesForTab       NOTIFY insertSpacesForTabChanged)
+    // Keys of the optional result panes the user has switched off. Results and
+    // Output are not in the vocabulary: a result pane with no way back to the
+    // result is not a state worth being able to reach.
+    Q_PROPERTY(QStringList hiddenResultTabs    READ hiddenResultTabs         WRITE setHiddenResultTabs         NOTIFY hiddenResultTabsChanged)
     Q_PROPERTY(QString aiProvider  READ aiProvider  WRITE setAiProvider  NOTIFY aiProviderChanged)
     Q_PROPERTY(QString aiModel     READ aiModel     WRITE setAiModel     NOTIFY aiModelChanged)
     Q_PROPERTY(QString aiOllamaUrl READ aiOllamaUrl WRITE setAiOllamaUrl NOTIFY aiOllamaUrlChanged)
@@ -78,6 +83,7 @@ public:
     double lineHeight() const;
     int    tabSize()    const;
     bool   insertSpacesForTab() const;
+    QStringList hiddenResultTabs() const;
     QString aiProvider()  const;
     QString aiModel()     const;
     QString aiOllamaUrl() const;
@@ -112,6 +118,7 @@ public:
     void setLineHeight(double value);
     void setTabSize(int value);
     void setInsertSpacesForTab(bool value);
+    void setHiddenResultTabs(const QStringList &value);
     void setAiProvider(const QString &value);
     void setAiModel(const QString &value);
     void setAiOllamaUrl(const QString &value);
@@ -162,6 +169,7 @@ signals:
     void lineHeightChanged();
     void tabSizeChanged();
     void insertSpacesForTabChanged();
+    void hiddenResultTabsChanged();
     void aiProviderChanged();
     void aiModelChanged();
     void aiOllamaUrlChanged();

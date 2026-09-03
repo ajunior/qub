@@ -167,6 +167,15 @@ void AppSettings::setLineHeight(double value) {
     emit lineHeightChanged();
 }
 
+QStringList AppSettings::hiddenResultTabs() const {
+    return m_settings.value("hiddenResultTabs").toStringList();
+}
+void AppSettings::setHiddenResultTabs(const QStringList &value) {
+    if (hiddenResultTabs() == value) return;
+    m_settings.setValue("hiddenResultTabs", value);
+    emit hiddenResultTabsChanged();
+}
+
 int AppSettings::tabSize() const { return m_settings.value("tabSize", 4).toInt(); }
 void AppSettings::setTabSize(int value) {
     if (tabSize() == value) return;
