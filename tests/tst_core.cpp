@@ -9,6 +9,7 @@
 #include <QJSValue>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QDateTime>
 
 #include "core/SqlUtils.h"
 #include "core/MarkdownDoc.h"
@@ -102,6 +103,7 @@ private slots:
     void numericColumns_perColumn();
     void profile_perColumn();
     void pivot_crossTabAggregates();
+    void dates_renderIsoEverywhere();
 
     // CsvImporter
     void csv_previewInfersTypes();
@@ -1205,6 +1207,62 @@ static QString writeTemp(QTemporaryDir &dir, const QString &name, const QString 
     f.write(content.toUtf8());
     f.close();
     return path;
+}
+
+// A date is one string, and every surface that shows one reads the same
+// function: the grid, the filter, the sort key, a copied cell, an export. The
+// regression this guards against is a quiet one — QVariant::toString() renders
+// a QDateTime through Qt::TextDate ("Fri Aug 28 21:00:00 2026"), which looks
+// merely wide until you sort by it and the column comes out by weekday name.
+void TestCore::dates_renderIsoEverywhere()
+{
+    QueryResult r;
+    r.success = true;
+    r.columns = { "d", "ts", "t" };
+    r.rows = {
+        { QDate(2026, 8, 28),
+          QDateTime(QDate(2026, 8, 28), QTime(21, 0, 0)),
+          QTime(9, 5, 30) },
+        { QDate(2026, 1, 3),
+          QDateTime(QDate(2026, 1, 3), QTime(7, 30, 15)),
+          QTime(23, 59, 59) },
+    };
+
+    ResultModel model;
+    model.setResult(r);
+
+    // The grid.
+    QCOMPARE(model.data(model.index(0, 0)).toString(), QStringLiteral("2026-08-28"));
+    QCOMPARE(model.data(model.index(0, 1)).toString(), QStringLiteral("2026-08-28 21:00:00"));
+    QCOMPARE(model.data(model.index(0, 2)).toString(), QStringLiteral("09:05:30"));
+
+    // A copied cell and a copied row read the same as the screen.
+    QCOMPARE(model.cellValue(0, 1), QStringLiteral("2026-08-28 21:00:00"));
+    QVERIFY(model.rowAsTsv(0).startsWith(QStringLiteral("2026-08-28\t2026-08-28 21:00:00")));
+
+    // The filter matches what is on screen. "2026-08" appears nowhere in the
+    // Qt::TextDate rendering, which is what made typing it match nothing.
+    model.setFilterText(QStringLiteral("2026-08"));
+    QCOMPARE(model.rowCount(), 1);
+    QCOMPARE(model.data(model.index(0, 0)).toString(), QStringLiteral("2026-08-28"));
+    model.setFilterText(QString());
+    QCOMPARE(model.rowCount(), 2);
+
+    // Chronological order, not alphabetical-by-weekday: January before August,
+    // where "Fri" would have come before "Sat".
+    model.sort(1, Qt::AscendingOrder);
+    QCOMPARE(model.data(model.index(0, 1)).toString(), QStringLiteral("2026-01-03 07:30:15"));
+    QCOMPARE(model.data(model.index(1, 1)).toString(), QStringLiteral("2026-08-28 21:00:00"));
+    model.clearSort();
+
+    // And an export carries the same text a reader was looking at.
+    QTemporaryDir dir;
+    const QString path = dir.filePath(QStringLiteral("dates.csv"));
+    QVERIFY(model.exportCsv(QUrl::fromLocalFile(path)));
+    QFile f(path);
+    QVERIFY(f.open(QIODevice::ReadOnly | QIODevice::Text));
+    const QString csv = QString::fromUtf8(f.readAll());
+    QVERIFY(csv.contains(QStringLiteral("2026-08-28,2026-08-28 21:00:00,09:05:30")));
 }
 
 void TestCore::csv_previewInfersTypes()
