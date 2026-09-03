@@ -1468,23 +1468,61 @@ Item {
 
                 Rectangle { width: 1; height: 20; color: Theme.border; Layout.alignment: Qt.AlignVCenter; Layout.leftMargin: Theme.sp2; Layout.rightMargin: Theme.sp2 }
 
-                Button {
-                    id:         _liveShareBtn
-                    text:       LiveShareServer.active ? "Stop Live Share" : "Live Share"
-                    iconName:   LiveShareServer.active ? Icons.stop : Icons.broadcast
-                    iconWeight: LiveShareServer.active ? Icon.Weight.Fill : Icon.Weight.Regular
-                    size:       Button.Size.Sm
-                    variant:    LiveShareServer.active ? Button.Variant.Danger : Button.Variant.Ghost
-                    onClicked: {
-                        if (LiveShareServer.active) {
-                            if (AppSettings.liveShareWarnOnStop)
-                                _liveShareStopPopup.open()
-                            else
-                                LiveShareServer.stop()
-                        } else if (AppSettings.liveShareWarnOnStart) {
-                            _liveShareWarnPopup.open()
-                        } else {
-                            LiveShareServer.start(AppSettings.liveShareUseTls, AppSettings.liveShareCertPath, AppSettings.liveShareKeyPath, AppSettings.liveShareLanVisible)
+                // A live session outlives the moment it was started in, and the
+                // only thing saying so is a button that changed colour. So while
+                // it lasts the button pings — the same expand-and-fade the data
+                // sources page uses for a connection that is still coming up,
+                // squared off to the button instead of drawn round a dot.
+                Item {
+                    implicitWidth:    _liveShareBtn.implicitWidth
+                    implicitHeight:   _liveShareBtn.implicitHeight
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Rectangle {
+                        id: _liveSharePing
+
+                        // 0 → 1 over one ping: the ring grows out of the button's
+                        // edge and fades. Radius grows with the inset so the
+                        // corners stay concentric with the button's own.
+                        property real phase: 0
+
+                        readonly property real spread: 6
+
+                        anchors.fill:    _liveShareBtn
+                        anchors.margins: -_liveSharePing.spread * _liveSharePing.phase
+                        radius:          Theme.radiusSm + _liveSharePing.spread * _liveSharePing.phase
+                        color:           "transparent"
+                        border.color:    Theme.error
+                        border.width:    1.5
+                        visible:         LiveShareServer.active
+                        opacity:         0.7 * (1 - _liveSharePing.phase)
+
+                        SequentialAnimation on phase {
+                            running: LiveShareServer.active
+                            loops:   Animation.Infinite
+                            NumberAnimation { from: 0; to: 1; duration: 1100; easing.type: Easing.OutQuad }
+                            PauseAnimation  { duration: 700 }
+                        }
+                    }
+
+                    Button {
+                        id:         _liveShareBtn
+                        text:       LiveShareServer.active ? "Stop Live Share" : "Live Share"
+                        iconName:   LiveShareServer.active ? Icons.stop : Icons.broadcast
+                        iconWeight: LiveShareServer.active ? Icon.Weight.Fill : Icon.Weight.Regular
+                        size:       Button.Size.Sm
+                        variant:    LiveShareServer.active ? Button.Variant.Danger : Button.Variant.Ghost
+                        onClicked: {
+                            if (LiveShareServer.active) {
+                                if (AppSettings.liveShareWarnOnStop)
+                                    _liveShareStopPopup.open()
+                                else
+                                    LiveShareServer.stop()
+                            } else if (AppSettings.liveShareWarnOnStart) {
+                                _liveShareWarnPopup.open()
+                            } else {
+                                LiveShareServer.start(AppSettings.liveShareUseTls, AppSettings.liveShareCertPath, AppSettings.liveShareKeyPath, AppSettings.liveShareLanVisible)
+                            }
                         }
                     }
                 }
