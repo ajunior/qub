@@ -17,13 +17,28 @@ struct Engine {
     int     port;     // default container-internal port
 };
 
+// The Postgres distributions whose image name does not contain "postgres".
+// Each is a Postgres server on 5432 speaking the ordinary wire protocol —
+// stock Postgres with an extension already built in — so QPSQL connects to
+// them exactly as it does to the official image. The list is names, not a
+// pattern, because there is no shape they share: "postgis" is not a prefix of
+// "postgres", it is a different word.
+static const char *POSTGRES_DISTRIBUTIONS[] = {
+    "postgis", "timescale", "pgvector", "citus", "supabase"
+};
+
 // Map a container image to a supported database engine, or return false.
-// Checked most-specific first so a "mysql" substring cannot swallow mariadb,
-// and postgres variants (bitnami/postgresql, postgis, …) all match.
+// Checked most-specific first so a "mysql" substring cannot swallow mariadb.
 bool engineForImage(const QString &image, Engine *out)
 {
     const QString img = image.toLower();
+    // "postgresql" contains "postgres", so bitnami/postgresql lands here too.
     if (img.contains("postgres")) { *out = { QStringLiteral("QPSQL"),    5432 }; return true; }
+    for (const char *distro : POSTGRES_DISTRIBUTIONS)
+        if (img.contains(QLatin1String(distro))) {
+            *out = { QStringLiteral("QPSQL"), 5432 };
+            return true;
+        }
     if (img.contains("mariadb"))  { *out = { QStringLiteral("QMARIADB"), 3306 }; return true; }
     if (img.contains("mysql"))    { *out = { QStringLiteral("QMYSQL"),   3306 }; return true; }
     return false;

@@ -7,6 +7,12 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Fix** Docker discovery finds Postgres containers whose image is not called
+  "postgres" — postgis, timescale, pgvector, citus, supabase. They were skipped
+  outright, so the browse list simply had no row for them, which reads as "that
+  container is not running" rather than "qub does not recognise this image". The
+  real cost was picking the plain neighbour instead and meeting `could not
+  access file "$libdir/postgis-3"`
 - **Fix** Typing one dot too many no longer makes the completion popup ask a
   null for its columns. It never showed anything wrong — it stopped mid-refresh
   and left the previous suggestions on screen

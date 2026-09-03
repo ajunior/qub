@@ -139,6 +139,7 @@ private slots:
 
     // DockerDiscovery::parseContainers
     void docker_parsesPostgres();
+    void docker_findsPostgresDistributions();
     void docker_mysqlRootFallbackAndMappedPort();
     void docker_skipsUnpublishedAndUnknown();
     void docker_ignoresGarbageJson();
@@ -1907,6 +1908,35 @@ void TestCore::docker_parsesPostgres()
     QCOMPARE(c["username"].toString(), QString("alice"));
     QCOMPARE(c["password"].toString(), QString("s3cret"));
     QCOMPARE(c["database"].toString(), QString("shop"));
+}
+
+// A Postgres server whose image is not called "postgres". These were skipped
+// outright: the browse list simply had no row for them, which reads as "that
+// container is not running" rather than "qub does not recognise this image".
+// postgis is the one that surfaced it — the real cost was picking the plain
+// neighbour instead and getting "could not access file $libdir/postgis-3".
+void TestCore::docker_findsPostgresDistributions()
+{
+    auto driverFor = [](const QByteArray &image) {
+        const QByteArray json = "[{\"Name\":\"/db\",\"Config\":{\"Image\":\"" + image
+            + "\",\"Env\":[\"POSTGRES_PASSWORD=p\"]},"
+              "\"NetworkSettings\":{\"Ports\":{\"5432/tcp\":[{\"HostPort\":\"5432\"}]}}}]";
+        const QVariantList out = DockerDiscovery::parseContainers(json);
+        return out.isEmpty() ? QString("<skipped>") : out.first().toMap()["driver"].toString();
+    };
+
+    QCOMPARE(driverFor("postgis/postgis:16-3.4"),      QString("QPSQL"));
+    QCOMPARE(driverFor("timescale/timescaledb:latest"), QString("QPSQL"));
+    QCOMPARE(driverFor("pgvector/pgvector:pg16"),       QString("QPSQL"));
+    QCOMPARE(driverFor("citusdata/citus:12"),           QString("QPSQL"));
+
+    // Already worked, and must keep working: "postgresql" contains "postgres".
+    QCOMPARE(driverFor("bitnami/postgresql:16"),        QString("QPSQL"));
+    QCOMPARE(driverFor("postgres:16-alpine"),           QString("QPSQL"));
+
+    // Recognising more Postgres must not start claiming everything.
+    QCOMPARE(driverFor("redis:7"),                      QString("<skipped>"));
+    QCOMPARE(driverFor("sosedoff/pgweb"),               QString("<skipped>"));
 }
 
 void TestCore::docker_mysqlRootFallbackAndMappedPort()
