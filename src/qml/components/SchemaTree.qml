@@ -25,6 +25,7 @@ Item {
     signal tableDdlRequested(string schema, string name)
     signal tableCopyNameRequested(string schema, string name)
     signal schemaCopyNameRequested(string schema)
+    signal schemaGraphRequested(string schema)
 
     onConnectionNameChanged: _reload()
 
@@ -65,5 +66,6 @@ Item {
         onTableDdlRequested:         (schema, name)          => root.tableDdlRequested(schema, name)
         onTableCopyNameRequested:    (schema, name)          => root.tableCopyNameRequested(schema, name)
         onSchemaCopyNameRequested:   (schema)                => root.schemaCopyNameRequested(schema)
+        onSchemaGraphRequested:      (schema)                => root.schemaGraphRequested(schema)
     }
 }

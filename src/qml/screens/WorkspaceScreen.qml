@@ -1425,18 +1425,6 @@ Item {
                 }
 
                 Tooltip {
-                    text: "Schema graph"
-                    Button {
-                        iconOnly: true
-                        iconName: Icons.graph
-                        size:     Button.Size.Sm
-                        variant:  Button.Variant.Ghost
-                        enabled:  root._activeTabUsable && (_activeConn?.connected ?? false)
-                        onClicked: _schemaGraphWindow.openFor(root.activeConnection)
-                    }
-                }
-
-                Tooltip {
                     text: "Compare schemas"
                     Button {
                         iconOnly: true
@@ -1845,6 +1833,11 @@ Item {
                     _toaster.copyToClipboard(schema)
                     _toaster.show("Copied " + schema, Toaster.Type.Success)
                 }
+
+                // The graph is asked for on the schema it is going to draw:
+                // the toolbar button opened it on the whole connection, which
+                // is the one scope that cannot fit on a screen.
+                onSchemaGraphRequested: (schema) => _schemaGraphWindow.openFor(root.activeConnection, schema)
             }
 
             secondItem: SplitPane {

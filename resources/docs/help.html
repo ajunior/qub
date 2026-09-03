@@ -713,10 +713,24 @@
 
     <h3>Schema graph</h3>
     <p>
-      Click the <strong>⬡</strong> (graph) button next to the <strong>+</strong> tab to open
-      a separate window showing the foreign key relationship graph for the active database.
-      Tables with FK relationships are highlighted; isolated tables are muted.
-      The graph window can be moved to a second monitor while you keep writing queries.
+      Open <strong>Schema graph</strong> from a schema row's <strong>···</strong> menu in the
+      <a href="#schema-browser">schema browser</a>. It draws that schema's tables and the
+      foreign keys between them in a separate window, which you can move to a second monitor
+      while you keep writing queries. Tables with foreign keys are highlighted; isolated
+      tables are muted. Click a node to read its name.
+    </p>
+    <p>
+      Drag the background to pan, wheel to zoom, or use the <strong>−</strong> /
+      <strong>+</strong> / <strong>Fit</strong> buttons. Labels appear when the tables have
+      room to carry them, so zoom in on a crowded corner rather than reading through
+      overlapping text.
+    </p>
+    <p>
+      Above 150 tables the window says so instead of drawing: a graph that size is
+      unreadable, and laying it out costs seconds of a frozen window. Where the tables that
+      actually have foreign keys would fit, it offers to draw just those — usually the part
+      worth looking at. A schema, not the whole connection, is the scope: a database with
+      hundreds of tables has no picture that fits on a screen.
     </p>
 
     <h3>Compare schemas</h3>

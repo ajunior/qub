@@ -7,6 +7,21 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Fix** The Schema graph is asked for on a schema — from that row's `···`
+  menu in the browser — rather than on the whole connection from the toolbar.
+  On a 754-table database the old scope froze qub for seconds (the layout
+  compares every table against every other one, on the GUI thread) and drew a
+  ring of overlapping labels nobody could read. Above 150 tables it now says
+  so instead of drawing, and offers to draw only the tables that do have
+  foreign keys where those fit
+- **Feat** The graph pans by dragging and zooms on the wheel, with `−` / `+` /
+  `Fit` buttons in its header. Labels appear once the tables have room to carry
+  one, so a crowded graph shows plain nodes and zooming in reveals the names
+- **Fix** Foreign keys are read with the schema of both ends, so a graph of
+  `analytics` no longer draws a line because some other schema happens to hold
+  a table of the same name. On PostgreSQL the query also joined the referenced
+  table on the child's schema, which silently dropped every foreign key
+  pointing into another schema
 - **Feat** `Copy name` in the schema browser: on a table row's `···` menu, and
   on a schema row, which now has a menu of its own. Copying a table name meant
   running the table and lifting the name back out of the SQL qub had written.

@@ -171,10 +171,18 @@ QVariantList DatabaseInspector::foreignKeys(const QString &connectionName) const
     const QString driver = a->driverName();
     QVariantList result;
 
-    auto appendRows = [&](const QueryResult &r, int fromCol, int toCol, int fromCCol, int toCCol) {
+    // Each entry carries the schema of both ends. A bare table name is not a
+    // table: two schemas may each hold an "orders", and a caller matching on
+    // the name alone either picks the wrong one or — where the other side
+    // qualifies its names — matches nothing and concludes there are no
+    // foreign keys at all.
+    auto appendRows = [&](const QueryResult &r, int fromSCol, int fromCol,
+                          int toSCol, int toCol, int fromCCol, int toCCol) {
         for (const QVariantList &row : r.rows) {
             QVariantMap m;
+            m[QStringLiteral("fromSchema")] = row.value(fromSCol);
             m[QStringLiteral("fromTable")]  = row.value(fromCol);
+            m[QStringLiteral("toSchema")]   = row.value(toSCol);
             m[QStringLiteral("toTable")]    = row.value(toCol);
             m[QStringLiteral("fromColumn")] = row.value(fromCCol);
             m[QStringLiteral("toColumn")]   = row.value(toCCol);
@@ -184,27 +192,35 @@ QVariantList DatabaseInspector::foreignKeys(const QString &connectionName) const
 
     if (driver == QLatin1String("QPSQL")) {
         appendRows(a->execute(QStringLiteral(
-            "SELECT tc.table_name, ccu.table_name, kcu.column_name, ccu.column_name"
+            "SELECT tc.table_schema, tc.table_name,"
+            "       ccu.table_schema, ccu.table_name,"
+            "       kcu.column_name, ccu.column_name"
             " FROM information_schema.table_constraints tc"
             " JOIN information_schema.key_column_usage kcu"
             "   ON tc.constraint_name = kcu.constraint_name"
             "  AND tc.table_schema    = kcu.table_schema"
             " JOIN information_schema.constraint_column_usage ccu"
-            "   ON ccu.constraint_name = tc.constraint_name"
-            "  AND ccu.table_schema    = tc.table_schema"
+            "   ON ccu.constraint_name   = tc.constraint_name"
+            // The constraint's own schema, not the referenced table's: joining
+            // on ccu.table_schema kept two constraints of the same name in
+            // different schemas apart, and threw away every foreign key that
+            // points at a table in another schema along with them.
+            "  AND ccu.constraint_schema = tc.constraint_schema"
             " WHERE tc.constraint_type = 'FOREIGN KEY'"
             "   AND tc.table_schema NOT IN ('pg_catalog','information_schema')"
-            " ORDER BY tc.table_name"
-        )), 0, 1, 2, 3);
+            " ORDER BY tc.table_schema, tc.table_name"
+        )), 0, 1, 2, 3, 4, 5);
 
     } else if (driver == QLatin1String("QMYSQL") || driver == QLatin1String("QMARIADB")) {
         appendRows(a->execute(QStringLiteral(
-            "SELECT TABLE_NAME, REFERENCED_TABLE_NAME, COLUMN_NAME, REFERENCED_COLUMN_NAME"
+            "SELECT TABLE_SCHEMA, TABLE_NAME,"
+            "       REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME,"
+            "       COLUMN_NAME, REFERENCED_COLUMN_NAME"
             " FROM information_schema.KEY_COLUMN_USAGE"
             " WHERE TABLE_SCHEMA = DATABASE()"
             "   AND REFERENCED_TABLE_NAME IS NOT NULL"
             " ORDER BY TABLE_NAME"
-        )), 0, 1, 2, 3);
+        )), 0, 1, 2, 3, 4, 5);
 
     } else if (driver == QLatin1String("QSQLITE")) {
         // SQLite requires PRAGMA per table; iterate all user tables
@@ -218,7 +234,10 @@ QVariantList DatabaseInspector::foreignKeys(const QString &connectionName) const
             // columns: id, seq, table, from, to, on_update, on_delete, match
             for (const QVariantList &row : fkr.rows) {
                 QVariantMap m;
+                // SQLite has one schema and PRAGMA never names it.
+                m[QStringLiteral("fromSchema")] = QStringLiteral("main");
                 m[QStringLiteral("fromTable")]  = tbl;
+                m[QStringLiteral("toSchema")]   = QStringLiteral("main");
                 m[QStringLiteral("toTable")]    = row.value(2);
                 m[QStringLiteral("fromColumn")] = row.value(3);
                 m[QStringLiteral("toColumn")]   = row.value(4);
