@@ -821,7 +821,7 @@
       <tr><td>SQLite</td>          <td>bundled</td> <td>bundled</td>              <td>bundled</td></tr>
       <tr><td>PostgreSQL</td>      <td>bundled</td> <td>bundled</td>              <td>bundled</td></tr>
       <tr><td>ODBC</td>            <td>bundled</td> <td>bundled</td>              <td>system</td></tr>
-      <tr><td>MySQL / MariaDB</td> <td>bundled</td> <td class="no">no plugin</td> <td class="no">no plugin</td></tr>
+      <tr><td>MySQL / MariaDB</td> <td>bundled</td> <td>bundled</td>              <td class="no">no plugin</td></tr>
       <tr><td>Firebird</td>        <td>bundled</td> <td class="no">no plugin</td> <td>bring <code>fbclient.dll</code></td></tr>
       <tr><td>Oracle (OCI)</td>    <td class="no">not bundled</td> <td class="no">no plugin</td> <td>bring Instant Client</td></tr>
     </table>
@@ -829,7 +829,8 @@
 
   <p class="driver-note">Qt&rsquo;s official macOS and Windows binaries carry no MySQL driver at all, and the
     macOS ones none for Oracle or Firebird &mdash; <em>no plugin</em> means nothing you install will help, only a
-    qub built against a Qt compiled with that driver. Oracle is left out of the AppImage because its client
+    qub built against a Qt compiled with that driver. The macOS DMG is the exception: it ships a MySQL plugin
+    qub compiles itself, against MariaDB Connector/C. Oracle is left out of the AppImage because its client
     library is not redistributable. qub offers only the drivers the copy you are running can actually load, so
     the connection form never lists one that would fail on you. Building from source, every client library is
     your system&rsquo;s.</p>
