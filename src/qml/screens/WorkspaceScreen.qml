@@ -2588,6 +2588,16 @@ Item {
                                             color: Theme.textSecondary
                                             anchors.verticalCenter: parent.verticalCenter
                                         }
+                                        // The caret only says the row collapses. This
+                                        // says what the name is — without it a folder
+                                        // reads as a workspace, which snippets have
+                                        // nothing to do with.
+                                        Icon {
+                                            name:  Icons.folder
+                                            size:  12
+                                            color: Theme.textSecondary
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
                                         Text {
                                             text:  _snipRow.modelData.folder ?? ""
                                             color: Theme.textSecondary
@@ -2613,16 +2623,7 @@ Item {
                                     anchors.leftMargin: (_snipRow.snip?.folder ?? "") !== "" ? 10 : 0
                                     visible:            !_snipRow.isFolder
 
-                                    readonly property bool _orphaned:
-                                        (_snipRow.snip?.connectionName ?? "") !== "" &&
-                                        ConnectionManager.connections.every(
-                                            c => c.name !== _snipRow.snip.connectionName)
-
-                                    label:    _snipRow.snip?.name ?? ""
-                                    severity: _snipEntry._orphaned ? "warning" : ""
-                                    detail:   _snipEntry._orphaned
-                                        ? "⚠ connection not found"
-                                        : (_snipRow.snip?.connectionName ?? "")
+                                    label:     _snipRow.snip?.name ?? ""
 
                                     onClicked: queryEditor.insertAtCursor(_snipRow.snip.sql)
                                 }
@@ -2894,8 +2895,7 @@ Item {
                     SnippetManager.save(
                         _saveNameInput.text.trim(),
                         _saveFolderInput.text.trim(),
-                        _saveDialog._pendingSql,
-                        root.activeConnection
+                        _saveDialog._pendingSql
                     )
                     _saveDialog.close()
                     _toaster.show("Snippet saved.", Toaster.Type.Success)

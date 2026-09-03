@@ -22,7 +22,7 @@ public:
     QVariantList snippets() const;
 
     Q_INVOKABLE qint64 save(const QString &name, const QString &folder,
-                            const QString &sql, const QString &connectionName);
+                            const QString &sql);
     Q_INVOKABLE bool   update(qint64 id, const QString &name, const QString &folder,
                               const QString &sql);
     Q_INVOKABLE bool   remove(qint64 id);

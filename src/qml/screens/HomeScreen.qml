@@ -1391,6 +1391,15 @@ Item {
                                                 id: delegateItem5
                                                 required property var modelData
                                                 Layout.fillWidth: true
+                                                // A snippet in a folder sits inside it,
+                                                // not beside it. The sidebar already
+                                                // insets these; the home page did not,
+                                                // which left header and row sharing a
+                                                // margin and reading as peers.
+                                                Layout.leftMargin:
+                                                    delegateItem5.modelData.kind === "snippet"
+                                                    && delegateItem5.modelData.snip.folder !== ""
+                                                    ? Theme.sp3 : 0
                                                 sourceComponent: delegateItem5.modelData.kind === "folder"
                                                                  ? _snipFolderHeader : _snipListRow
                                                 onLoaded: item.row = Qt.binding(() => delegateItem5.modelData)
@@ -1516,17 +1525,39 @@ Item {
                                                 property var row: ({ folder: "" })
                                                 implicitHeight: 32
 
-                                                Text {
+                                                // The icon carries the whole meaning of
+                                                // the header. A bare name reads as any
+                                                // other named thing in the app — a
+                                                // workspace above all, since a snippet
+                                                // folder and a workspace are commonly
+                                                // named after the same piece of work.
+                                                Row {
                                                     anchors {
                                                         left: parent.left
                                                         bottom: parent.bottom; bottomMargin: 4
                                                     }
-                                                    text:  _folderRoot.row.folder
-                                                    color: Theme.textSecondary
-                                                    font.family:      Theme.fontFamily
-                                                    font.pixelSize:   Theme.textXs
-                                                    font.weight:      Theme.weightSemibold
-                                                    font.letterSpacing: 1.2
+                                                    spacing: 6
+
+                                                    Icon {
+                                                        name:  Icons.folder
+                                                        size:  12
+                                                        color: Theme.textSecondary
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                    }
+
+                                                    // Upper case in the same voice as
+                                                    // the SNIPPETS label above: a folder
+                                                    // name set like a snippet name reads
+                                                    // as one more snippet.
+                                                    Text {
+                                                        text:  _folderRoot.row.folder.toUpperCase()
+                                                        color: Theme.textSecondary
+                                                        font.family:      Theme.fontFamily
+                                                        font.pixelSize:   Theme.textXs
+                                                        font.weight:      Theme.weightSemibold
+                                                        font.letterSpacing: 1.5
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                    }
                                                 }
                                             }
                                         }
@@ -1536,17 +1567,11 @@ Item {
 
                                             ListRow {
                                                 id: _snipRowRoot
-                                                property var row: ({ snip: { id: -1, name: "", sql: "", connectionName: "" } })
+                                                property var row: ({ snip: { id: -1, name: "", sql: "" } })
                                                 title: _snipRowRoot.row.snip.name
                                                 subtitle: _snipRowRoot.row.snip.sql.replace(/\s+/g, " ").substring(0, 80)
                                                 onClicked: _snipSection._openEdit(_snipRowRoot.row.snip)
 
-                                                Badge {
-                                                    visible:     _snipRowRoot.row.snip.connectionName !== ""
-                                                    text:        _snipRowRoot.row.snip.connectionName
-                                                    colorScheme: Badge.Color.Default
-                                                    anchors.verticalCenter: parent.verticalCenter
-                                                }
                                                 Tooltip {
                                                     text: "Edit snippet"
 

@@ -53,7 +53,6 @@ void SnippetManager::initDb(const QString &dbPath)
             name            TEXT    NOT NULL,
             folder          TEXT    NOT NULL DEFAULT '',
             sql             TEXT    NOT NULL,
-            connection_name TEXT    NOT NULL DEFAULT '',
             created_at      TEXT    NOT NULL,
             updated_at      TEXT    NOT NULL
         )
@@ -64,7 +63,7 @@ QVariantList SnippetManager::snippets() const
 {
     QVariantList list;
     QSqlQuery q(m_db);
-    q.exec("SELECT id, name, folder, sql, connection_name, created_at, updated_at "
+    q.exec("SELECT id, name, folder, sql, created_at, updated_at "
            "FROM snippets ORDER BY folder, name COLLATE NOCASE");
     while (q.next()) {
         QVariantMap entry;
@@ -72,9 +71,8 @@ QVariantList SnippetManager::snippets() const
         entry["name"]           = q.value(1);
         entry["folder"]         = q.value(2);
         entry["sql"]            = q.value(3);
-        entry["connectionName"] = q.value(4);
-        entry["createdAt"]      = q.value(5);
-        entry["updatedAt"]      = q.value(6);
+        entry["createdAt"]      = q.value(4);
+        entry["updatedAt"]      = q.value(5);
         list << entry;
     }
     return list;
@@ -94,7 +92,7 @@ bool SnippetManager::nameInUse(const QString &name, const QString &folder,
 }
 
 qint64 SnippetManager::save(const QString &name, const QString &folder,
-                            const QString &sql, const QString &connectionName)
+                            const QString &sql)
 {
     const QString trimmed = name.trimmed();
     if (trimmed.isEmpty()) return -1;
@@ -102,13 +100,12 @@ qint64 SnippetManager::save(const QString &name, const QString &folder,
 
     QSqlQuery q(m_db);
     q.prepare(R"(
-        INSERT INTO snippets (name, folder, sql, connection_name, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO snippets (name, folder, sql, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
     )");
     q.addBindValue(trimmed);
     q.addBindValue(folder.trimmed());
     q.addBindValue(sql);
-    q.addBindValue(connectionName);
     q.addBindValue(nowIso());
     q.addBindValue(nowIso());
     if (!q.exec()) return -1;
@@ -145,8 +142,6 @@ bool SnippetManager::remove(qint64 id)
     return ok;
 }
 
-// connection_name is deliberately not exported: it is machine-local context
-// that would only surface as orphaned-connection warnings elsewhere.
 bool SnippetManager::exportSnippets(const QUrl &fileUrl)
 {
     QJsonArray arr;
@@ -193,8 +188,8 @@ QVariantMap SnippetManager::importSnippets(const QUrl &fileUrl)
 
         QSqlQuery ins(m_db);
         ins.prepare(R"(
-            INSERT INTO snippets (name, folder, sql, connection_name, created_at, updated_at)
-            VALUES (?, ?, ?, '', ?, ?)
+            INSERT INTO snippets (name, folder, sql, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?)
         )");
         ins.addBindValue(name);
         ins.addBindValue(folder);

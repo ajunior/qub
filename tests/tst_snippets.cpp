@@ -44,12 +44,12 @@ void TestSnippets::saveAndList()
     SnippetManager mgr(freshDbPath("list"));
     QVERIFY(mgr.snippets().isEmpty());
 
-    QVERIFY(mgr.save("Zeta", "", "SELECT 1", "prod") > 0);
-    QVERIFY(mgr.save("alpha", "", "SELECT 2", "") > 0);
-    QVERIFY(mgr.save("Mid", "Reports", "SELECT 3", "stage") > 0);
+    QVERIFY(mgr.save("Zeta", "", "SELECT 1") > 0);
+    QVERIFY(mgr.save("alpha", "", "SELECT 2") > 0);
+    QVERIFY(mgr.save("Mid", "Reports", "SELECT 3") > 0);
 
     // Blank names are rejected.
-    QCOMPARE(mgr.save("   ", "", "SELECT 4", ""), qint64(-1));
+    QCOMPARE(mgr.save("   ", "", "SELECT 4"), qint64(-1));
 
     const QVariantList list = mgr.snippets();
     QCOMPARE(list.size(), 3);
@@ -60,13 +60,12 @@ void TestSnippets::saveAndList()
     QCOMPARE(list[2].toMap().value("folder").toString(), QString("Reports"));
 
     QCOMPARE(list[1].toMap().value("sql").toString(), QString("SELECT 1"));
-    QCOMPARE(list[1].toMap().value("connectionName").toString(), QString("prod"));
 }
 
 void TestSnippets::updateSnippet()
 {
     SnippetManager mgr(freshDbPath("update"));
-    const qint64 id = mgr.save("Orig", "A", "SELECT 1", "prod");
+    const qint64 id = mgr.save("Orig", "A", "SELECT 1");
     QVERIFY(id > 0);
 
     QVERIFY(mgr.update(id, "Renamed", "B", "SELECT 99"));
@@ -74,8 +73,6 @@ void TestSnippets::updateSnippet()
     QCOMPARE(entry.value("name").toString(),   QString("Renamed"));
     QCOMPARE(entry.value("folder").toString(), QString("B"));
     QCOMPARE(entry.value("sql").toString(),    QString("SELECT 99"));
-    // The source connection is untouched by edits.
-    QCOMPARE(entry.value("connectionName").toString(), QString("prod"));
 
     QVERIFY(!mgr.update(id, "  ", "B", "SELECT 99"));   // blank name rejected
     QVERIFY(!mgr.update(9999, "Ghost", "", ""));        // unknown id
@@ -84,7 +81,7 @@ void TestSnippets::updateSnippet()
 void TestSnippets::removeSnippet()
 {
     SnippetManager mgr(freshDbPath("remove"));
-    const qint64 id = mgr.save("Doomed", "", "SELECT 1", "");
+    const qint64 id = mgr.save("Doomed", "", "SELECT 1");
     QVERIFY(mgr.remove(id));
     QVERIFY(mgr.snippets().isEmpty());
     QVERIFY(!mgr.remove(id));   // already gone
@@ -96,7 +93,7 @@ void TestSnippets::persistsAcrossReopen()
     qint64 id = -1;
     {
         SnippetManager mgr(path);
-        id = mgr.save("Keep", "Folder", "SELECT 42", "prod");
+        id = mgr.save("Keep", "Folder", "SELECT 42");
         QVERIFY(id > 0);
     }
     SnippetManager reopened(path);
@@ -109,15 +106,15 @@ void TestSnippets::persistsAcrossReopen()
 void TestSnippets::duplicateNamesRejected()
 {
     SnippetManager mgr(freshDbPath("dupnames"));
-    const qint64 daily = mgr.save("Daily", "Reports", "SELECT 1", "");
+    const qint64 daily = mgr.save("Daily", "Reports", "SELECT 1");
     QVERIFY(daily > 0);
 
     // Same name+folder is rejected, case-insensitively and trimmed.
-    QCOMPARE(mgr.save("daily", "reports", "SELECT 2", ""), qint64(-1));
-    QCOMPARE(mgr.save("  Daily  ", "Reports", "SELECT 2", ""), qint64(-1));
+    QCOMPARE(mgr.save("daily", "reports", "SELECT 2"), qint64(-1));
+    QCOMPARE(mgr.save("  Daily  ", "Reports", "SELECT 2"), qint64(-1));
 
     // Same name in a different folder is fine.
-    const qint64 loose = mgr.save("Daily", "", "SELECT 3", "");
+    const qint64 loose = mgr.save("Daily", "", "SELECT 3");
     QVERIFY(loose > 0);
 
     QVERIFY(mgr.nameInUse("DAILY", "REPORTS"));
@@ -136,8 +133,8 @@ void TestSnippets::exportImportRoundTrip()
     const QString jsonPath = m_dir.path() + "/snips.json";
 
     SnippetManager src(freshDbPath("exp-src"));
-    QVERIFY(src.save("Daily", "Reports", "SELECT day", "prod") > 0);
-    QVERIFY(src.save("Loose", "", "SELECT 1", "stage") > 0);
+    QVERIFY(src.save("Daily", "Reports", "SELECT day") > 0);
+    QVERIFY(src.save("Loose", "", "SELECT 1") > 0);
     QVERIFY(src.exportSnippets(QUrl::fromLocalFile(jsonPath)));
 
     SnippetManager dst(freshDbPath("exp-dst"));
@@ -152,10 +149,6 @@ void TestSnippets::exportImportRoundTrip()
     QCOMPARE(list[1].toMap().value("name").toString(),   QString("Daily"));
     QCOMPARE(list[1].toMap().value("folder").toString(), QString("Reports"));
     QCOMPARE(list[1].toMap().value("sql").toString(),    QString("SELECT day"));
-
-    // The source connection is machine-local and must not travel with the file.
-    QCOMPARE(list[0].toMap().value("connectionName").toString(), QString());
-    QCOMPARE(list[1].toMap().value("connectionName").toString(), QString());
 }
 
 void TestSnippets::importSkipsDuplicates()
@@ -163,15 +156,15 @@ void TestSnippets::importSkipsDuplicates()
     const QString jsonPath = m_dir.path() + "/dups.json";
 
     SnippetManager src(freshDbPath("dup-src"));
-    QVERIFY(src.save("Daily", "Reports", "SELECT day", "") > 0);
-    QVERIFY(src.save("Fresh", "", "SELECT new", "") > 0);
+    QVERIFY(src.save("Daily", "Reports", "SELECT day") > 0);
+    QVERIFY(src.save("Fresh", "", "SELECT new") > 0);
     QVERIFY(src.exportSnippets(QUrl::fromLocalFile(jsonPath)));
 
     SnippetManager dst(freshDbPath("dup-dst"));
     // Same name+folder counts as a duplicate even if the SQL differs...
-    QVERIFY(dst.save("Daily", "Reports", "SELECT other", "") > 0);
+    QVERIFY(dst.save("Daily", "Reports", "SELECT other") > 0);
     // ...but the same name in another folder does not.
-    QVERIFY(dst.save("Fresh", "Archive", "SELECT old", "") > 0);
+    QVERIFY(dst.save("Fresh", "Archive", "SELECT old") > 0);
 
     const QVariantMap result = dst.importSnippets(QUrl::fromLocalFile(jsonPath));
     QVERIFY(result.value("success").toBool());
