@@ -1,4 +1,5 @@
 #include "HistoryManager.h"
+#include "AppDatabase.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QStandardPaths>
@@ -32,6 +33,8 @@ void HistoryManager::initDb()
     m_db = QSqlDatabase::addDatabase("QSQLITE", kConnectionName);
     m_db.setDatabaseName(dir + "/qub.db");
     m_db.open();
+
+    AppDatabase::stampIfNew(m_db);
 
     QSqlQuery q(m_db);
     q.exec(R"(

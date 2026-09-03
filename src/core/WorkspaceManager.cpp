@@ -1,4 +1,5 @@
 #include "WorkspaceManager.h"
+#include "AppDatabase.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QStandardPaths>
@@ -40,6 +41,8 @@ void WorkspaceManager::initDb(const QString &dbPath)
     m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
     m_db.setDatabaseName(path);
     m_db.open();
+
+    AppDatabase::stampIfNew(m_db);
 
     QSqlQuery q(m_db);
     q.exec("PRAGMA foreign_keys = ON");

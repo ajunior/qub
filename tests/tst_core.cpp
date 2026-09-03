@@ -18,6 +18,7 @@
 #include "core/HistoryManager.h"
 #include "core/SchemaDiff.h"
 #include "core/ResultDiff.h"
+#include "core/AppDatabase.h"
 #include "core/SchemaSnapshotManager.h"
 #include "core/HealthAlertManager.h"
 #include "core/ResultSnapshotManager.h"
@@ -76,6 +77,9 @@ private slots:
     void listsort_filtersAcrossFields();
     void listsort_blankQueryKeepsEverything();
     void listsort_groupsSnippetsByFolder();
+
+    // AppDatabase schema stamping
+    void schemaVersion_stampsOnlyAFreshDatabase();
 
     // ── Driver list (drivers.js) ──────────────────────────────────────────────
     void drivers_onlyAvailableOffered();
@@ -2085,6 +2089,45 @@ void TestCore::listsort_groupsSnippetsByFolder()
     // disappears entirely rather than leaving an empty header behind.
     QCOMPARE(namesOf(m_js, QStringLiteral("arrangeGrouped(%1,'metrics',%2,'name',true)").arg(items, f)),
              QStringLiteral("churn,ratio"));
+}
+
+// A stamp is only meaningful if it distinguishes a database whose shape is
+// known from one whose shape nobody recorded. Both halves matter: the fresh
+// file has to come out stamped, and the pre-existing one has to stay at 0.
+void TestCore::schemaVersion_stampsOnlyAFreshDatabase()
+{
+    QTemporaryDir dir;
+    QVERIFY(dir.isValid());
+
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "stamp_fresh");
+        db.setDatabaseName(dir.filePath("fresh.db"));
+        QVERIFY(db.open());
+        QCOMPARE(AppDatabase::schemaVersion(db), 0);
+
+        AppDatabase::stampIfNew(db);
+        QCOMPARE(AppDatabase::schemaVersion(db), AppDatabase::kSchemaVersion);
+
+        // Idempotent: a second manager opening the same file must not disturb
+        // what the first one recorded.
+        AppDatabase::stampIfNew(db);
+        QCOMPARE(AppDatabase::schemaVersion(db), AppDatabase::kSchemaVersion);
+    }
+    QSqlDatabase::removeDatabase("stamp_fresh");
+
+    {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "stamp_legacy");
+        db.setDatabaseName(dir.filePath("legacy.db"));
+        QVERIFY(db.open());
+
+        // Stands in for a database written before any of this existed: it has
+        // tables and no version.
+        QSqlQuery(db).exec("CREATE TABLE snippets (id INTEGER PRIMARY KEY)");
+
+        AppDatabase::stampIfNew(db);
+        QCOMPARE(AppDatabase::schemaVersion(db), 0);
+    }
+    QSqlDatabase::removeDatabase("stamp_legacy");
 }
 
 QTEST_GUILESS_MAIN(TestCore)

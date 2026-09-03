@@ -1,4 +1,5 @@
 #include "LogManager.h"
+#include "AppDatabase.h"
 #include <QDateTime>
 #include <QDir>
 #include <QJsonArray>
@@ -52,6 +53,8 @@ void LogManager::initDb()
     m_db = QSqlDatabase::addDatabase("QSQLITE", kConnectionName);
     m_db.setDatabaseName(dir + "/qub.db");
     m_db.open();
+
+    AppDatabase::stampIfNew(m_db);
 
     QSqlQuery q(m_db);
     q.exec(R"(

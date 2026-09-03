@@ -1,4 +1,5 @@
 #include "SnippetManager.h"
+#include "AppDatabase.h"
 #include <QSqlQuery>
 #include <QSqlError>
 #include <QStandardPaths>
@@ -45,6 +46,8 @@ void SnippetManager::initDb(const QString &dbPath)
     m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
     m_db.setDatabaseName(path);
     m_db.open();
+
+    AppDatabase::stampIfNew(m_db);
 
     QSqlQuery q(m_db);
     q.exec(R"(
