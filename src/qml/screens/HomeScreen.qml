@@ -1646,7 +1646,7 @@ Item {
                                 spacing: 14
                                 visible: {
                                     const q = _settings._q
-                                    return !q || ["appearance","dark","mode","light"].some(t => t.includes(q))
+                                    return !q || ["appearance","dark","mode","light","theme","system","os","automatic"].some(t => t.includes(q))
                                 }
 
                                 Text {
@@ -1658,10 +1658,39 @@ Item {
                                     font.letterSpacing: 1.5
                                 }
 
-                                Toggle {
-                                    text: "Dark mode"
-                                    checked: AppSettings.darkTheme
-                                    onCheckedChanged: AppSettings.darkTheme = checked
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 6
+
+                                    Text {
+                                        text: "Appearance"
+                                        color: Theme.textPrimary
+                                        font.family:    Theme.fontFamily
+                                        font.pixelSize: Theme.textSm
+                                    }
+
+                                    SegmentedControl {
+                                        id: _themeMode
+                                        readonly property var _modes: ["light", "dark", "system"]
+                                        model: [
+                                            { label: "Light",  icon: Icons.sun },
+                                            { label: "Dark",   icon: Icons.moon },
+                                            { label: "System", icon: Icons.desktop }
+                                        ]
+                                        currentIndex: Math.max(0, _themeMode._modes.indexOf(AppSettings.themeMode))
+                                        onSelectionChanged: (index) => AppSettings.themeMode = _themeMode._modes[index]
+                                    }
+
+                                    Text {
+                                        text: "System follows your desktop's light/dark setting, including when it "
+                                              + "switches on its own at sunset."
+                                        color: Theme.textSecondary
+                                        font.family:    Theme.fontFamily
+                                        font.pixelSize: Theme.textXs
+                                        wrapMode:       Text.WordWrap
+                                        Layout.fillWidth: true
+                                        visible: AppSettings.themeMode === "system"
+                                    }
                                 }
                             }
 

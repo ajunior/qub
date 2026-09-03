@@ -20,7 +20,21 @@ ApplicationWindow {
     color: Theme.background
     font.family: Theme.fontFamily
 
-    Binding { target: Theme; property: "dark"; value: AppSettings.darkTheme }
+    // "system" reads the OS colour scheme through a live binding rather than a
+    // one-shot read at startup: a desktop that switches at sunset changes it
+    // under a running app, and Qt's styleHints notifies when it does.
+    //
+    // Where Qt cannot tell (Unknown — a Linux session with no desktop portal,
+    // or the offscreen platform the boot gate uses) this reads as light, which
+    // is what "not dark" should mean rather than an error the user has to
+    // resolve. Choosing Light or Dark explicitly always wins.
+    Binding {
+        target:   Theme
+        property: "dark"
+        value:    AppSettings.themeMode === "system"
+                  ? Application.styleHints.colorScheme === Qt.ColorScheme.Dark
+                  : AppSettings.themeMode === "dark"
+    }
     Binding { target: HistoryManager; property: "limit"; value: AppSettings.historyLimit }
 
     function applyTheme(colors: var): void {
