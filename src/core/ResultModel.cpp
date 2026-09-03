@@ -9,11 +9,43 @@
 #include <QHash>
 #include <QSet>
 #include <QRegularExpression>
+#include <QDateTime>
 #include "ResultDiff.h"
 #include <algorithm>
 #include <array>
 #include <numeric>
 #include <cmath>
+
+namespace {
+
+// The text of one cell, for every surface a person reads: the grid, the
+// filter, the sort key, a copied cell, an exported file.
+//
+// QVariant::toString() renders a date through Qt::TextDate — "Fri Aug 28
+// 21:00:00 2026". That is wide, it leads with the one field nobody sorts by,
+// and it does not sort: ordered as text, a date column comes out by weekday
+// name, Fri before Mon before Sat. Databases print dates ISO-first and so does
+// every other SQL client, so the grid does too — and because filtering and
+// sorting read the same function, typing "2026-08" now matches what is on
+// screen instead of the string it used to be compared against.
+static QString cellText(const QVariant &v)
+{
+    switch (v.userType()) {
+    case QMetaType::QDate:
+        return v.toDate().toString(QStringLiteral("yyyy-MM-dd"));
+    case QMetaType::QTime:
+        return v.toTime().toString(QStringLiteral("HH:mm:ss"));
+    case QMetaType::QDateTime: {
+        const QDateTime dt = v.toDateTime();
+        return dt.toString(dt.time().msec() != 0 ? QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz")
+                                                 : QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+    }
+    default:
+        return v.toString();
+    }
+}
+
+} // namespace
 
 // ── Minimal ZIP + XLSX writer (no external dependency) ──────────────────────
 namespace {
@@ -198,7 +230,7 @@ QVariant ResultModel::data(const QModelIndex &index, int role) const
     const QVariant &val = m_rows.at(_row(index.row())).at(index.column());
 
     if (role == Qt::DisplayRole)
-        return (!val.isValid() || val.isNull()) ? QVariant(QString()) : val;
+        return (!val.isValid() || val.isNull()) ? QString() : cellText(val);
     if (role == IsNullRole)
         return !val.isValid() || val.isNull();
     return {};
@@ -235,7 +267,7 @@ void ResultModel::_rebuild()
         const QString f = m_filterText.toLower();
         auto end = std::remove_if(m_visibleRows.begin(), m_visibleRows.end(), [&](int i) {
             for (const QVariant &v : m_rows.at(i))
-                if (v.toString().contains(f, Qt::CaseInsensitive))
+                if (cellText(v).contains(f, Qt::CaseInsensitive))
                     return false;
             return true;
         });
@@ -246,8 +278,8 @@ void ResultModel::_rebuild()
         const int col = m_sortColumn;
         const Qt::SortOrder order = m_sortOrder;
         std::stable_sort(m_visibleRows.begin(), m_visibleRows.end(), [&](int a, int b) {
-            const QString sa = m_rows.at(a).at(col).toString();
-            const QString sb = m_rows.at(b).at(col).toString();
+            const QString sa = cellText(m_rows.at(a).at(col));
+            const QString sb = cellText(m_rows.at(b).at(col));
             bool okA, okB;
             const double da = sa.toDouble(&okA);
             const double db = sb.toDouble(&okB);
@@ -353,7 +385,7 @@ QString ResultModel::cellValue(int row, int column) const
     if (row < 0 || row >= rowCount()) return {};
     const QVariantList &r = m_rows.at(_row(row));
     if (column < 0 || column >= r.size()) return {};
-    return r.at(column).toString();
+    return cellText(r.at(column));
 }
 
 QString ResultModel::rowAsTsv(int row) const
@@ -361,7 +393,7 @@ QString ResultModel::rowAsTsv(int row) const
     if (row < 0 || row >= rowCount()) return {};
     QStringList fields;
     for (const QVariant &v : m_rows.at(_row(row)))
-        fields << v.toString();
+        fields << cellText(v);
     return fields.join('\t');
 }
 
@@ -406,7 +438,7 @@ bool ResultModel::exportCsv(const QUrl &fileUrl) const
     for (int i = 0; i < n; ++i) {
         QStringList fields;
         for (const QVariant &val : m_rows.at(_row(i)))
-            fields << quote(val.toString());
+            fields << quote(cellText(val));
         out << fields.join(',') << '\n';
     }
 
@@ -438,7 +470,7 @@ QString ResultModel::toMarkdown(int maxRows) const
     for (int i = 0; i < shown; ++i) {
         QStringList fields;
         for (const QVariant &val : m_rows.at(_row(i)))
-            fields << cell(val.toString());
+            fields << cell(cellText(val));
         out += "| " + fields.join(" | ") + " |\n";
     }
     if (shown < n)
@@ -468,7 +500,7 @@ QVariantMap ResultModel::columnStats(int column) const
             continue;
         }
         ++count;
-        const QString s = v.toString();
+        const QString s = cellText(v);
         distinct.insert(s);
 
         bool ok = false;
@@ -591,7 +623,7 @@ QVariantList ResultModel::checkExpectations(const QVariantList &rules) const
         auto cellStr = [&](int i, bool &isNull) -> QString {
             const QVariant &v = m_rows.at(_row(i)).at(col);
             isNull = !v.isValid() || v.isNull();
-            return isNull ? QString() : v.toString();
+            return isNull ? QString() : cellText(v);
         };
 
         if (check == QLatin1String("unique")) {
@@ -731,7 +763,7 @@ QVariantList ResultModel::profile() const
                 continue;
             }
             ++a.count;
-            const QString s = v.toString();
+            const QString s = cellText(v);
             a.freq[s] += 1;
 
             bool ok = false;
@@ -854,8 +886,8 @@ QVariantMap ResultModel::pivot(int rowCol, int colCol, int valueCol,
         const QVariantList &r = m_rows.at(_row(i));
         const QVariant &rv = r.at(rowCol);
         const QVariant &cv = r.at(colCol);
-        const QString rk = (!rv.isValid() || rv.isNull()) ? nullKey : rv.toString();
-        const QString ck = (!cv.isValid() || cv.isNull()) ? nullKey : cv.toString();
+        const QString rk = (!rv.isValid() || rv.isNull()) ? nullKey : cellText(rv);
+        const QString ck = (!cv.isValid() || cv.isNull()) ? nullKey : cellText(cv);
 
         if (!rowSeen.contains(rk)) {
             if (rowKeys.size() >= maxRows) { rowsTruncated = true; continue; }
@@ -935,7 +967,7 @@ bool ResultModel::exportTsv(const QUrl &fileUrl) const
     for (int i = 0; i < n; ++i) {
         QStringList fields;
         for (const QVariant &val : m_rows.at(_row(i)))
-            fields << spreadsheetSafe(val.toString().replace('\t', ' ').replace('\n', ' '));
+            fields << spreadsheetSafe(cellText(val).replace('\t', ' ').replace('\n', ' '));
         out << fields.join('\t') << '\n';
     }
 
@@ -1045,7 +1077,7 @@ bool ResultModel::exportXlsx(const QUrl &fileUrl) const
             const bool numeric = (tid == QMetaType::Int    || tid == QMetaType::UInt  ||
                                   tid == QMetaType::Double || tid == QMetaType::Float  ||
                                   tid == QMetaType::LongLong || tid == QMetaType::ULongLong);
-            if (!numeric) addStr(v.toString());
+            if (!numeric) addStr(cellText(v));
         }
 
     // ── sharedStrings.xml ───────────────────────────────────────────────────
@@ -1087,7 +1119,7 @@ bool ResultModel::exportXlsx(const QUrl &fileUrl) const
                 shXml += "<c r=\"" + ref + "\"><v>" + val.toString() + "</v></c>";
             } else {
                 shXml += "<c r=\"" + ref + "\" t=\"s\"><v>"
-                      +  QString::number(idx.value(val.toString())) + "</v></c>";
+                      +  QString::number(idx.value(cellText(val))) + "</v></c>";
             }
         }
         shXml += "</row>";
