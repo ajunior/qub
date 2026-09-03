@@ -2464,6 +2464,13 @@ Item {
                                 detail:   root._relativeTime(modelData.executedAt) + " · " + modelData.connectionName
                                 severity: modelData.success ? "" : "error"
                                 onClicked: queryEditor.insertAtCursor(modelData.sql)
+
+                                // No confirmation: one history row is a record
+                                // of something already done, and re-running the
+                                // query puts it back.
+                                actionIcon:      Icons.trash
+                                actionTooltip:   "Remove from history"
+                                onActionClicked: HistoryManager.remove(delegateItem2.modelData.id)
                             }
                         }
 
