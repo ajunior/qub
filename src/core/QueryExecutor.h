@@ -65,7 +65,10 @@ public:
     // changes what an unqualified table name resolves to.
     static bool mayChangeSchema(const QString &sql);
 
-    static QString formatDuration(qint64 ms);
+    // Also the QML side's formatter: the results header, the status bar and
+    // the log entry describe the same run the Output console does, and were
+    // each printing raw milliseconds next to its "1 m 10 s 542 ms".
+    Q_INVOKABLE static QString formatDuration(qint64 ms);
     static QString resultSummary(bool hasResultSet, int rowCount, int rowsAffected,
                                  bool truncated, qint64 execMs, qint64 fetchMs,
                                  qint64 totalMs);
