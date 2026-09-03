@@ -226,6 +226,7 @@
     }
     .dl-item:hover, .dl-item:focus-visible { background: var(--primary-s); outline: none; }
     .dl-item .os   { font-weight: 600; }
+    .dl-item .arch { margin-left: 6px; font-size: 11px; color: var(--text-sec); }
     .dl-item .meta { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--text-sec); }
     .dl-foot {
       margin-top: 6px;
@@ -518,6 +519,12 @@
       text-align: left;
       white-space: nowrap;
     }
+    /* The header cell is uppercased and letter-spaced; both inherit, and
+       neither suits a parenthetical. */
+    .driver-matrix .th-arch {
+      display: block; font-weight: 400; font-size: 11px; color: var(--text-sec);
+      text-transform: none; letter-spacing: 0;
+    }
     .driver-matrix th {
       font-size: 11px;
       font-weight: 700;
@@ -653,7 +660,7 @@
                 aria-haspopup="true" aria-expanded="false"
                 aria-label="Choose a platform">&#9662;</button>
         <div class="dl-menu" id="dl-menu" role="menu">
-          <a class="dl-item" role="menuitem" data-os="macos"   href="https://github.com/ajunior/qub/releases"><span class="os">macOS</span><span class="meta">.dmg</span></a>
+          <a class="dl-item" role="menuitem" data-os="macos"   href="https://github.com/ajunior/qub/releases"><span class="os">macOS</span><span class="arch">Apple silicon</span><span class="meta">.dmg</span></a>
           <a class="dl-item" role="menuitem" data-os="windows" href="https://github.com/ajunior/qub/releases"><span class="os">Windows</span><span class="meta">.exe</span></a>
           <a class="dl-item" role="menuitem" data-os="linux"   href="https://github.com/ajunior/qub/releases"><span class="os">Linux</span><span class="meta">.AppImage</span></a>
           <div class="dl-foot">
@@ -815,7 +822,7 @@
       <tr>
         <th>Driver</th>
         <th>Linux &middot; AppImage</th>
-        <th>macOS &middot; DMG</th>
+        <th>macOS &middot; DMG<span class="th-arch">Apple silicon</span></th>
         <th>Windows &middot; installer</th>
       </tr>
       <tr><td>SQLite</td>          <td>bundled</td> <td>bundled</td>              <td>bundled</td></tr>
@@ -861,6 +868,9 @@
         which I also open-sourced. If you're building desktop apps with Qt, it might save you from
         reimplementing the same primitives from scratch.
       </p>
+      <p class="story-text">
+        AI helped write the code. Every feature, every decision, and every line of code is reviewed by me.
+      </p>
     </div>
 
     <div class="story-info">
@@ -882,7 +892,7 @@
       </div>
       <div class="info-block">
         <div class="label">Platform</div>
-        <div class="value">Linux (more soon)</div>
+        <div class="value">Linux &middot; macOS &middot; Windows</div>
       </div>
       <div class="info-block">
         <div class="label">Documentation</div>
