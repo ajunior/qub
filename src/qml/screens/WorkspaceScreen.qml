@@ -1246,7 +1246,7 @@ Item {
                 { icon: Icons.rows,
                   text:  _truncated ? rowLabel + " (limited)" : rowLabel,
                   color: _truncated ? Theme.warning : Theme.textSecondary },
-                { icon: Icons.timer, text: _elapsedMs + " ms", color: Theme.textDisabled }
+                { icon: Icons.timer, text: QueryExecutor.formatDuration(_elapsedMs), color: Theme.textDisabled }
             ]
             // Selection stats — column aggregates for the clicked cell's column.
             const _stTxt = root._statsText(_resultsTable ? _resultsTable.columnStats : null)
@@ -2357,7 +2357,7 @@ Item {
                                         }
                                         Text {
                                             visible: root._elapsedMs > 0
-                                            text:    root._elapsedMs + " ms"
+                                            text:    QueryExecutor.formatDuration(root._elapsedMs)
                                             color:   Theme.textDisabled
                                             font { family: Theme.fontFamily; pixelSize: Theme.textSm }
                                         }

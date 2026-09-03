@@ -315,7 +315,7 @@ Item {
 
                     Icon { name: Icons.timer; size: 13; color: Theme.textSecondary }
                     Text {
-                        text:  (_det.detail.elapsedMs ?? 0) + "ms"
+                        text:  QueryExecutor.formatDuration(_det.detail.elapsedMs ?? 0)
                         color: Theme.textSecondary
                         font { family: Theme.fontFamilyMono; pixelSize: Theme.textSm }
                     }
