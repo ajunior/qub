@@ -87,7 +87,9 @@ void AppSettings::setSchemaQuickBrowse(bool value) {
     emit schemaQuickBrowseChanged();
 }
 
-bool AppSettings::autoReconnect() const { return m_settings.value("autoReconnect", false).toBool(); }
+// On by default: a connection dropping under an idle editor is ordinary, and
+// the retry only re-runs the statement the user had already sent.
+bool AppSettings::autoReconnect() const { return m_settings.value("autoReconnect", true).toBool(); }
 void AppSettings::setAutoReconnect(bool value) {
     if (autoReconnect() == value) return;
     m_settings.setValue("autoReconnect", value);
@@ -156,7 +158,8 @@ void AppSettings::setHighlightCurrentLine(bool value) {
     emit highlightCurrentLineChanged();
 }
 
-double AppSettings::lineHeight() const { return m_settings.value("lineHeight", 1.0).toDouble(); }
+// 1.0 packs the lines tight enough that a long statement reads as a block.
+double AppSettings::lineHeight() const { return m_settings.value("lineHeight", 1.3).toDouble(); }
 void AppSettings::setLineHeight(double value) {
     if (lineHeight() == value) return;
     m_settings.setValue("lineHeight", value);
