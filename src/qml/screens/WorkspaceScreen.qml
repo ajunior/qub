@@ -1831,6 +1831,20 @@ Item {
                 }
                 onTableStatsRequested: (schema, name) => _tableStatsPopup.openFor(root.activeConnection, name)
                 onTableDdlRequested:   (schema, name) => _tableDdlPopup.openFor(root.activeConnection, name)
+
+                // The name that goes to the clipboard is the one that would
+                // actually run: qualified exactly where an unqualified name
+                // would resolve against the wrong schema, which is the same
+                // rule the browse button follows.
+                onTableCopyNameRequested: (schema, name) => {
+                    const text = _schemaTree._qualify(schema, name)
+                    _toaster.copyToClipboard(text)
+                    _toaster.show("Copied " + text, Toaster.Type.Success)
+                }
+                onSchemaCopyNameRequested: (schema) => {
+                    _toaster.copyToClipboard(schema)
+                    _toaster.show("Copied " + schema, Toaster.Type.Success)
+                }
             }
 
             secondItem: SplitPane {
