@@ -10,7 +10,10 @@ class AppSettings : public QObject {
     QUB_QML_SINGLETON(AppSettings)
 
 public:
-    Q_PROPERTY(bool    darkTheme          READ darkTheme          WRITE setDarkTheme          NOTIFY darkThemeChanged)
+    // "light" | "dark" | "system". Not a bool, because following the OS is a
+    // third choice and not a second one: "system" already means dark half the
+    // time on a machine that switches at sunset.
+    Q_PROPERTY(QString themeMode        READ themeMode          WRITE setThemeMode          NOTIFY themeModeChanged)
     Q_PROPERTY(int     fontSize           READ fontSize           WRITE setFontSize           NOTIFY fontSizeChanged)
     Q_PROPERTY(QString fontFamily         READ fontFamily         WRITE setFontFamily         NOTIFY fontFamilyChanged)
     Q_PROPERTY(int     fontWeight         READ fontWeight         WRITE setFontWeight         NOTIFY fontWeightChanged)
@@ -52,7 +55,7 @@ public:
 public:
     explicit AppSettings(QObject *parent = nullptr);
 
-    bool    darkTheme()          const;
+    QString themeMode()          const;
     int     fontSize()           const;
     QString fontFamily()         const;
     int     fontWeight()         const;
@@ -86,7 +89,7 @@ public:
     Q_INVOKABLE QString readFile(const QUrl &url) const;
     Q_INVOKABLE bool    writeFile(const QUrl &url, const QString &content) const;
 
-    void setDarkTheme(bool value);
+    void setThemeMode(const QString &value);
     void setFontSize(int value);
     void setFontFamily(const QString &value);
     void setFontWeight(int value);
@@ -132,7 +135,7 @@ public:
     void setSnippetsSortAsc(bool value);
 
 signals:
-    void darkThemeChanged();
+    void themeModeChanged();
     void fontSizeChanged();
     void fontFamilyChanged();
     void fontWeightChanged();

@@ -7,7 +7,7 @@ AppSettings::AppSettings(QObject *parent)
     , m_settings("qub", "qub")
 {}
 
-bool    AppSettings::darkTheme() const    { return m_settings.value("darkTheme", false).toBool(); }
+QString AppSettings::themeMode() const    { return m_settings.value("themeMode", "system").toString(); }
 int     AppSettings::fontSize() const     { return m_settings.value("fontSize", 13).toInt(); }
 QString AppSettings::fontFamily() const   { return m_settings.value("fontFamily", "JetBrains Mono").toString(); }
 // Qt 6 moved font weights onto the CSS scale, where Font.Normal is 400 and the
@@ -23,10 +23,10 @@ int     AppSettings::fontWeight() const {
 int     AppSettings::historyLimit() const { return m_settings.value("historyLimit", 500).toInt(); }
 bool AppSettings::autoCloseOnLeave()  const { return m_settings.value("autoCloseOnLeave", false).toBool(); }
 
-void AppSettings::setDarkTheme(bool value) {
-    if (darkTheme() == value) return;
-    m_settings.setValue("darkTheme", value);
-    emit darkThemeChanged();
+void AppSettings::setThemeMode(const QString &value) {
+    if (themeMode() == value) return;
+    m_settings.setValue("themeMode", value);
+    emit themeModeChanged();
 }
 
 void AppSettings::setFontSize(int value) {
