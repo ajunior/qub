@@ -585,6 +585,33 @@
       <tr><td>QIBASE</td><td>Firebird</td><td>libfbclient</td></tr>
     </table>
 
+    <p>
+      Which of those a copy of qub can actually load is decided by Qt, not by qub: the official
+      Qt binaries the macOS and Windows builds are made with carry no MySQL/MariaDB driver at
+      all, and the macOS ones none for Oracle or Firebird. The macOS DMG is the exception &mdash;
+      it ships a MySQL/MariaDB plugin qub compiles itself. qub lists only the drivers the copy
+      you are running found, so the connection form never offers one that would fail on you.
+    </p>
+    <table>
+      <tr><th>Driver</th><th>Linux &middot; AppImage</th><th>macOS &middot; DMG</th><th>Windows &middot; installer</th></tr>
+      <tr><td>QSQLITE</td><td>bundled</td><td>bundled</td><td>bundled</td></tr>
+      <tr><td>QPSQL</td><td>bundled</td><td>bundled</td><td>bundled</td></tr>
+      <tr><td>QODBC</td><td>bundled</td><td>bundled</td><td>system unixODBC</td></tr>
+      <tr><td>QMYSQL / QMARIADB</td><td>bundled</td><td>bundled</td><td><em>no plugin</em></td></tr>
+      <tr><td>QIBASE</td><td>bundled</td><td><em>no plugin</em></td><td>bring <code>fbclient.dll</code></td></tr>
+      <tr><td>QOCI</td><td><em>not bundled</em></td><td><em>no plugin</em></td><td>bring Instant Client</td></tr>
+    </table>
+
+    <div class="callout info">
+      <span class="icon">&#8505;</span>
+      <p><em>No plugin</em> means nothing you install will help — only a qub built against a Qt
+      compiled with that driver, which is what the macOS DMG does for MySQL: it carries a plugin
+      built during packaging against MariaDB Connector/C, and the client library alongside it.
+      Oracle is left out of the AppImage because its client library is not
+      redistributable. Building qub from source, every client library is your
+      system&rsquo;s and every driver Qt built is available.</p>
+    </div>
+
     <div class="callout info">
       <span class="icon">ℹ</span>
       <p><strong>PostgreSQL:</strong> requires <code>libpq</code> on your system.

@@ -79,15 +79,17 @@ otherwise the connection fails with *"The … driver could not be loaded"*.
 
 Which plugins exist is decided by Qt, not by qub: Qt's official macOS and
 Windows binaries carry no MySQL driver at all, and the macOS ones carry no
-Oracle or Firebird driver either. The release packages then bundle every client
-library they can, so what is left is what a user has to install.
+Oracle or Firebird driver either. The macOS DMG is the one exception — it
+carries a MySQL plugin qub compiles itself, against MariaDB Connector/C. The
+release packages then bundle every client library they can, so what is left is
+what a user has to install.
 
 | | Linux (AppImage) | macOS (DMG) | Windows (installer) |
 |---|---|---|---|
 | SQLite | bundled | bundled | bundled |
 | PostgreSQL | bundled | bundled | bundled |
 | ODBC | bundled | bundled | system |
-| MySQL / MariaDB | bundled | *no plugin* | *no plugin* |
+| MySQL / MariaDB | bundled | bundled | *no plugin* |
 | Firebird | bundled | *no plugin* | bring `fbclient.dll` |
 | Oracle | *not bundled* | *no plugin* | bring [Instant Client](https://www.oracle.com/database/technologies/instant-client.html) |
 
