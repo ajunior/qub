@@ -198,6 +198,27 @@ Item {
     }
     property int    _resultsPane: 0      // bottom pane: 0 = Results, 1 = Output console
 
+    // The bottom pane's tabs. `pane` is the StackLayout index and never moves,
+    // so hiding a tab changes what the bar shows and nothing else.
+    readonly property var _resultPanes: [
+        { key: "results", label: "Results", pane: 0, fixed: true },
+        { key: "output",  label: "Output",  pane: 1, fixed: true },
+        { key: "chart",   label: "Chart",   pane: 2, fixed: false },
+        { key: "profile", label: "Profile", pane: 3, fixed: false },
+        { key: "explain", label: "Explain", pane: 4, fixed: false },
+        { key: "pivot",   label: "Pivot",   pane: 5, fixed: false },
+        { key: "checks",  label: "Checks",  pane: 6, fixed: false },
+        { key: "diff",    label: "Diff",    pane: 7, fixed: false }
+    ]
+
+    // A hidden pane still appears while it is the one on screen. Ctrl+E opens
+    // Explain whether or not its tab is on, and a pane you are looking at with
+    // no tab of its own is a dead end you cannot navigate out of.
+    readonly property var _visibleResultPanes: root._resultPanes.filter(
+        p => p.fixed
+             || p.pane === root._resultsPane
+             || AppSettings.hiddenResultTabs.indexOf(p.key) === -1)
+
     // Errors on the active connection that arrived while Output wasn't showing —
     // surfaced as a count on the Output tab label, cleared on viewing it.
     property int _outputUnseenErrors: 0
@@ -2224,18 +2245,13 @@ Item {
                                         Layout.fillHeight: true
                                         tabHeight:   36
                                         tabMinWidth: 72
-                                        model: ["Results",
-                                                root._outputUnseenErrors > 0
-                                                ? "Output · " + (root._outputUnseenErrors > 9 ? "9+" : root._outputUnseenErrors)
-                                                : "Output",
-                                                "Chart",
-                                                "Profile",
-                                                "Explain",
-                                                "Pivot",
-                                                "Checks",
-                                                "Diff"]
-                                        currentIndex: root._resultsPane
-                                        onTabClicked: (i) => root._resultsPane = i
+                                        model: root._visibleResultPanes.map(p =>
+                                            p.key === "output" && root._outputUnseenErrors > 0
+                                            ? "Output · " + (root._outputUnseenErrors > 9 ? "9+" : root._outputUnseenErrors)
+                                            : p.label)
+                                        currentIndex: Math.max(0, root._visibleResultPanes
+                                                       .findIndex(p => p.pane === root._resultsPane))
+                                        onTabClicked: (i) => root._resultsPane = root._visibleResultPanes[i].pane
                                     }
 
                                     Item { Layout.fillWidth: true }

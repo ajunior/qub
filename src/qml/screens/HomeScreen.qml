@@ -1770,7 +1770,7 @@ Item {
                                 spacing: 14
                                 visible: {
                                     const q = _settings._q
-                                    return !q || ["editor","font","size","font size","family","typeface","autocomplete","auto-complete","complete","limit","rows","result","highlight","current line","line height","spacing","compact","comfortable","tab","indent","spaces"].some(t => t.includes(q))
+                                    return !q || ["editor","font","size","font size","family","typeface","autocomplete","auto-complete","complete","highlight","current line","line height","spacing","compact","comfortable","tab","indent","spaces"].some(t => t.includes(q))
                                 }
 
                                 Text {
@@ -2082,17 +2082,94 @@ Item {
                                     }
                                 }
 
+                            }
+
+                            Rectangle {
+                                Layout.fillWidth: true; height: 1; color: Theme.border
+                                visible: _secEditor.visible && _secResults.visible
+                            }
+
+                            ColumnLayout {
+                                id: _secResults
+                                Layout.fillWidth:    true
+                                Layout.leftMargin:   24
+                                Layout.rightMargin:  24
+                                spacing: 14
+                                visible: {
+                                    const q = _settings._q
+                                    return !q || ["results","result","limit","rows","tabs","tab","pane","panes","chart","profile","explain","pivot","checks","diff","hide","show"].some(t => t.includes(q))
+                                }
+
+                                Text {
+                                    text: "RESULTS"
+                                    color: Theme.textDisabled
+                                    font.family:      Theme.fontFamily
+                                    font.pixelSize:   Theme.textXs
+                                    font.weight:      Theme.weightSemibold
+                                    font.letterSpacing: 1.5
+                                }
+
                                 NumberInput {
                                     label: "Default result limit (0 = no limit)"
                                     value: AppSettings.queryLimit
                                     min: 0; max: 100000; step: 100
                                     onValueChanged: if (value !== AppSettings.queryLimit) AppSettings.queryLimit = value
                                 }
+
+                                ColumnLayout {
+                                    Layout.fillWidth: true
+                                    spacing: 8
+
+                                    Text {
+                                        text:  "Result tabs"
+                                        color: Theme.textPrimary
+                                        font { family: Theme.fontFamily; pixelSize: Theme.textSm }
+                                    }
+
+                                    Text {
+                                        text:  "Switch off the ones you do not use. Results and Output always stay."
+                                        color: Theme.textSecondary
+                                        font { family: Theme.fontFamily; pixelSize: Theme.textXs }
+                                    }
+
+                                    // A lit chip is a tab that shows. Chips rather
+                                    // than a column of toggles: this is one row of
+                                    // names, and it reads as the tab bar it controls.
+                                    Flow {
+                                        Layout.fillWidth: true
+                                        spacing: 6
+
+                                        Repeater {
+                                            model: [
+                                                { key: "chart",   label: "Chart"   },
+                                                { key: "profile", label: "Profile" },
+                                                { key: "explain", label: "Explain" },
+                                                { key: "pivot",   label: "Pivot"   },
+                                                { key: "checks",  label: "Checks"  },
+                                                { key: "diff",    label: "Diff"    }
+                                            ]
+                                            delegate: Chip {
+                                                id: delegateItem13
+                                                required property var modelData
+                                                text:     delegateItem13.modelData.label
+                                                selected: AppSettings.hiddenResultTabs
+                                                              .indexOf(delegateItem13.modelData.key) === -1
+                                                onClicked: {
+                                                    const hidden = AppSettings.hiddenResultTabs.slice()
+                                                    const at     = hidden.indexOf(delegateItem13.modelData.key)
+                                                    if (at === -1) hidden.push(delegateItem13.modelData.key)
+                                                    else           hidden.splice(at, 1)
+                                                    AppSettings.hiddenResultTabs = hidden
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
 
                             Rectangle {
-                                Layout.fillWidth: true; height: 1; color: Theme.border
-                                visible: _secEditor.visible && _secSchema.visible
+                                Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.border
+                                visible: _secResults.visible && _secSchema.visible
                             }
 
                             ColumnLayout {
