@@ -7,6 +7,12 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## Unreleased
 
+- **Feat** `Copy name` in the schema browser: on a table row's `···` menu, and
+  on a schema row, which now has a menu of its own. Copying a table name meant
+  running the table and lifting the name back out of the SQL qub had written.
+  The table name arrives qualified with its schema exactly where an unqualified
+  one would resolve against a different table — the rule the browse button
+  already follows
 - **Feat** Double-clicking a schema in the browser inserts its name in the
   editor, and a table outside the default schema is now qualified with it —
   both when double-clicked and when its browse button runs a query. The tree

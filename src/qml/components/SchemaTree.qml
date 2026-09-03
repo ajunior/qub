@@ -23,6 +23,8 @@ Item {
     signal tableQuickBrowseRequested(string schema, string name)
     signal tableStatsRequested(string schema, string name)
     signal tableDdlRequested(string schema, string name)
+    signal tableCopyNameRequested(string schema, string name)
+    signal schemaCopyNameRequested(string schema)
 
     onConnectionNameChanged: _reload()
 
@@ -61,5 +63,7 @@ Item {
         onTableQuickBrowseRequested: (schema, name)          => root.tableQuickBrowseRequested(schema, name)
         onTableStatsRequested:       (schema, name)          => root.tableStatsRequested(schema, name)
         onTableDdlRequested:         (schema, name)          => root.tableDdlRequested(schema, name)
+        onTableCopyNameRequested:    (schema, name)          => root.tableCopyNameRequested(schema, name)
+        onSchemaCopyNameRequested:   (schema)                => root.schemaCopyNameRequested(schema)
     }
 }
