@@ -56,11 +56,11 @@ It needs one repository secret:
 The schemas are public, so a manifest can be validated without Windows:
 
 ```sh
-curl -sO https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+curl -sO https://aka.ms/winget-manifest.installer.1.12.0.schema.json
 python3 -c "
 import json, yaml, jsonschema
 jsonschema.validate(yaml.safe_load(open('Ajunior.Qub.installer.yaml')),
-                    json.load(open('winget-manifest.installer.1.6.0.schema.json')))
+                    json.load(open('winget-manifest.installer.1.12.0.schema.json')))
 print('ok')"
 ```
 
