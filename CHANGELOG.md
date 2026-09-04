@@ -7,7 +7,7 @@ feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
 ## 0.44.10
 
-A patch on the first public release: three things that were visible the moment
+A patch on the first public release: four things that were visible the moment
 you opened it.
 
 - **Fix** A date column reads `2026-08-28 21:00:00` instead of
@@ -29,6 +29,11 @@ you opened it.
   number twice, against gridlines at different heights, on any peak that is not
   a multiple of four. The step is chosen first now and snapped to a 1-2-5
   figure, so the axis runs in increments a reader recognises
+- **Fix** The Pivot pane's value picker stays inside the pane. Its row of
+  controls could not fit the width it was given once the History panel was
+  open, and nothing in it was allowed to shrink, so the surplus ran off the
+  right edge and took the picker with it — the control you need for every
+  aggregation except Count
 - **Fix** The Pivot pane no longer flickers a row of empty headers each time a
   new result arrives. The column pickers still hold the previous result's
   columns for the instant the new one lands, and the pivot built from them was
