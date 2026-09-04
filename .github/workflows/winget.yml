@@ -1,0 +1,42 @@
+name: WinGet
+
+# Submits the Windows installer to the WinGet community repository.
+#
+# Fires on a *published* release rather than on the tag, because release.yml
+# publishes a draft: the assets are not downloadable until a human publishes,
+# and this job hashes the asset URLs. A release left in draft therefore never
+# reaches WinGet, which is the intended behaviour — nothing is offered through
+# a package manager that was not deliberately published.
+#
+# The first version of a package cannot be submitted this way. The action
+# checks winget-pkgs for the identifier and fails when it is absent, by design:
+# a new package gets a human review once. From then on every release is an
+# update, which is what this automates.
+on:
+  release:
+    types: [released]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to submit (e.g. v0.44.11)'
+        required: true
+
+jobs:
+  publish:
+    name: Submit to winget-pkgs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Submit
+        uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e # v2
+        with:
+          identifier: Ajunior.Qub
+          # No `version`: the action derives it from the tag minus the "v",
+          # which is exactly the PackageVersion the manifests use.
+          release-tag: ${{ inputs.tag || github.event.release.tag_name }}
+          # The same release carries an AppImage and a DMG. WinGet wants the
+          # Inno installer and nothing else.
+          installers-regex: '-setup\.exe$'
+          release-notes-url: https://github.com/${{ github.repository }}/releases/tag/${{ inputs.tag || github.event.release.tag_name }}
+          # A fine-grained token cannot push to the winget-pkgs fork the way
+          # komac needs, so this is a classic PAT scoped to public_repo.
+          token: ${{ secrets.WINGET_TOKEN }}
