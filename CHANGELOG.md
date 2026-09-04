@@ -5,6 +5,36 @@ All notable changes to qub are documented here.
 Entry prefixes: **New** (new feature), **Feat** (new capability on an existing
 feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
+## 0.44.10
+
+A patch on the first public release: three things that were visible the moment
+you opened it.
+
+- **Fix** A date column reads `2026-08-28 21:00:00` instead of
+  `Fri Aug 28 21:0…`. Qt renders a timestamp as `Fri Aug 28 21:00:00 2026` by
+  default — 24 characters that lead with the one field nobody scans for, wide
+  enough to elide in a column that would otherwise have fit. The cost was not
+  the width, though: the grid sorts a non-numeric column as text, so a date
+  column came out ordered by weekday name — every Friday before every Monday,
+  every August before every February — and typing `2026-08` into the filter
+  matched nothing, because that string does not appear anywhere in what was
+  being compared. The grid, the filter, the sort key, a copied cell or row and
+  every export now read one function, so all of them agree with what is on
+  screen; a time keeps `HH:mm:ss`, and a timestamp shows milliseconds only when
+  it has any
+- **Fix** The Y axis of a chart prints labels that are actually different
+  numbers. It drew five gridlines at fixed quarters of the tallest value and
+  rounded every caption to a whole number, so a result peaking at 2 put its
+  lines at 0, 0.5, 1, 1.5 and 2 and labelled them 0, 1, 1, 2, 2 — the same
+  number twice, against gridlines at different heights, on any peak that is not
+  a multiple of four. The step is chosen first now and snapped to a 1-2-5
+  figure, so the axis runs in increments a reader recognises
+- **Fix** The Pivot pane no longer flickers a row of empty headers each time a
+  new result arrives. The column pickers still hold the previous result's
+  columns for the instant the new one lands, and the pivot built from them was
+  empty — but empty and *absent* are different things, and the pane could not
+  tell them apart, so it drew the empty one
+
 ## 0.44.9
 
 The first public release of qub.
