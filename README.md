@@ -18,7 +18,7 @@ I'm sharing it in case someone else is in the same spot I was.
 
 AI helped write the code. Every feature, every decision, and every line of code is reviewed by me.
 
-![qub screenshot](assets/screenshot.png)
+![qub running a query, with the estimated execution plan open below it](assets/screenshot.png)
 
 ## Features
 
