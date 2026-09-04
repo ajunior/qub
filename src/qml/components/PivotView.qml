@@ -104,6 +104,9 @@ Rectangle {
                 Dropdown {
                     id: _rowDrop
                     Layout.preferredWidth: 150
+                    Layout.minimumWidth:   90
+                    Layout.fillWidth:      true
+                    Layout.maximumWidth:   150
                     model: root._cols
                     onCurrentIndexChanged: root._rowCol = currentIndex
                 }
@@ -116,11 +119,17 @@ Rectangle {
                 Dropdown {
                     id: _colDrop
                     Layout.preferredWidth: 150
+                    Layout.minimumWidth:   90
+                    Layout.fillWidth:      true
+                    Layout.maximumWidth:   150
                     model: root._cols
                     onCurrentIndexChanged: root._colCol = currentIndex
                 }
 
-                Item { Layout.fillWidth: true }
+                // Pushes the aggregation to the right when there is room to
+                // spare. Capped, because fillWidth competes with the dropdowns
+                // for what is left over and an uncapped spacer wins.
+                Item { Layout.fillWidth: true; Layout.maximumWidth: 40 }
 
                 SegmentedControl {
                     id: _aggSeg
@@ -139,6 +148,9 @@ Rectangle {
                 Dropdown {
                     id: _valDrop
                     Layout.preferredWidth: 150
+                    Layout.minimumWidth:   90
+                    Layout.fillWidth:      true
+                    Layout.maximumWidth:   150
                     enabled: root._needsValue   // count ignores the value column
                     opacity: root._needsValue ? 1 : 0.5
                     model: root._cols
