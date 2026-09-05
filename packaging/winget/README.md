@@ -24,7 +24,14 @@ Every field traces back to `packaging/windows/installer.iss`:
 | `Publisher: ajunior` | `AppPublisher` |
 
 `ProductCode` is what lets WinGet recognise an existing manual installation and
-upgrade it in place rather than installing a second copy.
+upgrade it in place rather than installing a second copy. It was confirmed by
+reading `HKCU\...\Uninstall\{AppId}_is1` back on Windows after a real install,
+not inferred from the script.
+
+`AppsAndFeaturesEntries` records that same uninstall entry as it actually looks.
+It matters because Inno puts the version inside the DisplayName — `qub version
+0.44.10` rather than `qub` — which also means this block has to be updated for
+every release until issue #126 is dealt with.
 
 ## First submission (done once, by hand)
 
