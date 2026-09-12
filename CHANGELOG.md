@@ -5,6 +5,49 @@ All notable changes to qub are documented here.
 Entry prefixes: **New** (new feature), **Feat** (new capability on an existing
 feature), **Fix** (bug fix), **Break** (breaking change), **Docs**.
 
+## Unreleased
+
+Wrong answers about multi-schema databases. Most of these come from one
+assumption — that a bare table name identifies a table — which holds right up
+until a Postgres database has a `users` in two schemas. Two more were found
+alongside them, in the same generated SQL.
+
+- **Fix** **Statistics** and **View DDL** answer about the table you pointed at.
+  Both looked the table up by name alone, so right-clicking `analytics.users`
+  could show you the row count of `public.users`, with nothing on screen saying
+  which one it had answered about. The DDL was worse than picking the wrong one
+  of the two: it matched every column of *both* tables and ordered them the way
+  the catalogue lists them, so the two definitions interleaved into a single
+  `CREATE TABLE` — `id, tenant_id, email, day, hits` — a table that exists in
+  neither schema, presented as the definition of one that does. Both are now
+  pinned to the schema the tree already knew, and the popup title names the
+  table it answered about, qualified wherever an unqualified name would be
+  ambiguous
+- **Fix** A composite primary key keeps its column order in **View DDL**. The
+  key's columns were read in order and then collected into a hash set, which
+  threw that order away, so `PRIMARY KEY (tenant_id, day)` could come back as
+  `(day, tenant_id)` — a different key, in a definition you might paste
+  somewhere
+- **Fix** Following a foreign key lands in the right schema. The FK list carried
+  both ends' schemas, but the navigation matched on the bare name, so a cell in
+  a row of `analytics.orders` offered the foreign keys of `public.orders` and
+  jumped there. The menu now names the destination qualified where it needs to
+  be, and the generated `SELECT` qualifies it too — an unqualified name resolves
+  against the search path rather than against the schema the row came from
+- **Fix** Editing a cell and following a foreign key keep working after a
+  schema-qualified browse. Opening a table from the schema panel generates
+  `SELECT * FROM "analytics"."users"`, and the tab read its table back out of
+  that SQL with a pattern that could not see a qualified name — it matched
+  nothing, so the tab recorded no table, and both inline editing and FK
+  navigation went quietly dead for exactly the queries the browse button
+  produces
+- **Fix** Committing an inline cell edit builds an `UPDATE` in the connection's
+  own dialect. Identifiers were wrapped in double quotes regardless of driver:
+  on a qualified table that made `UPDATE "analytics.users"`, one name with a dot
+  inside it rather than a schema and a table, and on MySQL it turned every
+  identifier into a string literal, so the `WHERE` compared one constant to
+  another
+
 ## 0.44.10
 
 A patch on the first public release: four things that were visible the moment
