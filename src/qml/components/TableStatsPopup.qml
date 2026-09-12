@@ -11,10 +11,18 @@ Dialog {
     // ── API ──────────────────────────────────────────────────────────────────
     property string connectionName: ""
     property string tableName:      ""
+    property string schemaName:     ""
 
-    function openFor(conn: var, table: var): void {
+    // `label` is the name as the rest of the UI writes it — qualified only where
+    // an unqualified one would be ambiguous — so the popup says which table it
+    // answered about instead of leaving it to be guessed.
+    property string tableLabel: ""
+
+    function openFor(conn: var, schema: var, table: var, label: var): void {
         connectionName = conn
+        schemaName     = schema ?? ""
         tableName      = table
+        tableLabel     = label || table
         _stats         = {}
         _load()
         open()
@@ -24,7 +32,7 @@ Dialog {
     property var _stats: ({})
 
     function _load(): void {
-        _stats = DatabaseInspector.tableStats(connectionName, tableName)
+        _stats = DatabaseInspector.tableStats(connectionName, schemaName, tableName)
     }
 
     // ── Derived helpers ───────────────────────────────────────────────────────
@@ -73,7 +81,7 @@ Dialog {
     }
 
     // ── Dialog chrome ─────────────────────────────────────────────────────────
-    title:          root.tableName
+    title:          root.tableLabel
     subtitle:       root.connectionName
     preferredWidth: 680
 

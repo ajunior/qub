@@ -21,8 +21,15 @@ public:
 
     Q_INVOKABLE void         inspect(const QString &connectionName);
     Q_INVOKABLE QVariantList foreignKeys(const QString &connectionName) const;
-    Q_INVOKABLE QVariantMap  tableStats(const QString &connectionName, const QString &tableName) const;
-    Q_INVOKABLE QString      tableDdl(const QString &connectionName, const QString &tableName) const;
+    // `schema` qualifies the lookup. Pass it empty and the table is matched by
+    // name alone across every user schema, which is what these did before and
+    // is only unambiguous when the connection exposes one schema.
+    Q_INVOKABLE QVariantMap  tableStats(const QString &connectionName,
+                                        const QString &schema,
+                                        const QString &tableName) const;
+    Q_INVOKABLE QString      tableDdl(const QString &connectionName,
+                                      const QString &schema,
+                                      const QString &tableName) const;
 
     // Runs a dialect-appropriate EXPLAIN and returns a normalised plan tree:
     //   { success, error, driver, analyzed, text, warnings:[str],
