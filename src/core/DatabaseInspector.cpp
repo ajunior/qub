@@ -266,16 +266,41 @@ static QString fmtCorr(double v) {
 }
 static QString esc(const QString &s)  { return QString(s).replace('\'', "''"); }
 
-QVariantMap DatabaseInspector::tableStats(const QString &connectionName, const QString &tableName) const
+// The schema filter for a Postgres catalogue query, as a clause to append.
+// Given a schema it pins the lookup to it; given none it falls back to "any
+// schema that is not the server's own", which is the old behaviour and matches
+// a duplicate table name in whichever schema the catalogue lists first.
+static QString pgSchemaClause(const QString &column, const QString &escapedSchema)
+{
+    if (escapedSchema.isEmpty())
+        return QStringLiteral(" AND ") % column %
+               QStringLiteral(" NOT IN ('pg_catalog','information_schema','pg_toast')");
+    return QStringLiteral(" AND ") % column % QStringLiteral(" = '") % escapedSchema %
+           QStringLiteral("'");
+}
+
+// MySQL calls a schema a database, so an unqualified lookup is DATABASE() —
+// already unambiguous, which is why the MySQL half of #94 was safe by accident.
+static QString mysqlSchemaExpr(const QString &escapedSchema)
+{
+    if (escapedSchema.isEmpty()) return QStringLiteral("DATABASE()");
+    return QStringLiteral("'") % escapedSchema % QStringLiteral("'");
+}
+
+QVariantMap DatabaseInspector::tableStats(const QString &connectionName,
+                                          const QString &schema,
+                                          const QString &tableName) const
 {
     auto *a = m_cm->adapter(connectionName);
     if (!a || !a->isOpen()) return {};
 
     const QString driver = a->driverName();
     const QString t      = esc(tableName);
+    const QString sch    = esc(schema);
     QVariantMap   m;
     m[QStringLiteral("driver")]    = driver;
     m[QStringLiteral("tableName")] = tableName;
+    m[QStringLiteral("schema")]    = schema;
 
     if (driver == QLatin1String("QPSQL")) {
         const QueryResult r = a->execute(QStringLiteral(
@@ -289,8 +314,8 @@ QVariantMap DatabaseInspector::tableStats(const QString &connectionName, const Q
             " FROM pg_class c"
             " JOIN pg_namespace n ON n.oid = c.relnamespace"
             " LEFT JOIN pg_stat_user_tables s ON s.relname = c.relname AND s.schemaname = n.nspname"
-            " WHERE c.relname = '") % t % QStringLiteral("'"
-            "   AND n.nspname NOT IN ('pg_catalog','information_schema','pg_toast')"
+            " WHERE c.relname = '") % t % QStringLiteral("'") %
+            pgSchemaClause(QStringLiteral("n.nspname"), sch) % QStringLiteral(
             " LIMIT 1"));
 
         if (!r.rows.isEmpty()) {
@@ -310,9 +335,9 @@ QVariantMap DatabaseInspector::tableStats(const QString &connectionName, const Q
         const QueryResult cs = a->execute(
             QStringLiteral("SELECT attname, n_distinct, null_frac, avg_width, correlation"
                            " FROM pg_stats"
-                           " WHERE tablename = '") % t %
-            QStringLiteral("' AND schemaname NOT IN ('pg_catalog','information_schema','pg_toast')"
-                           " ORDER BY attname"));
+                           " WHERE tablename = '") % t % QStringLiteral("'") %
+            pgSchemaClause(QStringLiteral("schemaname"), sch) %
+            QStringLiteral(" ORDER BY attname"));
         QVariantList cols;
         for (const QVariantList &row : cs.rows) {
             QVariantMap col;
@@ -334,8 +359,8 @@ QVariantMap DatabaseInspector::tableStats(const QString &connectionName, const Q
                            " DATE_FORMAT(CREATE_TIME,'%Y-%m-%d %H:%i'),"
                            " DATE_FORMAT(UPDATE_TIME,'%Y-%m-%d %H:%i')"
                            " FROM information_schema.TABLES"
-                           " WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '") % t %
-            QStringLiteral("'"));
+                           " WHERE TABLE_SCHEMA = ") % mysqlSchemaExpr(sch) %
+            QStringLiteral(" AND TABLE_NAME = '") % t % QStringLiteral("'"));
 
         if (!r.rows.isEmpty()) {
             const QVariantList &row = r.rows.first();
@@ -369,17 +394,27 @@ QVariantMap DatabaseInspector::tableStats(const QString &connectionName, const Q
 
 // ── Table DDL ─────────────────────────────────────────────────────────────────
 
-QString DatabaseInspector::tableDdl(const QString &connectionName, const QString &tableName) const
+QString DatabaseInspector::tableDdl(const QString &connectionName,
+                                    const QString &schema,
+                                    const QString &tableName) const
 {
     auto *a = m_cm->adapter(connectionName);
     if (!a || !a->isOpen()) return {};
 
     const QString driver = a->driverName();
     const QString t      = esc(tableName);
+    const QString sch    = esc(schema);
 
     if (driver == QLatin1String("QMYSQL") || driver == QLatin1String("QMARIADB")) {
-        const QueryResult r = a->execute(
-            QStringLiteral("SHOW CREATE TABLE `") % t % QStringLiteral("`"));
+        // SHOW CREATE TABLE takes the qualified name directly; there is no
+        // schema predicate to add. Backticks, because a schema or table may be
+        // a reserved word.
+        // QString(), not the bare QStringBuilder expressions: the two branches
+        // build different builder types and ?: will not pick between them.
+        const QString qualified = sch.isEmpty()
+            ? QString(QStringLiteral("`") % t % QStringLiteral("`"))
+            : QString(QStringLiteral("`") % sch % QStringLiteral("`.`") % t % QStringLiteral("`"));
+        const QueryResult r = a->execute(QStringLiteral("SHOW CREATE TABLE ") % qualified);
         if (!r.rows.isEmpty() && r.rows.first().size() >= 2)
             return r.rows.first().at(1).toString();
         return {};
@@ -418,10 +453,9 @@ QString DatabaseInspector::tableDdl(const QString &connectionName, const QString
             "  column_default,"
             "  is_nullable"
             " FROM information_schema.columns"
-            " WHERE table_name = '") % t %
-        QStringLiteral("'"
-            "   AND table_schema NOT IN ('pg_catalog','information_schema')"
-            " ORDER BY ordinal_position"));
+            " WHERE table_name = '") % t % QStringLiteral("'") %
+        pgSchemaClause(QStringLiteral("table_schema"), sch) %
+        QStringLiteral(" ORDER BY ordinal_position"));
 
     // Step 2: primary key columns
     const QueryResult pkR = a->execute(
@@ -431,18 +465,29 @@ QString DatabaseInspector::tableDdl(const QString &connectionName, const QString
             " JOIN information_schema.key_column_usage kcu"
             "   ON tc.constraint_name = kcu.constraint_name"
             "  AND tc.table_schema    = kcu.table_schema"
-            " WHERE tc.table_name = '") % t %
-        QStringLiteral("'"
-            "   AND tc.table_schema NOT IN ('pg_catalog','information_schema')"
-            "   AND tc.constraint_type = 'PRIMARY KEY'"
+            " WHERE tc.table_name = '") % t % QStringLiteral("'") %
+        pgSchemaClause(QStringLiteral("tc.table_schema"), sch) %
+        QStringLiteral("   AND tc.constraint_type = 'PRIMARY KEY'"
             " ORDER BY kcu.ordinal_position"));
 
-    QSet<QString> pkCols;
-    for (const QVariantList &r : pkR.rows)
-        pkCols.insert(r.value(0).toString());
+    // A QSet here dropped the ORDER BY on the floor: a composite key came back
+    // in hash order, so the emitted PRIMARY KEY (a, b) could read (b, a) — a
+    // different key. Ordered list, with the set kept only to reject duplicates.
+    QStringList   pkCols;
+    QSet<QString> pkSeen;
+    for (const QVariantList &r : pkR.rows) {
+        const QString col = r.value(0).toString();
+        if (!pkSeen.contains(col)) {
+            pkSeen.insert(col);
+            pkCols.append(col);
+        }
+    }
 
     // Step 3: build DDL string
-    QString ddl = QStringLiteral("CREATE TABLE ") % tableName % QStringLiteral(" (\n");
+    const QString ddlName = schema.isEmpty()
+        ? tableName
+        : QString(schema % QStringLiteral(".") % tableName);
+    QString ddl = QStringLiteral("CREATE TABLE ") % ddlName % QStringLiteral(" (\n");
     QStringList lines;
     for (const QVariantList &row : cols.rows) {
         const QString col  = row.value(0).toString();
@@ -458,11 +503,9 @@ QString DatabaseInspector::tableDdl(const QString &connectionName, const QString
         lines.append(line);
     }
 
-    if (!pkCols.isEmpty()) {
-        QStringList pkList(pkCols.begin(), pkCols.end());
-        lines.append(QStringLiteral("    PRIMARY KEY (") % pkList.join(QStringLiteral(", ")) %
+    if (!pkCols.isEmpty())
+        lines.append(QStringLiteral("    PRIMARY KEY (") % pkCols.join(QStringLiteral(", ")) %
                      QStringLiteral(")"));
-    }
 
     ddl += lines.join(QStringLiteral(",\n"));
     ddl += QStringLiteral("\n);");

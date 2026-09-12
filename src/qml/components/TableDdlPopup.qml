@@ -12,12 +12,18 @@ Dialog {
     // ── API ──────────────────────────────────────────────────────────────────
     property string connectionName: ""
     property string tableName:      ""
+    property string schemaName:     ""
 
-    function openFor(conn: var, table: var): void {
+    // See TableStatsPopup: the title names the table the DDL is actually for.
+    property string tableLabel: ""
+
+    function openFor(conn: var, schema: var, table: var, label: var): void {
         connectionName = conn
+        schemaName     = schema ?? ""
         tableName      = table
+        tableLabel     = label || table
         _ddl           = ""
-        _ddl           = DatabaseInspector.tableDdl(conn, table)
+        _ddl           = DatabaseInspector.tableDdl(conn, schemaName, table)
         open()
     }
 
@@ -25,7 +31,7 @@ Dialog {
     property string _ddl: ""
 
     // ── Dialog chrome ─────────────────────────────────────────────────────────
-    title:          root.tableName
+    title:          root.tableLabel
     subtitle:       "DDL · " + root.connectionName
     preferredWidth: 600
 

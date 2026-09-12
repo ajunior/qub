@@ -1865,8 +1865,15 @@ Item {
                         + Fk.ident(table, root._activeConn?.driver ?? ""),
                         table)
                 }
-                onTableStatsRequested: (schema, name) => _tableStatsPopup.openFor(root.activeConnection, name)
-                onTableDdlRequested:   (schema, name) => _tableDdlPopup.openFor(root.activeConnection, name)
+                // The schema goes to the inspector always, not only when there
+                // is more than one: filtering by it is never less correct. What
+                // _qualify decides is the *label*, which follows the same rule
+                // as the browse and copy-name actions — a prefix only where an
+                // unqualified name would be ambiguous.
+                onTableStatsRequested: (schema, name) => _tableStatsPopup.openFor(
+                    root.activeConnection, schema, name, _schemaTree._qualify(schema, name))
+                onTableDdlRequested:   (schema, name) => _tableDdlPopup.openFor(
+                    root.activeConnection, schema, name, _schemaTree._qualify(schema, name))
 
                 // The name that goes to the clipboard is the one that would
                 // actually run: qualified exactly where an unqualified name
