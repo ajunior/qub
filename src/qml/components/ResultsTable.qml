@@ -16,10 +16,15 @@ Rectangle {
     property bool   editable:     false
     property string tableName:    ""
     property var    pkColumns:    []
-    // Foreign keys for the active connection ({fromTable,fromColumn,toTable,toColumn})
+    // Foreign keys for the active connection (fk.js describes the entry shape)
     // and the Qt driver, used to offer FK navigation on the selected cell.
     property var    foreignKeys:  []
     property string driver:       ""
+    // Whether the connection exposes more than one schema. Decides whether an
+    // FK target is named bare or qualified — in the label and in the generated
+    // SELECT alike, since a bare name would resolve against the search_path
+    // rather than against the schema the row actually came from.
+    property bool   multiSchema:  false
     // Whether a query has actually been run for this tab. Distinguishes the
     // blank-slate ("run a query") state from a query that returned no rows.
     property bool   hasRun:       false
@@ -126,13 +131,14 @@ Rectangle {
         for (let c = 0; c < cols.length; c++) {
             const val = root.model.cellValue(root._rowViewIdx, c)
             const fk  = Fk.outgoing(root.foreignKeys, root.tableName, cols[c])
+            const dest = fk ? Fk.qualify(fk.toSchema, fk.toTable, root.multiSchema) : ""
             out.push({
                 name:    cols[c],
                 value:   val,
-                fkSql:   fk ? Fk.selectBy(fk.toTable, fk.toColumn, val, root.driver,
+                fkSql:   fk ? Fk.selectBy(dest, fk.toColumn, val, root.driver,
                                           AppSettings.sqlKeywordCase) : "",
-                fkLabel: fk ? ("Go to " + fk.toTable + " row") : "",
-                fkTable: fk ? fk.toTable : ""
+                fkLabel: fk ? ("Go to " + dest + " row") : "",
+                fkTable: dest
             })
         }
         return out
@@ -474,21 +480,25 @@ Rectangle {
                 ]
                 // Foreign-key navigation for the last-clicked cell.
                 const fk = []
-                if (root._fkOut)
-                    fk.push({ label: "Go to " + root._fkOut.toTable + " row",
+                if (root._fkOut) {
+                    const dest = Fk.qualify(root._fkOut.toSchema, root._fkOut.toTable,
+                                            root.multiSchema)
+                    fk.push({ label: "Go to " + dest + " row",
                               icon: Icons.arrowSquareOut, act: "nav",
                               disabled: root._selVal === "",
-                              table: root._fkOut.toTable,
-                              sql: Fk.selectBy(root._fkOut.toTable, root._fkOut.toColumn,
+                              table: dest,
+                              sql: Fk.selectBy(dest, root._fkOut.toColumn,
                                                root._selVal, root.driver,
                                                AppSettings.sqlKeywordCase) })
+                }
                 for (let i = 0; i < root._fkIn.length; i++) {
                     const inc = root._fkIn[i]
-                    fk.push({ label: "Rows in " + inc.fromTable + " (" + inc.fromColumn + ")",
+                    const src = Fk.qualify(inc.fromSchema, inc.fromTable, root.multiSchema)
+                    fk.push({ label: "Rows in " + src + " (" + inc.fromColumn + ")",
                               icon: Icons.arrowBendUpLeft, act: "nav",
                               disabled: root._selVal === "",
-                              table: inc.fromTable,
-                              sql: Fk.selectBy(inc.fromTable, inc.fromColumn,
+                              table: src,
+                              sql: Fk.selectBy(src, inc.fromColumn,
                                                root._selVal, root.driver,
                                                AppSettings.sqlKeywordCase) })
                 }
