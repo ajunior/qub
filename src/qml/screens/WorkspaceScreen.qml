@@ -527,9 +527,15 @@ Item {
             return "'" + s.replace(/'/g, "''") + "'"
         }
 
-        const setClause   = `"${colName}" = ${q(newValue)}`
-        const whereClause = pks.map((c, i) => `"${c}" = ${q(pkVals[i])}`).join(" AND ")
-        const sql = `UPDATE "${tbl}" SET ${setClause} WHERE ${whereClause}`
+        // Quoted per the connection's dialect, and through Fk.ident so a
+        // qualified table stays two identifiers: `UPDATE "analytics.users"` is
+        // one name with a dot in it, which is not the table. The hardcoded
+        // double quote this replaces was also a string literal on MySQL.
+        const drv         = root._activeConn?.driver ?? ""
+        const setClause   = `${Fk.ident(colName, drv)} = ${q(newValue)}`
+        const whereClause = pks.map((c, i) => `${Fk.ident(c, drv)} = ${q(pkVals[i])}`)
+                               .join(" AND ")
+        const sql = `UPDATE ${Fk.ident(tbl, drv)} SET ${setClause} WHERE ${whereClause}`
 
         root._pendingCellEdit = { tabId, row, col, value: newValue }
         QueryExecutor.activeTabId = tabId
@@ -664,10 +670,11 @@ Item {
         root._setGutterDecs(root._currentTabId, [])
         const sql = root._applyLimit(sel !== "" ? sel : root.currentSql)
 
-        // Extract table name for inline-edit support (single-table SELECT only)
-        const tblMatch = /^\s*SELECT\b[\s\S]*?\bFROM\s+(?:["'`])?(\w+)(?:["'`])?(?:\s|$)/i.exec(sql.trim())
+        // Extract table name for inline-edit support (single-table SELECT only).
+        // Qualified names included: the browse button emits them, and the old
+        // expression could not read one back.
         const tm = Object.assign({}, root._tabTableMap)
-        tm[root._currentTabId] = tblMatch ? tblMatch[1] : ""
+        tm[root._currentTabId] = Fk.tableFromSelect(sql)
         root._tabTableMap = tm
 
         // Detect query parameters — show dialog before executing
@@ -2512,6 +2519,7 @@ Item {
                                     tableName:    root._tabTableMap[root._currentTabId] ?? ""
                                     pkColumns:    root._currentPkCols
                                     foreignKeys:  root._fkList
+                                    multiSchema:  _schemaTree.schemaCount > 1
                                     driver:       root._activeConn ? (root._activeConn.driver ?? "") : ""
                                     onCellCopied: (value) => _toaster.show(
                                         "Copied to clipboard.",

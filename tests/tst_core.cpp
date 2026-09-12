@@ -65,6 +65,8 @@ private slots:
     // ── Foreign-key navigation (fk.js) ────────────────────────────────────────
     void fk_outgoingResolves();
     void fk_incomingLists();
+    void fk_schemaDisambiguates();
+    void fk_tableFromSelect();
     void fk_selectByDialects();
     void fk_selectByKeywordCase();
 
@@ -508,9 +510,21 @@ void TestCore::complete_dottedTable()
 // A small FK list: orders.customer_id → customers.id, orders.product_id →
 // products.id, and (deliberately ambiguous) an items.customer_id → people.id.
 static const char *FK_LIST =
-    "[{fromTable:'orders',fromColumn:'customer_id',toTable:'customers',toColumn:'id'},"
-    " {fromTable:'orders',fromColumn:'product_id', toTable:'products', toColumn:'id'},"
-    " {fromTable:'items', fromColumn:'customer_id',toTable:'people',   toColumn:'id'}]";
+    "[{fromSchema:'public',fromTable:'orders',fromColumn:'customer_id',"
+    "  toSchema:'public',toTable:'customers',toColumn:'id'},"
+    " {fromSchema:'public',fromTable:'orders',fromColumn:'product_id',"
+    "  toSchema:'public',toTable:'products', toColumn:'id'},"
+    " {fromSchema:'public',fromTable:'items', fromColumn:'customer_id',"
+    "  toSchema:'public',toTable:'people',   toColumn:'id'}]";
+
+// The same table name in two schemas, which is the whole point of #102:
+// public.orders points at public.customers, analytics.orders at
+// analytics.dim_customer. Matching on "orders" alone cannot tell them apart.
+static const char *FK_LIST_2SCHEMA =
+    "[{fromSchema:'public',   fromTable:'orders',fromColumn:'customer_id',"
+    "  toSchema:'public',   toTable:'customers',   toColumn:'id'},"
+    " {fromSchema:'analytics',fromTable:'orders',fromColumn:'customer_id',"
+    "  toSchema:'analytics',toTable:'dim_customer',toColumn:'id'}]";
 
 void TestCore::fk_outgoingResolves()
 {
@@ -527,8 +541,10 @@ void TestCore::fk_outgoingResolves()
     // Known table + FK column → the referenced target.
     QCOMPARE(out("orders", "customer_id"), QStringLiteral("customers.id"));
     QCOMPARE(out("orders", "product_id"),  QStringLiteral("products.id"));
-    // Schema-qualified source table still matches on the bare name.
+    // A qualified source table matches the entry whose schema agrees.
     QCOMPARE(out("public.orders", "customer_id"), QStringLiteral("customers.id"));
+    // ...and finds nothing where it does not: these FKs are all in public.
+    QCOMPARE(out("analytics.orders", "customer_id"), QStringLiteral("<null>"));
     // Known table without that FK → no guess.
     QCOMPARE(out("orders", "id"), QStringLiteral("<null>"));
     // No table context + a column that's ambiguous across tables → no guess.
@@ -559,6 +575,70 @@ void TestCore::fk_incomingLists()
     // No table context → every FK whose target column matches (both id targets).
     QCOMPARE(inc("", "id"),
              QStringLiteral("items.customer_id|orders.customer_id|orders.product_id"));
+}
+
+void TestCore::fk_schemaDisambiguates()
+{
+    auto out = [&](const QString &table) {
+        const QJSValue v = m_js.evaluate(
+            QStringLiteral("(function(){var r=outgoing(%1,'%2','customer_id');"
+                           "return r?r.toSchema+'.'+r.toTable:'<null>';})()")
+                .arg(QString::fromUtf8(FK_LIST_2SCHEMA), table));
+        return v.toString();
+    };
+
+    // Each qualified source resolves to its own schema's target. On the bare
+    // name both entries match and the first one wins — which is the old
+    // behaviour, kept for callers that have no schema to offer.
+    QCOMPARE(out("public.orders"),    QStringLiteral("public.customers"));
+    QCOMPARE(out("analytics.orders"), QStringLiteral("analytics.dim_customer"));
+    QCOMPARE(out("orders"),           QStringLiteral("public.customers"));
+
+    // incoming() is filtered by the same pair.
+    auto inc = [&](const QString &table) {
+        const QJSValue v = m_js.evaluate(
+            QStringLiteral("(function(){var a=incoming(%1,'%2','id');"
+                           "return a.map(function(x){return x.fromSchema+'.'+x.fromTable;})"
+                           ".sort().join('|');})()")
+                .arg(QString::fromUtf8(FK_LIST_2SCHEMA), table));
+        return v.toString();
+    };
+    QCOMPARE(inc("analytics.dim_customer"), QStringLiteral("analytics.orders"));
+    QCOMPARE(inc("public.customers"),       QStringLiteral("public.orders"));
+    // A real collision: customers exists only in public, so asking about an
+    // analytics.customers that does not exist must not answer about public's.
+    QCOMPARE(inc("analytics.customers"), QString());
+
+    // qualify() prefixes only where the connection has more than one schema.
+    auto q = [&](const QString &expr) {
+        return m_js.evaluate(QStringLiteral("qualify(%1)").arg(expr)).toString();
+    };
+    QCOMPARE(q("'analytics','orders',true"),  QStringLiteral("analytics.orders"));
+    QCOMPARE(q("'analytics','orders',false"), QStringLiteral("orders"));
+    QCOMPARE(q("'main','users',true"),        QStringLiteral("main.users"));
+    QCOMPARE(q("'','users',true"),            QStringLiteral("users"));
+}
+
+void TestCore::fk_tableFromSelect()
+{
+    // No SQL here contains a single quote, so plain interpolation is enough.
+    auto t = [&](const QString &sql) {
+        return m_js.evaluate(QStringLiteral("tableFromSelect('%1')").arg(sql)).toString();
+    };
+
+    QCOMPARE(t("SELECT * FROM users"),            QStringLiteral("users"));
+    QCOMPARE(t("select id from  Users  where x"), QStringLiteral("Users"));
+    // Quoted, qualified, and both — the browse button emits the last one, and
+    // the expression this replaced returned nothing at all for it.
+    QCOMPARE(t("SELECT * FROM \"users\""),         QStringLiteral("users"));
+    QCOMPARE(t("SELECT * FROM analytics.users"),  QStringLiteral("analytics.users"));
+    QCOMPARE(t("SELECT * FROM \"analytics\".\"users\""), QStringLiteral("analytics.users"));
+    QCOMPARE(t("SELECT * FROM `db`.`users` LIMIT 10"),   QStringLiteral("db.users"));
+    // A quoted identifier that contains a dot is one name, not two.
+    QCOMPARE(t("SELECT * FROM \"my.table\""),      QStringLiteral("my.table"));
+    // Not a single-table SELECT we can edit through.
+    QCOMPARE(t("UPDATE users SET a = 1"),         QString());
+    QCOMPARE(t("  "),                             QString());
 }
 
 void TestCore::fk_selectByDialects()
