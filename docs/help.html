@@ -1154,6 +1154,12 @@ LIMIT $3</pre>
       Click any cell to edit it; qub generates and executes an <code>UPDATE</code> statement
       automatically on confirmation. Primary key columns are protected and shown as read-only.
     </p>
+    <p>
+      Which table you are editing is read back out of the query itself, so it works on a
+      schema-qualified <code>SELECT</code> — including the one the quick-browse button
+      writes — and the generated <code>UPDATE</code> quotes its identifiers in the
+      connection's own dialect, backticks on MySQL and MariaDB.
+    </p>
 
     <h3>Column widths</h3>
     <p>
@@ -1210,6 +1216,11 @@ LIMIT $3</pre>
       <em>Query n</em> label rather than repeating it; double-click any tab to rename it.
       Foreign keys are read from the live schema of PostgreSQL, MySQL/MariaDB, and SQLite
       connections, and the generated query uses the connection's identifier-quoting dialect.
+      Both ends of a key carry their schema, so on a connection exposing more than one the
+      menu names the destination qualified (<strong>Go to <em>analytics.dim_customer</em>
+      row</strong>) and the generated query qualifies it too — a bare name would resolve
+      against the search path rather than against the schema the row you clicked came from.
+      Keys that cross schemas are followed like any other.
     </p>
 
     <h3>Exporting results</h3>
@@ -1294,12 +1305,17 @@ LIMIT $3</pre>
         Opens a popup with row count, size, pages, dead rows, vacuum and analyze timestamps
         (PostgreSQL), engine and timestamps (MySQL), and per-column statistics including
         distinct count, null fraction, average width, and correlation (PostgreSQL only).
+        The lookup is pinned to the table's own schema, and the popup title names it the
+        same way <strong>Copy name</strong> does — so where two schemas hold a table of the
+        same name, what you are reading about is on screen.
       </li>
       <li>
         <strong>View DDL</strong>
         Opens a read-only popup showing the <code>CREATE TABLE</code> statement for that table,
         with a Copy button. Uses <code>SHOW CREATE TABLE</code> on MySQL, <code>sqlite_master</code>
-        on SQLite, and reconstructs from <code>information_schema</code> on PostgreSQL.
+        on SQLite, and reconstructs from <code>information_schema</code> on PostgreSQL. Like
+        <strong>Statistics</strong>, it is pinned to the table's own schema, and the
+        reconstructed statement carries the qualified name where there is more than one.
       </li>
     </ul>
 
