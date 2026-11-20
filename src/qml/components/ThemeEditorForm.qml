@@ -30,18 +30,18 @@ ColumnLayout {
             light: {
                 background: "#EDEEF6", panel: "#F4F4FA",
                 surface: "#FFFFFF", surfaceVariant: "#F8F8FD",
-                overlay: "#00000040", border: "#E2E5F0",
+                overlay: "#40000000", border: "#E2E5F0",
                 borderStrong: "#C8CEDF", textPrimary: "#1E2030",
                 textSecondary: "#697180", textDisabled: "#9AA3AF",
-                shadowColor: "#1E203014"
+                shadowColor: "#141E2030"
             },
             dark: {
                 background: "#151922", panel: "#171D27",
                 surface: "#1E2430", surfaceVariant: "#222A36",
-                overlay: "#00000066", border: "#313B4C",
+                overlay: "#66000000", border: "#313B4C",
                 borderStrong: "#475569", textPrimary: "#F4F7FB",
                 textSecondary: "#AAB4C4", textDisabled: "#7F8A9A",
-                shadowColor: "#0000003D"
+                shadowColor: "#3D000000"
             }
         }
     }

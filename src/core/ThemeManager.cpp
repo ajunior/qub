@@ -32,6 +32,33 @@ static QVariantMap makeDark(const QString &bg, const QString &panel, const QStri
     return makeLight(bg, panel, surface, surfaceVar, overlay, border, borderStrong, tp, ts, td, shadow);
 }
 
+// qub used to ship its overlay and shadow colours CSS-style (#RRGGBBAA). Qt
+// reads 8-digit hex as #AARRGGBB, so the alpha landed in the blue channel and
+// the leading byte became the alpha: the dark-mode scrim behind dialogs was
+// fully transparent. Themes saved or exported back then still carry those
+// values; flip exactly those. Anything picked in the theme editor came from
+// Qt and is already in Qt's order, so it is left alone.
+static bool fixLegacyArgb(QVariantMap &theme)
+{
+    static const QStringList legacy = {
+        "#00000040", "#00000066", "#0000003D",
+        "#1E203014", "#1A081014", "#07364214", "#28293614",
+    };
+    bool changed = false;
+    for (const char *mode : {"light", "dark"}) {
+        QVariantMap m = theme.value(mode).toMap();
+        for (const char *key : {"overlay", "shadowColor"}) {
+            const QString c = m.value(key).toString();
+            if (legacy.contains(c, Qt::CaseInsensitive)) {
+                m[key] = QString(u'#' + c.mid(7, 2) + c.mid(1, 6)).toUpper();
+                changed = true;
+            }
+        }
+        if (changed) theme[mode] = m;
+    }
+    return changed;
+}
+
 static QVariantMap variantFromJson(const QJsonObject &obj);
 
 static QVariantMap variantFromJson(const QJsonObject &obj)
@@ -81,10 +108,10 @@ void ThemeManager::initBuiltins()
         {"warning", "#F28E2B"}, {"warningSubtle", "#FEF4E7"},
         {"error",   "#E15759"}, {"errorSubtle",   "#FEF0F0"},
         {"info",    "#2196E8"}, {"infoSubtle",    "#EFF7FE"},
-        {"light", makeLight("#EDEEF6","#F4F4FA","#FFFFFF","#F8F8FD","#00000040",
-                            "#E2E5F0","#C8CEDF","#1E2030","#697180","#9AA3AF","#1E203014")},
-        {"dark",  makeDark ("#151922","#171D27","#1E2430","#222A36","#00000066",
-                            "#313B4C","#475569","#F4F7FB","#AAB4C4","#7F8A9A","#0000003D")}
+        {"light", makeLight("#EDEEF6","#F4F4FA","#FFFFFF","#F8F8FD","#40000000",
+                            "#E2E5F0","#C8CEDF","#1E2030","#697180","#9AA3AF","#141E2030")},
+        {"dark",  makeDark ("#151922","#171D27","#1E2430","#222A36","#66000000",
+                            "#313B4C","#475569","#F4F7FB","#AAB4C4","#7F8A9A","#3D000000")}
     };
 }
 
@@ -103,10 +130,10 @@ void ThemeManager::seedPresets()
         {"warning", "#E07820"}, {"warningSubtle", "#FEF0E3"},
         {"error",   "#C01818"}, {"errorSubtle",   "#FAE8E8"},
         {"info",    "#7B52D8"}, {"infoSubtle",    "#EEE8FA"},
-        {"light", makeLight("#FFF7FB","#FFFFFF","#FFFFFF","#FEF0F8","#00000040",
-                            "#F8D8EC","#EDAAD0","#1A0810","#6B3550","#C4A0B5","#1A081014")},
-        {"dark",  makeDark ("#140A10","#1C101A","#251624","#2E1C2C","#00000066",
-                            "#4A2844","#6A3860","#FFF0F8","#E8AACB","#9B6B85","#0000003D")}
+        {"light", makeLight("#FFF7FB","#FFFFFF","#FFFFFF","#FEF0F8","#40000000",
+                            "#F8D8EC","#EDAAD0","#1A0810","#6B3550","#C4A0B5","#141A0810")},
+        {"dark",  makeDark ("#140A10","#1C101A","#251624","#2E1C2C","#66000000",
+                            "#4A2844","#6A3860","#FFF0F8","#E8AACB","#9B6B85","#3D000000")}
     };
 
     // ── Solarized ─────────────────────────────────────────────────────────────
@@ -119,10 +146,10 @@ void ThemeManager::seedPresets()
         {"warning", "#B58900"}, {"warningSubtle", "#F5EDD5"},
         {"error",   "#DC322F"}, {"errorSubtle",   "#F5E0DF"},
         {"info",    "#2AA198"}, {"infoSubtle",    "#DDF0EE"},
-        {"light", makeLight("#EEE8D5","#FDF6E3","#FDF6E3","#EEE8D5","#00000040",
-                            "#D3CCB8","#B8B0A0","#073642","#586E75","#93A1A1","#07364214")},
-        {"dark",  makeDark ("#002B36","#073642","#073642","#0A3D4A","#00000066",
-                            "#1E4D5C","#2E6375","#FDF6E3","#839496","#657B83","#0000003D")}
+        {"light", makeLight("#EEE8D5","#FDF6E3","#FDF6E3","#EEE8D5","#40000000",
+                            "#D3CCB8","#B8B0A0","#073642","#586E75","#93A1A1","#14073642")},
+        {"dark",  makeDark ("#002B36","#073642","#073642","#0A3D4A","#66000000",
+                            "#1E4D5C","#2E6375","#FDF6E3","#839496","#657B83","#3D000000")}
     };
 
     // ── Dracula ───────────────────────────────────────────────────────────────
@@ -135,10 +162,10 @@ void ThemeManager::seedPresets()
         {"warning", "#FFB86C"}, {"warningSubtle", "#3D2E1A"},
         {"error",   "#FF5555"}, {"errorSubtle",   "#3D1A1A"},
         {"info",    "#8BE9FD"}, {"infoSubtle",    "#1A2F3D"},
-        {"light", makeLight("#F0EFF5","#E8E7F0","#FFFFFF","#F4F3FA","#00000040",
-                            "#D8D7E8","#C0BED8","#282A36","#6272A4","#9BA7C8","#28293614")},
-        {"dark",  makeDark ("#282A36","#21222C","#313244","#44475A","#00000066",
-                            "#44475A","#6272A4","#F8F8F2","#BFBFBF","#6272A4","#0000003D")}
+        {"light", makeLight("#F0EFF5","#E8E7F0","#FFFFFF","#F4F3FA","#40000000",
+                            "#D8D7E8","#C0BED8","#282A36","#6272A4","#9BA7C8","#14282936")},
+        {"dark",  makeDark ("#282A36","#21222C","#313244","#44475A","#66000000",
+                            "#44475A","#6272A4","#F8F8F2","#BFBFBF","#6272A4","#3D000000")}
     };
 
     save();
@@ -260,6 +287,7 @@ QVariantMap ThemeManager::importTheme(const QUrl &fileUrl)
         return {{"success", false},
                 {"message", "Theme \"" + name + "\" already exists. Nothing imported."}};
 
+    fixLegacyArgb(t);
     t["builtin"] = false;
     t.remove("id");
     t.remove("version");
@@ -288,8 +316,12 @@ void ThemeManager::load()
     const auto doc = QJsonDocument::fromJson(raw.toUtf8(), &err);
     if (err.error != QJsonParseError::NoError) return;
 
+    bool migrated = false;
     for (const auto &v : doc.array()) {
-        if (v.isObject())
-            m_custom << variantFromJson(v.toObject());
+        if (!v.isObject()) continue;
+        QVariantMap t = variantFromJson(v.toObject());
+        migrated |= fixLegacyArgb(t);
+        m_custom << t;
     }
+    if (migrated) save();
 }
